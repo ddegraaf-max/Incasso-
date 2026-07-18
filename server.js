@@ -4,6 +4,9 @@ const session = require('express-session');
 const QRCode = require('qrcode');
 const D = require('./src/data');
 const Auth = require('./src/auth');
+const db = require('./src/db');
+const AiScore = require('./src/aiscore');
+const pgSession = require('connect-pg-simple')(session);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -13,7 +16,7 @@ app.set('views', path.join(__dirname, 'views'));
 app.set('trust proxy', 1); // Railway zit achter een proxy
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: true }));
-app.use(session({
+const sessionOpts = {
   secret: process.env.SESSION_SECRET || 'creditline-dev-secret-zmien-mnie',
   resave: false,
   saveUninitialized: false,
@@ -23,7 +26,9 @@ app.use(session({
     secure: process.env.NODE_ENV === 'production',
     maxAge: 8 * 60 * 60 * 1000, // 8 uur
   },
-}));
+};
+let sessionMiddleware = null;
+app.use((req, res, next) => sessionMiddleware(req, res, next));
 
 const TONES = ['Uprzejmy', 'Stanowczy', 'Prawniczy'];
 
@@ -118,6 +123,7 @@ app.post('/2fa/setup', async (req, res) => {
   }
   user.totpSecret = req.session.totpSecret;
   user.totpConfirmed = true;
+  db.updateUserTotp(user).catch(() => {});
   delete req.session.totpSecret;
   delete req.session.setup2fa;
   req.session.pending2fa = false;
@@ -151,8 +157,9 @@ app.get('/logout', (req, res) => {
 });
 
 // ── Admin ────────────────────────────────────────────────────────────────
-app.get('/admin', Auth.requireAdmin, (req, res) => {
-  res.render('admin', common({ page: 'admin', user: req.user, usersList: Auth.allUsers(), done: D.getDone() }));
+app.get('/admin', Auth.requireAdmin, async (req, res) => {
+  const events = await db.listEvents(15).catch(() => []);
+  res.render('admin', common({ page: 'admin', user: req.user, usersList: Auth.allUsers(), done: D.getDone(), events }));
 });
 
 // ── Marketing ────────────────────────────────────────────────────────────
@@ -177,7 +184,7 @@ app.get('/app/sprawy', Auth.requireAuth, (req, res) => {
 
 app.post('/app/sprawy/:id/:action', Auth.requireAuth, (req, res) => {
   const { id, action } = req.params;
-  if (D.claims.some((c) => c.id === id) && ['collect', 'sell'].includes(action)) {
+  if (D.claims.some((c) => c.id === id) && ['collect', 'sell', 'close'].includes(action)) {
     D.setDone(id, action);
   }
   res.redirect('/app/sprawy?sel=' + encodeURIComponent(id));
@@ -192,9 +199,10 @@ app.post('/app/nowa/:action', Auth.requireAuth, (req, res) => {
   res.redirect('/app/nowa');
 });
 
-app.get('/app/agent', Auth.requireAuth, (req, res) => {
+app.get('/app/agent', Auth.requireAuth, async (req, res) => {
   const tone = TONES.includes(req.query.ton) ? req.query.ton : 'Uprzejmy';
-  res.render('agent', common({ user: req.user, page: 'app', tab: 'agent', tone, TONES, thread: D.thread(tone), feed: D.feed }));
+  const events = await db.listEvents(10).catch(() => []);
+  res.render('agent', common({ user: req.user, page: 'app', tab: 'agent', tone, TONES, thread: D.thread(tone), feed: D.feed, events }));
 });
 
 app.get('/app/wykup', Auth.requireAuth, (req, res) => {
@@ -234,4 +242,15 @@ app.get('/wezwanie', (req, res) => {
   });
 });
 
-app.listen(PORT, () => console.log('Creditline Poland draait op poort ' + PORT));
+async function start() {
+  await db.init().catch((e) => console.error('DB init:', e.message));
+  if (db.hasDb()) {
+    sessionOpts.store = new pgSession({ pool: db.getPool(), createTableIfMissing: true });
+  }
+  sessionMiddleware = session(sessionOpts);
+  await Auth.initFromDb().catch(() => {});
+  await D.initActions().catch(() => {});
+  await AiScore.init(D.claims).catch((e) => console.error('AIScore init:', e.message));
+  app.listen(PORT, () => console.log('Creditline Poland draait op poort ' + PORT));
+}
+start();

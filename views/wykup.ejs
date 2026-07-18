@@ -7,18 +7,18 @@
 
   <table class="cases wykup">
     <thead>
-      <tr><th>Faktura</th><th>Dłużnik</th><th class="num">Kwota</th><th>Scoring</th><th class="num">Oferta AI</th><th></th></tr>
+      <tr><th>Faktura</th><th>Dłużnik</th><th class="num">Kwota</th><th>AIScore</th><th class="num">Oferta AI</th><th></th></tr>
     </thead>
     <tbody>
       <% D.claims.forEach(function(c) {
         var sold = done[c.id] === 'sell';
-        var scoreTag = c.score === 'E' ? 'tag-accent' : (c.score === 'C' ? 'tag-outline' : 'tag-neutral');
+        var scoreTag = (c.ai.grade === 'E' || c.ai.grade === 'D') ? 'tag-accent' : (c.ai.grade === 'C' ? 'tag-outline' : 'tag-neutral');
       %>
       <tr>
         <td class="tnum"><%= c.nr %></td>
         <td><%= c.debtor %></td>
         <td class="num tnum"><%= D.fmt(c.amount) %></td>
-        <td><span class="tag <%= scoreTag %>">Scoring <%= c.score %></span></td>
+        <td><span class="tag <%= scoreTag %>"><span class="tnum"><%= c.ai.score %></span> · <%= c.ai.grade %></span></td>
         <td class="num tnum"><%= D.fmt(Math.round(c.amount * c.pct / 100)) %> · <%= c.pct %>%</td>
         <td>
           <% if (sold) { %>

@@ -1,0 +1,161 @@
+// Creditline Poland — databaselaag
+// Met DATABASE_URL (Railway PostgreSQL): volledige persistentie.
+// Zonder: in-memory fallback zodat lokaal/demo alles blijft werken.
+const { Pool } = require('pg');
+
+let pool = null;
+
+// In-memory fallback stores
+const mem = {
+  users: [],
+  actions: {},   // caseId → action
+  events: [],    // nieuwste eerst
+  scores: {},    // nip → { score, grade, pct, reco, signals, checkedAt }
+};
+
+async function init() {
+  if (!process.env.DATABASE_URL) {
+    console.log('DB: geen DATABASE_URL — in-memory modus (concept)');
+    return false;
+  }
+  pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.DATABASE_URL.includes('railway') || process.env.PGSSL === '1'
+      ? { rejectUnauthorized: false } : false,
+  });
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      email TEXT UNIQUE NOT NULL,
+      pass_hash TEXT NOT NULL,
+      company TEXT DEFAULT '',
+      nip TEXT DEFAULT '',
+      role TEXT DEFAULT 'client',
+      totp_secret TEXT,
+      totp_confirmed BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMPTZ DEFAULT now()
+    );
+    CREATE TABLE IF NOT EXISTS case_actions (
+      case_id TEXT PRIMARY KEY,
+      action TEXT NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT now()
+    );
+    CREATE TABLE IF NOT EXISTS events (
+      id SERIAL PRIMARY KEY,
+      nip TEXT,
+      debtor TEXT,
+      type TEXT,
+      title TEXT,
+      source TEXT,
+      created_at TIMESTAMPTZ DEFAULT now()
+    );
+    CREATE TABLE IF NOT EXISTS debtor_scores (
+      nip TEXT PRIMARY KEY,
+      score INT,
+      grade TEXT,
+      pct INT,
+      reco TEXT,
+      signals JSONB,
+      checked_at TIMESTAMPTZ DEFAULT now()
+    );
+  `);
+  console.log('DB: PostgreSQL verbonden, schema klaar');
+  return true;
+}
+
+function hasDb() { return !!pool; }
+function getPool() { return pool; }
+
+// ── Users ────────────────────────────────────────────────────────────────
+async function loadUsers() {
+  if (!pool) return mem.users;
+  const r = await pool.query('SELECT * FROM users ORDER BY id');
+  return r.rows.map((x) => ({
+    id: x.id, email: x.email, passHash: x.pass_hash, company: x.company,
+    nip: x.nip, role: x.role, totpSecret: x.totp_secret,
+    totpConfirmed: x.totp_confirmed, createdAt: x.created_at,
+  }));
+}
+
+async function saveUser(u) {
+  if (!pool) { mem.users.push(u); return u; }
+  const r = await pool.query(
+    `INSERT INTO users (email, pass_hash, company, nip, role, totp_secret, totp_confirmed)
+     VALUES ($1,$2,$3,$4,$5,$6,$7)
+     ON CONFLICT (email) DO UPDATE SET pass_hash=$2, company=$3, nip=$4, role=$5
+     RETURNING id`,
+    [u.email, u.passHash, u.company, u.nip, u.role, u.totpSecret, u.totpConfirmed]
+  );
+  u.id = r.rows[0].id;
+  return u;
+}
+
+async function updateUserTotp(u) {
+  if (!pool) return;
+  await pool.query('UPDATE users SET totp_secret=$1, totp_confirmed=$2 WHERE email=$3',
+    [u.totpSecret, u.totpConfirmed, u.email]);
+}
+
+// ── Case actions ─────────────────────────────────────────────────────────
+async function loadActions() {
+  if (!pool) return { ...mem.actions };
+  const r = await pool.query('SELECT case_id, action FROM case_actions');
+  const out = {};
+  r.rows.forEach((x) => { out[x.case_id] = x.action; });
+  return out;
+}
+
+async function saveAction(caseId, action) {
+  if (!pool) { mem.actions[caseId] = action; return; }
+  await pool.query(
+    `INSERT INTO case_actions (case_id, action) VALUES ($1,$2)
+     ON CONFLICT (case_id) DO UPDATE SET action=$2, created_at=now()`,
+    [caseId, action]
+  );
+}
+
+// ── Events (monitoring) ──────────────────────────────────────────────────
+async function insertEvent(e) {
+  const ev = { ...e, created_at: new Date() };
+  if (!pool) { mem.events.unshift(ev); mem.events = mem.events.slice(0, 200); return ev; }
+  await pool.query(
+    'INSERT INTO events (nip, debtor, type, title, source) VALUES ($1,$2,$3,$4,$5)',
+    [e.nip, e.debtor, e.type, e.title, e.source]
+  );
+  return ev;
+}
+
+async function listEvents(limit = 20) {
+  if (!pool) return mem.events.slice(0, limit);
+  const r = await pool.query('SELECT * FROM events ORDER BY created_at DESC LIMIT $1', [limit]);
+  return r.rows;
+}
+
+// ── AIScores ─────────────────────────────────────────────────────────────
+async function saveScore(nip, s) {
+  if (!pool) { mem.scores[nip] = { ...s, checkedAt: new Date() }; return; }
+  await pool.query(
+    `INSERT INTO debtor_scores (nip, score, grade, pct, reco, signals, checked_at)
+     VALUES ($1,$2,$3,$4,$5,$6,now())
+     ON CONFLICT (nip) DO UPDATE SET score=$2, grade=$3, pct=$4, reco=$5, signals=$6, checked_at=now()`,
+    [nip, s.score, s.grade, s.pct, s.reco, JSON.stringify(s.signals || [])]
+  );
+}
+
+async function loadScores() {
+  if (!pool) return { ...mem.scores };
+  const r = await pool.query('SELECT * FROM debtor_scores');
+  const out = {};
+  r.rows.forEach((x) => {
+    out[x.nip] = { score: x.score, grade: x.grade, pct: x.pct, reco: x.reco, signals: x.signals, checkedAt: x.checked_at };
+  });
+  return out;
+}
+
+module.exports = {
+  init, hasDb, getPool,
+  loadUsers, saveUser, updateUserTotp,
+  loadActions, saveAction,
+  insertEvent, listEvents,
+  saveScore, loadScores,
+};

@@ -2,6 +2,7 @@
 // Concept: in-memory store (reset bij redeploy). Productie: PostgreSQL.
 const bcrypt = require('bcryptjs');
 const speakeasy = require('speakeasy');
+const db = require('./db');
 
 // ── Gebruikersstore ──────────────────────────────────────────────────────
 // user: { id, email, passHash, company, nip, role: 'client'|'admin', totpSecret, totpConfirmed }
@@ -21,7 +22,19 @@ function addUser({ email, password, company, nip, role }) {
     createdAt: new Date(),
   };
   users.set(u.email, u);
+  if (persistNew) db.saveUser(u).catch(() => {});
   return u;
+}
+let persistNew = false;
+
+async function initFromDb() {
+  const rows = await db.loadUsers().catch(() => []);
+  rows.forEach((u) => { users.set(u.email, u); if (u.id >= nextId) nextId = u.id + 1; });
+  // seeds naar DB schrijven als ze daar nog niet staan
+  for (const u of users.values()) {
+    if (!rows.find((r) => r.email === u.email)) await db.saveUser(u).catch(() => {});
+  }
+  persistNew = true;
 }
 
 function findUser(email) {
@@ -120,7 +133,7 @@ function requireAdmin(req, res, next) {
 }
 
 module.exports = {
-  addUser, findUser, findUserById, allUsers,
+  addUser, findUser, findUserById, allUsers, initFromDb,
   checkPassword, passwordPolicy,
   newTotpSecret, totpUri, verifyTotp,
   isLocked, registerFail, registerSuccess,

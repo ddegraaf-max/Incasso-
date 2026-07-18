@@ -3,6 +3,21 @@
 
 <div class="agent-panes">
   <section class="agent-left">
+    <div class="kicker">Monitoring — dane publiczne na żywo</div>
+    <p class="helper">Agent w pętli sprawdza KRZ, MSiG i białą listę dla każdego dłużnika w bazie. Nowe obwieszczenie = zdarzenie + przeliczenie AIScore.</p>
+    <% if (!events.length) { %><p class="helper">Brak zdarzeń — monitoring aktywny.</p><% } %>
+    <% events.forEach(function(ev) { %>
+    <div class="feed-row">
+      <span class="time tnum"><%= new Date(ev.created_at).toLocaleTimeString('pl-PL', {hour:'2-digit', minute:'2-digit'}) %></span>
+      <span class="dot"></span>
+      <span>
+        <div class="fx"><span class="tag tag-outline" style="margin-right:8px"><%= ev.type %></span><%= ev.title %></div>
+        <div class="fr2 tnum"><%= ev.debtor ? ev.debtor + ' · ' : '' %><%= ev.source %></div>
+      </span>
+    </div>
+    <% }) %>
+
+    <hr class="rule">
     <div class="kicker">Dziś — praca agenta</div>
     <p class="helper">Każde działanie zapisane, każdy krok widoczny — kluczowe decyzje zawsze za Twoją zgodą.</p>
     <% feed.forEach(function(f) { %>

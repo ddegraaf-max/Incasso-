@@ -45,6 +45,19 @@
       </tbody>
     </table>
     <hr class="rule">
+    <div class="label">Zdarzenia monitoringu</div>
+    <% events.slice(0, 8).forEach(function(ev) { %>
+    <div class="feed-row">
+      <span class="time tnum"><%= new Date(ev.created_at).toLocaleTimeString('pl-PL', {hour:'2-digit', minute:'2-digit'}) %></span>
+      <span class="dot"></span>
+      <span>
+        <div class="fx"><%= ev.title %></div>
+        <div class="fr2"><%= ev.debtor || 'system' %> · <%= ev.source %></div>
+      </span>
+    </div>
+    <% }) %>
+
+    <hr class="rule">
     <div class="label">Bezpieczeństwo</div>
     <ul class="rules-list">
       <li>Hasła: bcrypt (koszt 12)</li>
