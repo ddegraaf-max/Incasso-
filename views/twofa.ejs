@@ -1,0 +1,22 @@
+<%- include('partials/head', { title: 'Weryfikacja — Creditline Poland' }) %>
+<%- include('partials/nav') %>
+
+<div class="calc-wrap auth-wrap" style="flex:1">
+  <div class="kicker">Weryfikacja dwuetapowa</div>
+  <h1 style="font-size:32px">Wpisz kod</h1>
+  <p class="helper">Otwórz aplikację uwierzytelniającą i wpisz aktualny 6-cyfrowy kod.</p>
+
+  <form class="calc-form" method="post" action="/2fa">
+    <input type="hidden" name="next" value="<%= next %>">
+    <% if (error) { %><div class="form-error"><%= error %></div><% } %>
+    <div class="fg">
+      <label for="token">Kod z aplikacji</label>
+      <input type="text" id="token" name="token" class="tnum" inputmode="numeric" pattern="[0-9 ]*" maxlength="7" autocomplete="one-time-code" required autofocus>
+    </div>
+    <button class="btn" type="submit">Zweryfikuj</button>
+  </form>
+
+  <p style="font-size:13.5px"><a href="/logout">Anuluj i wyloguj</a></p>
+</div>
+
+<%- include('partials/footer') %>

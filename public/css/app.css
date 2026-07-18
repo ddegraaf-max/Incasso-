@@ -280,3 +280,8 @@ html { scroll-behavior: smooth; }
   .why-grid .cell + .cell { border-left: 0; border-top: 2px solid var(--color-divider); margin-top: 24px; padding-top: 24px; padding-left: 0; }
   .path-grid .cell + .cell, .model-grid .cell + .cell { border-left: 0; padding-left: 0; }
 }
+
+/* ── Auth ── */
+.auth-wrap { max-width: 560px; }
+.form-error { border-left: 4px solid var(--color-accent); background: var(--color-accent-100); padding: 10px 14px; font-size: 13.5px; margin-bottom: 16px; }
+.nav-right a { text-decoration: none; margin-left: 18px; }

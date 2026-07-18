@@ -7,6 +7,9 @@ Node/Express/EJS-implementatie van de design handoff (Modernist design system: A
 | Route | Wat |
 |---|---|
 | `/` | Marketing one-pager (PL) |
+| `/login` · `/rejestracja` | Inloggen / registratie (bcrypt, rate limiting) |
+| `/2fa` · `/2fa/setup` | TOTP-verificatie / QR-setup (Google Authenticator e.d.) |
+| `/admin` | Admin-dashboard (alleen rol admin, 2FA verplicht) |
 | `/app/sprawy` | Zakenoverzicht + detail-aside (`?sel=f2`) |
 | `/app/nowa` | Intake: KSeF / XML-PDF / e-mail + AI-analyse + beslissing |
 | `/app/agent` | Agent-feed + negotiatiethread, toon-switcher (`?ton=Uprzejmy\|Stanowczy\|Prawniczy`) |
@@ -22,7 +25,15 @@ npm start        # poort 3000, of PORT env var
 
 ## Deploy (Railway)
 Standaard flow: repo → GitHub Desktop → Railway auto-deploy. Geen database nodig voor het concept.
-Env vars: `PORT` (Railway zet die zelf), optioneel `SERVICE_FEE` (default 99).
+Env vars: `PORT` (Railway zet die zelf), `SESSION_SECRET` (VERPLICHT in productie — lange random string), `ADMIN_EMAIL` + `ADMIN_PASSWORD` (admin-account), optioneel `SERVICE_FEE` (default 99) en `EUR_PLN` (default 4.30). Zet `NODE_ENV=production` voor secure cookies.
+
+## Beveiliging
+- **Wachtwoorden**: bcrypt, kosten 12; policy min. 10 tekens met kleine/hoofdletter + cijfer.
+- **2FA (TOTP)**: verplicht bij registratie en voor admin (eerste login forceert QR-setup). Werkt met Google/Microsoft Authenticator, Aegis, enz.
+- **Rate limiting**: 5 mislukte pogingen (per IP+e-mail) → 15 min blokkade, ook op de 2FA-stap.
+- **Sessies**: httpOnly, sameSite=lax, secure achter Railway-proxy, 8 uur geldig, sessie-regeneratie bij login (anti session fixation).
+- **Demo-account**: `demo@creditline.pl` / `Demo1234!` (zonder 2FA, alleen om te klikken) — **verwijderen vóór livegang** in `src/auth.js`.
+- Gebruikers staan in-memory (weg na redeploy) — voor productie naar PostgreSQL (tabel `users`) + `connect-pg-simple` als session store.
 
 ## Status / architectuur
 - Actiestatus (windykacja zgezet / verkocht) is **in-memory** — reset bij redeploy. Prima voor demo; voor productie: PostgreSQL (tabellen `cases`, `actions`, `orgs`) + sessies.

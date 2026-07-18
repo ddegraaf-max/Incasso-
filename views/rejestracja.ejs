@@ -1,0 +1,37 @@
+<%- include('partials/head', { title: 'Rejestracja — Creditline Poland' }) %>
+<%- include('partials/nav') %>
+
+<div class="calc-wrap auth-wrap" style="flex:1">
+  <div class="kicker">Nowe konto</div>
+  <h1 style="font-size:32px">Zarejestruj firmę</h1>
+  <p class="helper">Po rejestracji skonfigurujesz weryfikację dwuetapową (aplikacja typu Google Authenticator) — obowiązkową dla bezpieczeństwa Twoich należności.</p>
+
+  <form class="calc-form" method="post" action="/rejestracja">
+    <% if (error) { %><div class="form-error"><%= error %></div><% } %>
+    <div class="fg">
+      <label for="company">Nazwa firmy</label>
+      <input type="text" id="company" name="company" value="<%= form.company %>" required>
+    </div>
+    <div class="fg">
+      <label for="nip">NIP (opcjonalnie)</label>
+      <input type="text" id="nip" name="nip" class="tnum" value="<%= form.nip %>">
+    </div>
+    <div class="fg">
+      <label for="email">E-mail</label>
+      <input type="email" id="email" name="email" autocomplete="username" value="<%= form.email %>" required>
+    </div>
+    <div class="fg">
+      <label for="password">Hasło (min. 10 znaków, mała i wielka litera, cyfra)</label>
+      <input type="password" id="password" name="password" autocomplete="new-password" required>
+    </div>
+    <div class="fg">
+      <label for="password2">Powtórz hasło</label>
+      <input type="password" id="password2" name="password2" autocomplete="new-password" required>
+    </div>
+    <button class="btn" type="submit">Utwórz konto</button>
+  </form>
+
+  <p style="font-size:13.5px">Masz już konto? <a href="/login">Zaloguj się</a></p>
+</div>
+
+<%- include('partials/footer') %>

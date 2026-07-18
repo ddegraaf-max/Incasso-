@@ -1,0 +1,26 @@
+<%- include('partials/head', { title: 'Konfiguracja 2FA — Creditline Poland' }) %>
+<%- include('partials/nav') %>
+
+<div class="calc-wrap auth-wrap" style="flex:1">
+  <div class="kicker">Weryfikacja dwuetapowa</div>
+  <h1 style="font-size:32px">Skonfiguruj 2FA</h1>
+  <p class="helper">Zeskanuj kod QR w aplikacji uwierzytelniającej (Google Authenticator, Microsoft Authenticator, Aegis), a następnie wpisz 6-cyfrowy kod, aby potwierdzić.</p>
+
+  <form class="calc-form" method="post" action="/2fa/setup">
+    <% if (error) { %><div class="form-error"><%= error %></div><% } %>
+    <div class="fg" style="text-align:left">
+      <img src="<%= qr %>" alt="Kod QR TOTP" width="196" height="196" style="border:2px solid rgba(32,30,29,0.4); background:#fff; padding:8px">
+    </div>
+    <div class="fg">
+      <label>Klucz ręczny (jeśli nie możesz skanować)</label>
+      <div class="tnum" style="font-size:14px; letter-spacing:0.06em; word-break:break-all"><%= secret %></div>
+    </div>
+    <div class="fg">
+      <label for="token">Kod z aplikacji</label>
+      <input type="text" id="token" name="token" class="tnum" inputmode="numeric" pattern="[0-9 ]*" maxlength="7" autocomplete="one-time-code" required autofocus>
+    </div>
+    <button class="btn" type="submit">Potwierdź i włącz 2FA</button>
+  </form>
+</div>
+
+<%- include('partials/footer') %>

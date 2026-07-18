@@ -1,0 +1,58 @@
+<%- include('partials/head', { title: 'Admin — Creditline Poland' }) %>
+<%- include('partials/nav') %>
+
+<div class="stats">
+  <div class="stat"><div class="v tnum"><%= usersList.filter(u => u.role === 'client').length %></div><div class="l">Klienci</div></div>
+  <div class="stat"><div class="v tnum"><%= D.claims.length %></div><div class="l">Sprawy</div></div>
+  <div class="stat"><div class="v tnum accent"><%= Object.values(done).filter(v => v === 'collect').length %></div><div class="l">Zlecone windykacje</div></div>
+  <div class="stat"><div class="v tnum"><%= Object.values(done).filter(v => v === 'sell').length %></div><div class="l">Wykupione</div></div>
+</div>
+
+<div class="two-pane">
+  <div class="pane-left">
+    <div class="kicker">Użytkownicy</div>
+    <p class="helper">Konta klientów i administratorów. Store w pamięci — po restarcie pozostają tylko konta seedowane (produkcja: PostgreSQL).</p>
+    <table class="cases">
+      <thead>
+        <tr><th>Firma</th><th>E-mail</th><th>NIP</th><th>Rola</th><th>2FA</th></tr>
+      </thead>
+      <tbody>
+        <% usersList.forEach(function(u) { %>
+        <tr>
+          <td><%= u.company || '—' %></td>
+          <td><%= u.email %></td>
+          <td class="tnum"><%= u.nip || '—' %></td>
+          <td><span class="tag <%= u.role === 'admin' ? 'tag-accent' : 'tag-neutral' %>"><%= u.role %></span></td>
+          <td><span class="tag <%= u.totpConfirmed ? 'tag-outline' : 'tag-neutral' %>"><%= u.totpConfirmed ? 'Włączone' : 'Brak' %></span></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+
+  <aside class="pane-right">
+    <div class="kicker">Sprawy — status akcji</div>
+    <table class="cases">
+      <thead><tr><th>Faktura</th><th class="num">Kwota</th><th>Status</th></tr></thead>
+      <tbody>
+        <% D.claims.forEach(function(c) { var st = done[c.id]; %>
+        <tr>
+          <td class="tnum"><%= c.nr %></td>
+          <td class="num tnum"><%= D.fmt(c.amount) %></td>
+          <td><span class="tag <%= st ? 'tag-accent' : 'tag-neutral' %>"><%= st === 'collect' ? 'Windykacja' : st === 'sell' ? 'Sprzedana' : c.phase %></span></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <hr class="rule">
+    <div class="label">Bezpieczeństwo</div>
+    <ul class="rules-list">
+      <li>Hasła: bcrypt (koszt 12)</li>
+      <li>2FA: TOTP, obowiązkowe dla admina i nowych kont</li>
+      <li>Blokada: 5 nieudanych prób → 15 minut</li>
+      <li>Sesje: httpOnly, sameSite=lax</li>
+    </ul>
+  </aside>
+</div>
+
+<%- include('partials/footer') %>

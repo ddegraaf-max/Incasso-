@@ -5,11 +5,17 @@
     <span class="b3"><span>P</span><span>O</span><span>L</span><span>A</span><span>N</span><span>D</span></span>
   </a>
   <span class="nav-right">
-    <% if (page === 'app') { %>
-      Twoja Firma Sp. z o.o. · KSeF połączony
+    <% if (page === 'app' || page === 'admin') { %>
+      <%= user ? user.company : '' %><% if (user && user.totpConfirmed) { %> · 2FA<% } %>
+      <% if (user && user.role === 'admin') { %><a href="/admin">Admin</a><% } %>
+      <a href="/app/sprawy">Panel</a>
+      <a href="/logout">Wyloguj</a>
+    <% } else if (page === 'auth') { %>
+      <a href="/">Strona główna</a>
+      <a href="/kalkulator">Kalkulator odsetek</a>
     <% } else { %>
       <a href="/kalkulator">Kalkulator odsetek</a>
-      <a href="/app/sprawy">Panel klienta</a>
+      <a href="/login">Panel klienta</a>
     <% } %>
   </span>
 </nav>

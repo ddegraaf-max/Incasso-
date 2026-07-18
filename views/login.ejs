@@ -1,0 +1,27 @@
+<%- include('partials/head', { title: 'Logowanie — Creditline Poland' }) %>
+<%- include('partials/nav') %>
+
+<div class="calc-wrap auth-wrap" style="flex:1">
+  <div class="kicker">Panel klienta</div>
+  <h1 style="font-size:32px">Zaloguj się</h1>
+  <p class="helper">Dostęp do spraw, agenta AI i ofert wykupu.</p>
+
+  <form class="calc-form" method="post" action="/login">
+    <input type="hidden" name="next" value="<%= next %>">
+    <% if (error) { %><div class="form-error"><%= error %></div><% } %>
+    <div class="fg">
+      <label for="email">E-mail</label>
+      <input type="email" id="email" name="email" autocomplete="username" value="<%= email %>" required>
+    </div>
+    <div class="fg">
+      <label for="password">Hasło</label>
+      <input type="password" id="password" name="password" autocomplete="current-password" required>
+    </div>
+    <button class="btn" type="submit">Zaloguj się</button>
+  </form>
+
+  <p style="font-size:13.5px">Nie masz konta? <a href="/rejestracja">Zarejestruj firmę</a></p>
+  <p class="legal-note">Logowanie chronione: hasła haszowane (bcrypt), weryfikacja dwuetapowa (TOTP), blokada po 5 nieudanych próbach.</p>
+</div>
+
+<%- include('partials/footer') %>
