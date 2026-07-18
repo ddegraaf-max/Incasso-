@@ -1,0 +1,74 @@
+<%- include('partials/head', { title: 'Sprawy — Creditline Poland' }) %>
+<%- include('partials/nav') %>
+
+<div class="stats">
+  <div class="stat"><div class="v tnum"><%= D.fmt(stats.portfolio) %></div><div class="l">Portfel po terminie</div></div>
+  <div class="stat"><div class="v tnum"><%= stats.active %></div><div class="l">Aktywne sprawy</div></div>
+  <div class="stat"><div class="v tnum accent">93%</div><div class="l">Zamknięte polubownie</div></div>
+  <div class="stat"><div class="v tnum">18 dni</div><div class="l">Śr. czas odzyskania</div></div>
+  <div class="actions">
+    <a class="btn" href="/app/nowa">Importuj z KSeF</a>
+    <a class="btn btn-ghost" href="/app/nowa">Wgraj XML / PDF</a>
+  </div>
+</div>
+
+<div class="two-pane">
+  <div class="pane-left">
+    <div class="kicker">Sprawy</div>
+    <p class="helper">Agent AI czyta każdą zaimportowaną fakturę i sam zakłada sprawę. Kliknij wiersz, aby zobaczyć działania agenta.</p>
+    <table class="cases">
+      <thead>
+        <tr><th>Faktura</th><th>Dłużnik</th><th class="num">Kwota</th><th class="num">Po terminie</th><th>Agent AI</th></tr>
+      </thead>
+      <tbody>
+        <% D.claims.forEach(function(c) { %>
+        <tr class="row <%= c.id === sel.id ? 'selected' : '' %>" onclick="location.href='/app/sprawy?sel=<%= c.id %>'">
+          <td class="tnum"><%= c.nr %></td>
+          <td><%= c.debtor %></td>
+          <td class="num tnum"><%= D.fmt(c.amount) %></td>
+          <td class="num tnum"><%= D.daysFmt(c.days) %></td>
+          <td><span class="tag <%= c.tag %>"><%= c.phase %></span></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+
+  <aside class="pane-right detail">
+    <div class="kicker">Sprawa <%= sel.nr %> · scoring <%= sel.score %></div>
+    <h2><%= sel.debtor %></h2>
+    <div class="amount tnum"><%= D.fmt(sel.amount) %></div>
+    <p class="meta tnum"><%= D.daysFmt(sel.days) %> po terminie · odsetki naliczone: <%= D.fmt(D.interest(sel.amount, sel.days)) %></p>
+
+    <hr class="rule">
+    <div class="label">Działania agenta AI</div>
+    <ul class="timeline">
+      <% sel.timeline.forEach(function(t) { %>
+      <li class="<%= t.planned ? 'planned' : '' %>"><span class="dot"></span><span class="t"><%= t.text %></span><span class="d"><%= t.date %></span></li>
+      <% }) %>
+    </ul>
+
+    <hr class="rule">
+    <% if (!done[sel.id]) { %>
+      <div class="action-block">
+        <h3>Windykacja — Ty płacisz tylko opłatę serwisową</h3>
+        <p>Odsetki 14%, rekompensata <%= D.rekomp(sel.amount) %> € i koszty obciążają dłużnika. Odzyskana kwota w całości trafia do Ciebie.</p>
+        <form class="inline" method="post" action="/app/sprawy/<%= sel.id %>/collect">
+          <button class="btn" type="submit">Zleć windykację — <%= SERVICE_FEE %> zł</button>
+        </form>
+      </div>
+      <hr class="rule">
+      <div class="action-block">
+        <h3>Albo sprzedaj wierzytelność</h3>
+        <p>Wycena agenta AI: <%= sel.pct %>% wartości. Wypłata w 24 godziny, ryzyko przechodzi na Creditline.</p>
+        <form class="inline" method="post" action="/app/sprawy/<%= sel.id %>/sell">
+          <button class="btn btn-secondary" type="submit">Przyjmij ofertę — <%= D.fmt(Math.round(sel.amount * sel.pct / 100)) %></button>
+        </form>
+      </div>
+    <% } else { %>
+      <div class="confirm"><span class="sq"></span><span><%= done[sel.id] === 'collect' ? 'Zlecono windykację — agent AI przejął sprawę.' : 'Oferta przyjęta — wypłata w ciągu 24 godzin.' %></span></div>
+    <% } %>
+  </aside>
+</div>
+
+<%- include('partials/footer') %>

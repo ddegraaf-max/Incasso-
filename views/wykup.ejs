@@ -1,0 +1,40 @@
+<%- include('partials/head', { title: 'Wykup wierzytelności — Creditline Poland' }) %>
+<%- include('partials/nav') %>
+
+<div class="wykup-wrap" style="flex:1">
+  <div class="kicker">Wykup wierzytelności</div>
+  <p class="intro helper" style="max-width:72ch">Agent AI wycenia każdą wierzytelność na żywo — na podstawie scoringu dłużnika, historii płatności i etapu sprawy. Akceptujesz ofertę, podpisujesz cesję online, pieniądze masz w 24 godziny. Ryzyko niewypłacalności przechodzi na Creditline.</p>
+
+  <table class="cases wykup">
+    <thead>
+      <tr><th>Faktura</th><th>Dłużnik</th><th class="num">Kwota</th><th>Scoring</th><th class="num">Oferta AI</th><th></th></tr>
+    </thead>
+    <tbody>
+      <% D.claims.forEach(function(c) {
+        var sold = done[c.id] === 'sell';
+        var scoreTag = c.score === 'E' ? 'tag-accent' : (c.score === 'C' ? 'tag-outline' : 'tag-neutral');
+      %>
+      <tr>
+        <td class="tnum"><%= c.nr %></td>
+        <td><%= c.debtor %></td>
+        <td class="num tnum"><%= D.fmt(c.amount) %></td>
+        <td><span class="tag <%= scoreTag %>">Scoring <%= c.score %></span></td>
+        <td class="num tnum"><%= D.fmt(Math.round(c.amount * c.pct / 100)) %> · <%= c.pct %>%</td>
+        <td>
+          <% if (sold) { %>
+            <span class="tag tag-accent">Sprzedana · wypłata do 24 h</span>
+          <% } else { %>
+            <form class="inline" method="post" action="/app/wykup/<%= c.id %>/sprzedaj">
+              <button class="btn btn-secondary" type="submit">Przyjmij</button>
+            </form>
+          <% } %>
+        </td>
+      </tr>
+      <% }) %>
+    </tbody>
+  </table>
+
+  <p class="legal-note">Cesja obejmuje należność główną i odsetki. Rekompensata 40/70/100 € jest z mocy ustawy niezbywalna — przy windykacji serwisowej agent dochodzi jej w Twoim imieniu.</p>
+</div>
+
+<%- include('partials/footer') %>

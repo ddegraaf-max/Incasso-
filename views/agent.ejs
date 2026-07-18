@@ -1,0 +1,48 @@
+<%- include('partials/head', { title: 'Agent AI — Creditline Poland' }) %>
+<%- include('partials/nav') %>
+
+<div class="agent-panes">
+  <section class="agent-left">
+    <div class="kicker">Dziś — praca agenta</div>
+    <p class="helper">Każde działanie zapisane, każdy krok widoczny — kluczowe decyzje zawsze za Twoją zgodą.</p>
+    <% feed.forEach(function(f) { %>
+    <div class="feed-row <%= f.planned ? 'planned' : '' %>">
+      <span class="time tnum"><%= f.time %></span>
+      <span class="dot"></span>
+      <span>
+        <div class="fx"><%= f.text %></div>
+        <div class="fr2 tnum"><%= f.ref %></div>
+      </span>
+    </div>
+    <% }) %>
+  </section>
+
+  <section class="agent-right">
+    <div class="kicker">Negocjacje — FV 2026/06/089 · TransLog Polska S.A.</div>
+
+    <div class="label" style="margin-top:16px">Ton agenta</div>
+    <div class="tone-switch">
+      <% TONES.forEach(function(t) { %>
+      <a href="/app/agent?ton=<%= t %>" class="<%= t === tone ? 'active' : '' %>"><%= t %></a>
+      <% }) %>
+    </div>
+
+    <% thread.forEach(function(m) { %>
+    <div class="msg <%= m.agent ? 'agent' : '' %>">
+      <div class="who"><%= m.label %></div>
+      <div class="body"><%= m.text %></div>
+    </div>
+    <% }) %>
+
+    <hr class="rule">
+    <div class="label">Zasady agenta</div>
+    <ul class="rules-list">
+      <li>Ton komunikacji: <strong><%= tone %></strong></li>
+      <li>Kontakt: dni robocze 8:00–18:00, PL / EN</li>
+      <li>Wpis do KRD i pozew: zawsze za Twoją zgodą</li>
+      <li>Każdy krok zapisany w historii sprawy</li>
+    </ul>
+  </section>
+</div>
+
+<%- include('partials/footer') %>

@@ -1,0 +1,45 @@
+<%- include('partials/head', { title: 'Kalkulator odsetek za opóźnienie — Creditline Poland' }) %>
+<%- include('partials/nav') %>
+
+<div class="calc-wrap" style="flex:1">
+  <div class="kicker">Kalkulator</div>
+  <h1 style="font-size:36px">Odsetki za opóźnienie w transakcjach handlowych</h1>
+  <p class="helper" style="max-width:66ch">Stawka na I półrocze 2026: <strong>14% rocznie</strong> (stopa referencyjna NBP 4% + 10 p.p.). Odsetki naliczają się z mocy ustawy, bez wezwania. Do tego dochodzi rekompensata 40 / 70 / 100 € od każdej faktury — bez dowodu poniesionych kosztów.</p>
+
+  <form class="calc-form" method="get" action="/kalkulator">
+    <div class="fg">
+      <label for="kwota">Kwota faktury (zł)</label>
+      <input class="tnum" type="text" id="kwota" name="kwota" inputmode="decimal" placeholder="np. 12400" value="<%= q.kwota %>" required>
+    </div>
+    <div class="fg">
+      <label for="dni">Dni po terminie</label>
+      <input class="tnum" type="number" id="dni" name="dni" min="1" placeholder="np. 44" value="<%= q.dni %>" required>
+    </div>
+    <div class="fg">
+      <label for="nr">Nr faktury (opcjonalnie — do wezwania)</label>
+      <input type="text" id="nr" name="nr" placeholder="np. FV 2026/06/089" value="<%= q.nr %>">
+    </div>
+    <div class="fg">
+      <label for="dluznik">Dłużnik (opcjonalnie — do wezwania)</label>
+      <input type="text" id="dluznik" name="dluznik" placeholder="np. TransLog Polska S.A." value="<%= q.dluznik %>">
+    </div>
+    <button class="btn" type="submit">Policz</button>
+
+    <% if (result) { %>
+    <div class="calc-result">
+      <div class="row"><span>Należność główna</span><span class="tnum"><%= D.fmtN(result.amount) %> zł</span></div>
+      <div class="row"><span>Odsetki ustawowe (14% × <%= result.days %> dni)</span><span class="tnum"><%= D.fmtN(result.odsetki) %> zł</span></div>
+      <div class="row"><span>Rekompensata (art. 10 ustawy)</span><span class="tnum"><%= result.rekompEur %> € (w zł wg kursu NBP)</span></div>
+      <div class="row total"><span>Razem do zapłaty (bez rekompensaty)</span><span class="tnum"><%= D.fmtN(result.total) %> zł</span></div>
+    </div>
+    <div style="margin-top:20px; display:flex; gap:14px; flex-wrap:wrap">
+      <a class="btn btn-secondary" href="/wezwanie?kwota=<%= encodeURIComponent(q.kwota) %>&dni=<%= encodeURIComponent(q.dni) %>&nr=<%= encodeURIComponent(q.nr) %>&dluznik=<%= encodeURIComponent(q.dluznik) %>" target="_blank">Wygeneruj wezwanie do zapłaty</a>
+      <a class="btn" href="/app/nowa">Przekaż sprawę agentowi AI — <%= SERVICE_FEE %> zł</a>
+    </div>
+    <% } %>
+  </form>
+
+  <p class="legal-note">Podstawa prawna: ustawa z dnia 8 marca 2013 r. o przeciwdziałaniu nadmiernym opóźnieniom w transakcjach handlowych, art. 4a, 7 i 10. Kalkulator ma charakter poglądowy.</p>
+</div>
+
+<%- include('partials/footer') %>

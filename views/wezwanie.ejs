@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wezwanie do zapłaty — <%= nr %></title>
+<link rel="stylesheet" href="/css/app.css">
+<style>
+  .doc { max-width: 760px; margin: 0 auto; padding: 56px 28px; }
+  .doc-head { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid var(--color-divider); padding-bottom: 24px; margin-bottom: 32px; }
+  .doc h1 { font-size: 28px; margin: 32px 0 20px; }
+  .doc p { font-size: 15px; max-width: 68ch; }
+  .doc table { width: 100%; border-collapse: collapse; margin: 24px 0; font-size: 15px; }
+  .doc td { padding: 10px 12px; border-bottom: 1px solid var(--color-divider); }
+  .doc td:last-child { text-align: right; }
+  .doc tr.total td { font-weight: 640; border-bottom: 2px solid var(--color-divider); }
+  .no-print { margin-top: 32px; }
+  @media print { .no-print { display: none; } body { background: #fff; } }
+</style>
+</head>
+<body>
+<div class="doc">
+  <div class="doc-head">
+    <span class="nav-brand">
+      <span class="b1">Creditline</span>
+      <span class="b2"></span>
+      <span class="b3"><span>P</span><span>O</span><span>L</span><span>A</span><span>N</span><span>D</span></span>
+    </span>
+    <span style="font-size:13px; color:var(--ink-70)" class="tnum">Data: <%= today %></span>
+  </div>
+
+  <p style="font-size:13px; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-70)">Dłużnik</p>
+  <p style="font-weight:640; font-size:18px"><%= dluznik %></p>
+
+  <h1>Wezwanie do zapłaty</h1>
+
+  <p>Działając w imieniu wierzyciela, na podstawie art. 4a, 7 i 10 ustawy z dnia 8 marca 2013 r. o przeciwdziałaniu nadmiernym opóźnieniom w transakcjach handlowych, wzywamy do niezwłocznej zapłaty należności wynikającej z faktury <strong class="tnum"><%= nr %></strong>, której termin płatności upłynął <span class="tnum"><%= days %></span> dni temu.</p>
+
+  <table class="tnum">
+    <tr><td>Należność główna (faktura <%= nr %>)</td><td><%= D.fmtN(amount) %> zł</td></tr>
+    <tr><td>Odsetki ustawowe za opóźnienie (14% × <%= days %> dni)</td><td><%= D.fmtN(odsetki) %> zł</td></tr>
+    <tr><td>Rekompensata za koszty odzyskiwania należności (art. 10)</td><td><%= rekompEur %> € (równowartość w zł wg kursu NBP)</td></tr>
+    <tr class="total"><td>Razem (bez rekompensaty)</td><td><%= D.fmtN(amount + odsetki) %> zł</td></tr>
+  </table>
+
+  <p>Brak zapłaty w terminie <strong>7 dni</strong> od daty niniejszego wezwania skutkować będzie skierowaniem sprawy do windykacji, zgłoszeniem dłużnika do biura informacji gospodarczej (KRD / BIG) oraz — w razie potrzeby — na drogę postępowania sądowego, którego koszty obciążą dłużnika.</p>
+
+  <p>Odsetki naliczane są w dalszym ciągu, do dnia zapłaty.</p>
+
+  <div class="no-print" style="display:flex; gap:14px; flex-wrap:wrap">
+    <button class="btn" onclick="window.print()">Drukuj / zapisz PDF</button>
+    <a class="btn btn-ghost" href="/kalkulator">← Wróć do kalkulatora</a>
+  </div>
+</div>
+</body>
+</html>

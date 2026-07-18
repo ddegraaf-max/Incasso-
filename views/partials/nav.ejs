@@ -1,0 +1,23 @@
+<nav class="nav">
+  <a class="nav-brand" href="/">
+    <span class="b1">Creditline</span>
+    <span class="b2"></span>
+    <span class="b3"><span>P</span><span>O</span><span>L</span><span>A</span><span>N</span><span>D</span></span>
+  </a>
+  <span class="nav-right">
+    <% if (page === 'app') { %>
+      Twoja Firma Sp. z o.o. · KSeF połączony
+    <% } else { %>
+      <a href="/kalkulator">Kalkulator odsetek</a>
+      <a href="/app/sprawy">Panel klienta</a>
+    <% } %>
+  </span>
+</nav>
+<% if (page === 'app') { %>
+<div class="tabbar">
+  <a href="/app/sprawy" class="<%= tab === 'sprawy' ? 'active' : '' %>">Sprawy</a>
+  <a href="/app/nowa" class="<%= tab === 'nowa' ? 'active' : '' %>">Nowa sprawa</a>
+  <a href="/app/agent" class="<%= tab === 'agent' ? 'active' : '' %>">Agent AI</a>
+  <a href="/app/wykup" class="<%= tab === 'wykup' ? 'active' : '' %>">Wykup</a>
+</div>
+<% } %>
