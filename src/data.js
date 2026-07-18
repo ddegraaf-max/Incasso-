@@ -51,7 +51,7 @@ const claims = [
 const toneOpeners = {
   'Uprzejmy': 'Dzień dobry, uprzejmie przypominamy o fakturze FV 2026/06/089 na 12 400 zł. Czy możemy liczyć na wpłatę w tym tygodniu?',
   'Stanowczy': 'Termin płatności FV 2026/06/089 (12 400 zł) minął 44 dni temu. Wzywamy do zapłaty w ciągu 7 dni — po tym terminie naliczymy rekompensatę i zgłosimy wpis do KRD.',
-  'Prawniczy': 'Na podstawie art. 4a i 7 ustawy z 8.03.2013 r. wzywamy do zapłaty FV 2026/06/089 wraz z odsetkami ustawowymi za opóźnienie (14% rocznie) oraz rekompensatą 70 €.',
+  'Prawniczy': 'Na podstawie art. 4a i 7 ustawy z 8.03.2013 r. wzywamy do zapłaty FV 2026/06/089 wraz z odsetkami ustawowymi za opóźnienie (14% rocznie) oraz rekompensatą ok. 300 zł.',
 };
 
 function thread(tone) {
@@ -59,14 +59,14 @@ function thread(tone) {
     { label: 'Agent AI · e-mail · 18 cze', text: toneOpeners[tone] || toneOpeners['Uprzejmy'], agent: true },
     { label: 'Dłużnik · odpowiedź · 30 cze', text: 'Mamy przejściowe problemy z płynnością. Czy możliwe jest rozłożenie na raty?', agent: false },
     { label: 'Agent AI · rozmowa tel. · 30 cze', text: 'Uzgodniono 3 raty po 4 133 zł, pierwsza do 15 lipca. Harmonogram wysłany do podpisu — uznanie długu przerywa bieg przedawnienia.', agent: true },
-    { label: 'Agent AI · nota · 8 lip', text: 'Pierwsza rata nie wpłynęła. Wystawiono notę: rekompensata 70 € + odsetki 597 zł. Za 6 dni zapowiedź wpisu do KRD — czeka na Twoją zgodę.', agent: true },
+    { label: 'Agent AI · nota · 8 lip', text: 'Pierwsza rata nie wpłynęła. Wystawiono notę: rekompensata 300 zł + odsetki 597 zł. Za 6 dni zapowiedź wpisu do KRD — czeka na Twoją zgodę.', agent: true },
   ];
 }
 
 const feed = [
   { time: '9:12', text: 'Wysłano uprzejme przypomnienie e-mail — otwarte po 11 minutach', ref: 'FV 2026/07/156 · Kamex Instalacje' },
   { time: '9:40', text: 'Rozmowa AI: dłużnik potwierdza raty 3× — harmonogram wysłany do akceptacji', ref: 'FV 2026/07/114 · Stalmet' },
-  { time: '10:05', text: 'Wystawiono notę obciążeniową: rekompensata 70 € + odsetki 597 zł', ref: 'FV 2026/06/089 · TransLog Polska' },
+  { time: '10:05', text: 'Wystawiono notę obciążeniową: rekompensata 300 zł + odsetki 597 zł', ref: 'FV 2026/06/089 · TransLog Polska' },
   { time: '11:30', text: 'Scoring zaktualizowany: ryzyko wysokie — rekomendacja sprzedaży wierzytelności', ref: 'FV 2026/05/047 · AgroSad Hurt' },
   { time: '12:14', text: 'Nowa faktura z KSeF — sprawa założona automatycznie, scoring B', ref: 'FV 2026/07/233 · Betmix Beton' },
   { time: '14:00', text: 'Ostatnie wezwanie przed wpisem do KRD — czeka na Twoją zgodę', ref: 'FV 2026/06/089 · TransLog Polska', planned: true },
@@ -78,7 +78,10 @@ const fmtN = (n) => n.toLocaleString('pl-PL', { maximumFractionDigits: 2 });
 const interest = (amount, days) => Math.round(amount * INTEREST_RATE * days / 365);
 const interestExact = (amount, days) => Math.round(amount * INTEREST_RATE * days / 365 * 100) / 100;
 // Rekompensata art. 10 ustawy: 40/70/100 € (do 5 tys. / 5–50 tys. / od 50 tys. zł)
+// Klantzijde tonen we złoty — przeliczenie wg kursu NBP (instelbaar, halfjaarlijks bijwerken)
+const EUR_PLN = parseFloat(process.env.EUR_PLN || '4.30');
 const rekomp = (amount) => amount < 5000 ? 40 : (amount < 50000 ? 70 : 100);
+const rekompZl = (amount) => Math.round(rekomp(amount) * EUR_PLN / 10) * 10;
 const daysFmt = (d) => d + (d === 1 ? ' dzień' : ' dni');
 
 // in-memory actiestatus (concept — bij productie: PostgreSQL)
@@ -86,8 +89,8 @@ const done = {};   // { caseId: 'collect' | 'sell' }
 let nowaDone = null;
 
 module.exports = {
-  INTEREST_RATE, SERVICE_FEE, claims, toneOpeners, thread, feed,
-  fmt, fmtN, interest, interestExact, rekomp, daysFmt,
+  INTEREST_RATE, SERVICE_FEE, EUR_PLN, claims, toneOpeners, thread, feed,
+  fmt, fmtN, interest, interestExact, rekomp, rekompZl, daysFmt,
   getDone: () => done,
   setDone: (id, action) => { done[id] = action; },
   getNowaDone: () => nowaDone,

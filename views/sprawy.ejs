@@ -52,7 +52,7 @@
     <% if (!done[sel.id]) { %>
       <div class="action-block">
         <h3>Windykacja — Ty płacisz tylko opłatę serwisową</h3>
-        <p>Odsetki 14%, rekompensata <%= D.rekomp(sel.amount) %> € i koszty obciążają dłużnika. Odzyskana kwota w całości trafia do Ciebie.</p>
+        <p>Odsetki 14%, rekompensata <%= D.rekompZl(sel.amount) %> zł i koszty obciążają dłużnika. Odzyskana kwota w całości trafia do Ciebie.</p>
         <form class="inline" method="post" action="/app/sprawy/<%= sel.id %>/collect">
           <button class="btn" type="submit">Zleć windykację — <%= SERVICE_FEE %> zł</button>
         </form>

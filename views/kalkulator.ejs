@@ -4,7 +4,7 @@
 <div class="calc-wrap" style="flex:1">
   <div class="kicker">Kalkulator</div>
   <h1 style="font-size:36px">Odsetki za opóźnienie w transakcjach handlowych</h1>
-  <p class="helper" style="max-width:66ch">Stawka na I półrocze 2026: <strong>14% rocznie</strong> (stopa referencyjna NBP 4% + 10 p.p.). Odsetki naliczają się z mocy ustawy, bez wezwania. Do tego dochodzi rekompensata 40 / 70 / 100 € od każdej faktury — bez dowodu poniesionych kosztów.</p>
+  <p class="helper" style="max-width:66ch">Stawka na I półrocze 2026: <strong>14% rocznie</strong> (stopa referencyjna NBP 4% + 10 p.p.). Odsetki naliczają się z mocy ustawy, bez wezwania. Do tego dochodzi rekompensata <strong>170 / 300 / 430 zł</strong> od każdej faktury (przeliczenie wg kursu NBP) — bez dowodu poniesionych kosztów.</p>
 
   <form class="calc-form" method="get" action="/kalkulator">
     <div class="fg">
@@ -29,8 +29,8 @@
     <div class="calc-result">
       <div class="row"><span>Należność główna</span><span class="tnum"><%= D.fmtN(result.amount) %> zł</span></div>
       <div class="row"><span>Odsetki ustawowe (14% × <%= result.days %> dni)</span><span class="tnum"><%= D.fmtN(result.odsetki) %> zł</span></div>
-      <div class="row"><span>Rekompensata (art. 10 ustawy)</span><span class="tnum"><%= result.rekompEur %> € (w zł wg kursu NBP)</span></div>
-      <div class="row total"><span>Razem do zapłaty (bez rekompensaty)</span><span class="tnum"><%= D.fmtN(result.total) %> zł</span></div>
+      <div class="row"><span>Rekompensata (art. 10 ustawy)</span><span class="tnum"><%= D.fmtN(result.rekompZl) %> zł</span></div>
+      <div class="row total"><span>Razem do zapłaty</span><span class="tnum"><%= D.fmtN(result.total) %> zł</span></div>
     </div>
     <div style="margin-top:20px; display:flex; gap:14px; flex-wrap:wrap">
       <a class="btn btn-secondary" href="/wezwanie?kwota=<%= encodeURIComponent(q.kwota) %>&dni=<%= encodeURIComponent(q.dni) %>&nr=<%= encodeURIComponent(q.nr) %>&dluznik=<%= encodeURIComponent(q.dluznik) %>" target="_blank">Wygeneruj wezwanie do zapłaty</a>

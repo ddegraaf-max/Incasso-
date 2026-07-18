@@ -17,8 +17,10 @@ function common(extra = {}) {
 }
 
 // ── Marketing ────────────────────────────────────────────────────────────
+const i18n = require('./src/i18n');
 app.get('/', (req, res) => {
-  res.render('landing', common({ page: 'landing' }));
+  const lang = req.query.lang === 'en' ? 'en' : 'pl';
+  res.render('landing', common({ page: 'landing', lang, t: i18n[lang] }));
 });
 
 // ── App ──────────────────────────────────────────────────────────────────
@@ -72,8 +74,8 @@ app.get('/kalkulator', (req, res) => {
   let result = null;
   if (amount && days && amount > 0 && days > 0) {
     const odsetki = D.interestExact(amount, days);
-    const rekompEur = D.rekomp(amount);
-    result = { amount, days, odsetki, rekompEur, total: amount + odsetki };
+    const rekompZl = D.rekompZl(amount);
+    result = { amount, days, odsetki, rekompZl, total: amount + odsetki + rekompZl };
   }
   res.render('kalkulator', common({ page: 'kalkulator', result, q: { kwota: req.query.kwota || '', dni: req.query.dni || '', nr: req.query.nr || '', dluznik: req.query.dluznik || '' } }));
 });
@@ -88,7 +90,7 @@ app.get('/wezwanie', (req, res) => {
     nr: req.query.nr || '—',
     dluznik: req.query.dluznik || '—',
     amount, days, odsetki,
-    rekompEur: amount ? D.rekomp(amount) : 40,
+    rekompZl: amount ? D.rekompZl(amount) : 170,
     today: new Date().toLocaleDateString('pl-PL'),
   });
 });

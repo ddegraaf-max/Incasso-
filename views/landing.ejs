@@ -1,73 +1,137 @@
-<%- include('partials/head', { title: 'Creditline Poland — Faktura wystawiona. Pieniądze odzyskane.' }) %>
-<%- include('partials/nav') %>
+<!DOCTYPE html>
+<html lang="<%= t.htmlLang %>">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title><%= t.metaTitle %></title>
+<meta name="description" content="<%= t.metaDesc %>">
+<link rel="alternate" hreflang="pl" href="/?lang=pl">
+<link rel="alternate" hreflang="en" href="/?lang=en">
+<link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<div style="min-height:100vh; display:flex; flex-direction:column">
+
+<nav class="nav">
+  <a class="nav-brand" href="/?lang=<%= lang %>">
+    <span class="b1">Creditline</span>
+    <span class="b2"></span>
+    <span class="b3"><span>P</span><span>O</span><span>L</span><span>A</span><span>N</span><span>D</span></span>
+  </a>
+  <span class="nav-right nav-links">
+    <a href="#uslugi"><%= t.navServices %></a>
+    <a href="#dlaczego"><%= t.navWhy %></a>
+    <a href="#kontakt"><%= t.navContact %></a>
+    <a href="/kalkulator"><%= t.navCalc %></a>
+    <a href="/app/sprawy"><%= t.navApp %></a>
+    <span class="lang-switch">
+      <a href="/?lang=pl" class="<%= lang === 'pl' ? 'active' : '' %>">PL</a><span class="sep">·</span><a href="/?lang=en" class="<%= lang === 'en' ? 'active' : '' %>">EN</a>
+    </span>
+  </span>
+</nav>
 
 <section class="hero">
-  <h1>Faktura wystawiona. Pieniądze odzyskane.</h1>
-  <p class="sub">Creditline łączy holenderską dyscyplinę płatniczą z realiami polskiego rynku: windykacja B2B, faktoring i oprogramowanie AI do zarządzania należnościami — od pierwszego przypomnienia po odzyskane środki.</p>
+  <h1><%= t.heroH1 %></h1>
+  <p class="sub"><%= t.heroSub %></p>
   <div class="cta">
-    <a class="btn" href="mailto:kontakt@creditline.pl">Porozmawiajmy</a>
-    <a class="btn btn-secondary" href="/app/sprawy">Zobacz, jak pracujemy</a>
+    <a class="btn" href="#kontakt"><%= t.ctaTalk %></a>
+    <a class="btn btn-secondary" href="/app/sprawy"><%= t.ctaSee %></a>
   </div>
 </section>
 
 <div class="stats-strip">
-  <div class="cell"><div class="v tnum">38%</div><div class="l">faktur B2B w Polsce jest przeterminowanych</div></div>
-  <div class="cell"><div class="v tnum">54 dni</div><div class="l">średni termin płatności — najdłuższy od 2017 r.</div></div>
-  <div class="cell"><div class="v tnum">6 566</div><div class="l">niewypłacalności firm w 2025 r. — rekord</div></div>
-  <div class="cell"><div class="v tnum">68%</div><div class="l">polskich firm zgłasza problemy z opóźnieniami płatności</div></div>
+  <% t.stats.forEach(function(s) { %>
+  <div class="cell"><div class="v tnum"><%= s[0] %><sup class="src-ref"><%= s[2] %></sup></div><div class="l"><%= s[1] %></div></div>
+  <% }) %>
 </div>
 
-<div class="svc">
-  <div class="cell">
-    <div class="num">01</div>
-    <h3>Windykacja polubowna i sądowa</h3>
-    <p>Monitoring, wezwania do zapłaty, negocjacje i wpis dłużnika do rejestru BIG — a gdy trzeba, droga sądowa z naszymi partnerami prawnymi. Rozliczenie od skuteczności: prowizja wyłącznie od kwot faktycznie odzyskanych.</p>
+<section class="svc-wrap" id="uslugi">
+  <div class="kicker svc-kicker"><%= t.svcKicker %></div>
+  <div class="svc">
+    <% t.services.forEach(function(s) { %>
+    <div class="cell">
+      <div class="num"><%= s[0] %></div>
+      <h3><%= s[1] %></h3>
+      <p><%= s[2] %></p>
+    </div>
+    <% }) %>
   </div>
-  <div class="cell">
-    <div class="num">02</div>
-    <h3>Faktoring — płynność bez czekania</h3>
-    <p>Zamień faktury z terminem 30–90 dni na gotówkę w 48 godzin. Finansujemy pojedyncze faktury i całe portfele — z przejęciem ryzyka niewypłacalności lub bez.</p>
-  </div>
-  <div class="cell">
-    <div class="num">03</div>
-    <h3>Software AI do należności</h3>
-    <p>Wgrywasz fakturę — resztą zajmuje się agent AI: monitoruje termin, wysyła przypomnienia we właściwym tonie i czasie, eskaluje do windykacji, gdy trzeba. Twój zespół widzi pełną historię, robi mniej. Gotowe na KSeF od pierwszego dnia.</p>
-  </div>
-  <div class="cell">
-    <div class="num">04</div>
-    <h3>Wykup wierzytelności — gotówka od ręki</h3>
-    <p>Chcesz zamknąć temat? Agent AI wycenia wierzytelność w kilka minut i składa ofertę wykupu. Akceptujesz — pieniądze masz w 24 godziny, ryzyko przechodzi na nas.</p>
-  </div>
-</div>
+</section>
 
 <section class="law">
-  <div class="kicker">Prawo jest po stronie wierzyciela</div>
+  <div class="kicker"><%= t.lawKicker %></div>
   <div class="law-grid">
+    <% t.law.forEach(function(l) { %>
     <div class="cell">
-      <div class="v tnum">14%</div>
-      <h4>Odsetki za opóźnienie, rocznie</h4>
-      <p>Naliczane bez wezwania, od dnia następującego po terminie płatności. Stopa referencyjna NBP + 10 p.p. — stawka na I półrocze 2026.</p>
+      <div class="v tnum"><%= l[0] %><sup class="src-ref"><%= l[3] %></sup></div>
+      <h4><%= l[1] %></h4>
+      <p><%= l[2] %></p>
     </div>
-    <div class="cell">
-      <div class="v tnum">170–430 zł</div>
-      <h4>Rekompensata od każdej faktury</h4>
-      <p>Równowartość 40, 70 lub 100 € w złotych — zależnie od kwoty faktury. Bez dowodu poniesionych kosztów.</p>
-    </div>
-    <div class="cell">
-      <div class="v tnum">100%</div>
-      <h4>Kosztów windykacji ponad ryczałt</h4>
-      <p>Uzasadnione koszty odzyskiwania należności przewyższające ryczałt również pokrywa dłużnik — podobnie jak koszty komornika w egzekucji.</p>
-    </div>
+    <% }) %>
   </div>
-  <p style="margin-top:24px"><a href="/kalkulator">Policz odsetki i rekompensatę dla swojej faktury →</a></p>
+  <p style="margin-top:24px"><a href="/kalkulator"><%= t.calcLink %></a></p>
 </section>
 
-<section class="closing">
-  <h2>Przestań darmowo kredytować swoich kontrahentów.</h2>
+<section class="path">
+  <div class="kicker"><%= t.pathKicker %></div>
+  <div class="path-grid">
+    <% t.path.forEach(function(p) { %>
+    <div class="cell">
+      <div class="p-step tnum"><%= p[0] %></div>
+      <div class="p-desc"><%= p[1] %></div>
+    </div>
+    <% }) %>
+  </div>
+</section>
+
+<section class="model">
+  <div class="kicker"><%= t.modelKicker %></div>
+  <div class="model-grid">
+    <% t.model.forEach(function(m, i) { %>
+    <div class="cell <%= i === 2 ? 'alt' : '' %>">
+      <div class="m-who"><%= m[0] %></div>
+      <h4><%= m[1] %></h4>
+      <p><%= m[2] %></p>
+    </div>
+    <% }) %>
+  </div>
+</section>
+
+<section class="why" id="dlaczego">
+  <div class="why-grid">
+    <div class="cell">
+      <div class="kicker"><%= t.whyKicker %></div>
+      <h2><%= t.whyH %></h2>
+      <p><%= t.whyP %><sup class="src-ref"><%= t.whySup %></sup></p>
+    </div>
+    <div class="cell">
+      <div class="kicker"><%= t.nowKicker %></div>
+      <% t.now.forEach(function(n) { %>
+      <div class="now-row">
+        <div class="n-v tnum"><%= n[0] %><sup class="src-ref"><%= n[2] %></sup></div>
+        <div class="n-p"><%= n[1] %></div>
+      </div>
+      <% }) %>
+    </div>
+  </div>
+</section>
+
+<section class="closing" id="kontakt">
+  <h2><%= t.closingH %></h2>
   <div class="cta" style="display:flex; gap:14px; margin-top:20px; flex-wrap:wrap">
-    <a class="btn" href="mailto:kontakt@creditline.pl">Umów rozmowę</a>
-    <a class="btn btn-ghost" href="/app/sprawy">Wypróbuj panel</a>
+    <a class="btn" href="mailto:kontakt@creditline.pl"><%= t.ctaCall %></a>
+    <a class="btn btn-ghost" href="/app/sprawy"><%= t.ctaPanel %></a>
   </div>
 </section>
 
-<%- include('partials/footer') %>
+<footer class="sources">
+  <div class="kicker" style="color:var(--ink-70)"><%= t.srcKicker %></div>
+  <ol>
+    <% t.sources.forEach(function(s) { %><li><%= s %></li><% }) %>
+  </ol>
+  <div class="cr"><%= t.copyright %> · kontakt@creditline.pl</div>
+</footer>
+
+</div>
+</body>
+</html>

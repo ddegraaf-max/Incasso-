@@ -39,8 +39,8 @@
   <table class="tnum">
     <tr><td>Należność główna (faktura <%= nr %>)</td><td><%= D.fmtN(amount) %> zł</td></tr>
     <tr><td>Odsetki ustawowe za opóźnienie (14% × <%= days %> dni)</td><td><%= D.fmtN(odsetki) %> zł</td></tr>
-    <tr><td>Rekompensata za koszty odzyskiwania należności (art. 10)</td><td><%= rekompEur %> € (równowartość w zł wg kursu NBP)</td></tr>
-    <tr class="total"><td>Razem (bez rekompensaty)</td><td><%= D.fmtN(amount + odsetki) %> zł</td></tr>
+    <tr><td>Rekompensata za koszty odzyskiwania należności (art. 10)</td><td><%= D.fmtN(rekompZl) %> zł</td></tr>
+    <tr class="total"><td>Razem</td><td><%= D.fmtN(amount + odsetki + rekompZl) %> zł</td></tr>
   </table>
 
   <p>Brak zapłaty w terminie <strong>7 dni</strong> od daty niniejszego wezwania skutkować będzie skierowaniem sprawy do windykacji, zgłoszeniem dłużnika do biura informacji gospodarczej (KRD / BIG) oraz — w razie potrzeby — na drogę postępowania sądowego, którego koszty obciążą dłużnika.</p>
