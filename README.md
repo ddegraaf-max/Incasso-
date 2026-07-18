@@ -29,7 +29,7 @@ Env vars: `PORT` (Railway zet die zelf), `SESSION_SECRET` (VERPLICHT in producti
 
 ## Beveiliging
 - **Wachtwoorden**: bcrypt, kosten 12; policy min. 10 tekens met kleine/hoofdletter + cijfer.
-- **2FA (TOTP)**: verplicht bij registratie en voor admin (eerste login forceert QR-setup). Werkt met Google/Microsoft Authenticator, Aegis, enz.
+- **2FA (TOTP)**: via `speakeasy` (CommonJS — draait ook op Node 18, zoals Railway standaard gebruikt); verplicht bij registratie en voor admin (eerste login forceert QR-setup). Werkt met Google/Microsoft Authenticator, Aegis, enz.
 - **Rate limiting**: 5 mislukte pogingen (per IP+e-mail) → 15 min blokkade, ook op de 2FA-stap.
 - **Sessies**: httpOnly, sameSite=lax, secure achter Railway-proxy, 8 uur geldig, sessie-regeneratie bij login (anti session fixation).
 - **Demo-account**: `demo@creditline.pl` / `Demo1234!` (zonder 2FA, alleen om te klikken) — **verwijderen vóór livegang** in `src/auth.js`.

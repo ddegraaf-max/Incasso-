@@ -1,7 +1,7 @@
 // Creditline Poland — authenticatie & beveiliging
 // Concept: in-memory store (reset bij redeploy). Productie: PostgreSQL.
 const bcrypt = require('bcryptjs');
-const otp = require('otplib');
+const speakeasy = require('speakeasy');
 
 // ── Gebruikersstore ──────────────────────────────────────────────────────
 // user: { id, email, passHash, company, nip, role: 'client'|'admin', totpSecret, totpConfirmed }
@@ -59,14 +59,17 @@ function passwordPolicy(pw) {
 }
 
 // ── TOTP / 2FA ───────────────────────────────────────────────────────────
-function newTotpSecret() { return otp.generateSecret(); }
+function newTotpSecret() { return speakeasy.generateSecret({ length: 20 }).base32; }
 function totpUri(user, secret) {
-  return otp.generateURI({ secret, issuer: 'Creditline Poland', label: user.email });
+  return speakeasy.otpauthURL({ secret, encoding: 'base32', label: user.email, issuer: 'Creditline Poland' });
 }
 function verifyTotp(secret, token) {
   try {
-    const r = otp.verifySync({ secret, token: String(token || '').replace(/\s/g, ''), window: 1 });
-    return !!(r && r.valid);
+    return speakeasy.totp.verify({
+      secret, encoding: 'base32',
+      token: String(token || '').replace(/\s/g, ''),
+      window: 1, // ±30s klokafwijking toestaan
+    });
   } catch { return false; }
 }
 
