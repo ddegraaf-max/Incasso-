@@ -35,6 +35,7 @@
   </div>
 
   <aside class="pane-right detail">
+    <% if (flash) { %><div class="confirm" style="margin-bottom:14px"><span class="sq"></span><span><%= flash %></span></div><% } %>
     <div class="kicker">Sprawa <%= sel.nr %> · AIScore <%= sel.ai.score %> · klasa <%= sel.ai.grade %></div>
     <h2><%= sel.debtor %></h2>
     <div class="amount tnum"><%= D.fmt(sel.amount) %></div>
@@ -52,6 +53,30 @@
       <% }) %>
     </ul>
     <p class="ai-reco <%= sel.ai.reco === 'zamknij' ? 'warn' : '' %>"><%= sel.ai.recoTxt %></p>
+
+    <hr class="rule">
+    <div class="label">Akcje agenta — kanały</div>
+    <form method="post" class="chan-form" id="chan-email" action="/app/sprawy/<%= sel.id %>/email"></form>
+    <form method="post" class="chan-form" id="chan-sms" action="/app/sprawy/<%= sel.id %>/sms"></form>
+    <div class="chan-row">
+      <select name="ton" form="chan-email" class="chan-tone" onchange="document.querySelector('#chan-sms-tone').value=this.value">
+        <option>Uprzejmy</option><option>Stanowczy</option><option>Prawniczy</option>
+      </select>
+      <input type="hidden" name="ton" id="chan-sms-tone" value="Uprzejmy" form="chan-sms">
+      <button class="btn btn-secondary chan-btn" type="submit" form="chan-email">E-mail</button>
+      <button class="btn btn-secondary chan-btn" type="submit" form="chan-sms">SMS</button>
+      <a class="btn chan-btn" href="/app/sprawy/<%= sel.id %>/rozmowa">Zadzwoń — skrypt</a>
+    </div>
+    <p class="helper" style="margin-top:8px; margin-bottom:0">E-mail i SMS generuje agent AI w wybranym tonie; telefon wykonujesz sam — ze skryptem i rejestracją wyniku.</p>
+
+    <% if (comms.length) { %>
+    <div class="label" style="margin-top:16px">Historia komunikacji</div>
+    <ul class="timeline">
+      <% comms.forEach(function(k) { %>
+      <li><span class="dot"></span><span class="t"><span class="tag tag-outline" style="margin-right:6px"><%= k.channel %></span><%= k.outcome || k.subject || k.body.slice(0, 60) %> · <%= k.status %></span><span class="d tnum"><%= new Date(k.created_at).toLocaleDateString('pl-PL', {day:'numeric', month:'short'}) %></span></li>
+      <% }) %>
+    </ul>
+    <% } %>
 
     <hr class="rule">
     <div class="label">Działania agenta AI</div>

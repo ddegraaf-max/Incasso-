@@ -6,6 +6,7 @@ const D = require('./src/data');
 const Auth = require('./src/auth');
 const db = require('./src/db');
 const AiScore = require('./src/aiscore');
+const Comms = require('./src/comms');
 const pgSession = require('connect-pg-simple')(session);
 
 const app = express();
@@ -172,14 +173,48 @@ app.get('/', (req, res) => {
 // ── App ──────────────────────────────────────────────────────────────────
 app.get('/app', Auth.requireAuth, (req, res) => res.redirect('/app/sprawy'));
 
-app.get('/app/sprawy', Auth.requireAuth, (req, res) => {
+app.get('/app/sprawy', Auth.requireAuth, async (req, res) => {
   const sel = D.claims.find((c) => c.id === req.query.sel) || D.claims.find((c) => c.id === 'f2');
   const done = D.getDone();
+  const comms = await db.listComms(sel.id, 6).catch(() => []);
+  const flash = req.query.msg || null;
   const stats = {
     portfolio: D.claims.reduce((s, c) => s + c.amount, 0),
     active: D.claims.length,
   };
-  res.render('sprawy', common({ user: req.user, page: 'app', tab: 'sprawy', sel, done, stats }));
+  res.render('sprawy', common({ user: req.user, page: 'app', tab: 'sprawy', sel, done, stats, comms, flash }));
+});
+
+// ── Agent-acties: e-mail / sms / rozmowa ─────────────────────────────────
+const caseById = (id) => D.claims.find((c) => c.id === id);
+
+app.post('/app/sprawy/:id/email', Auth.requireAuth, async (req, res) => {
+  const c = caseById(req.params.id);
+  if (!c) return res.redirect('/app/sprawy');
+  const tone = TONES.includes(req.body.ton) ? req.body.ton : 'Uprzejmy';
+  const r = await Comms.sendEmail(c, tone).catch(() => ({ status: 'błąd' }));
+  res.redirect('/app/sprawy?sel=' + c.id + '&msg=' + encodeURIComponent('E-mail (' + tone + '): ' + r.status));
+});
+
+app.post('/app/sprawy/:id/sms', Auth.requireAuth, async (req, res) => {
+  const c = caseById(req.params.id);
+  if (!c) return res.redirect('/app/sprawy');
+  const tone = TONES.includes(req.body.ton) ? req.body.ton : 'Uprzejmy';
+  const r = await Comms.sendSms(c, tone).catch(() => ({ status: 'błąd' }));
+  res.redirect('/app/sprawy?sel=' + c.id + '&msg=' + encodeURIComponent('SMS (' + tone + '): ' + r.status));
+});
+
+app.get('/app/sprawy/:id/rozmowa', Auth.requireAuth, (req, res) => {
+  const c = caseById(req.params.id);
+  if (!c) return res.redirect('/app/sprawy');
+  res.render('rozmowa', common({ user: req.user, page: 'app', tab: 'sprawy', c, script: Comms.prepareCall(c), OUTCOMES: Comms.OUTCOMES }));
+});
+
+app.post('/app/sprawy/:id/rozmowa', Auth.requireAuth, async (req, res) => {
+  const c = caseById(req.params.id);
+  if (!c) return res.redirect('/app/sprawy');
+  const detail = await Comms.logCall(c, req.body.wynik, req.body.notatka, req.body.termin).catch(() => 'zapisano');
+  res.redirect('/app/sprawy?sel=' + c.id + '&msg=' + encodeURIComponent('Rozmowa: ' + detail));
 });
 
 app.post('/app/sprawy/:id/:action', Auth.requireAuth, (req, res) => {

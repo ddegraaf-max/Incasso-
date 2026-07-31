@@ -9,7 +9,7 @@
   <form class="calc-form" method="post" action="/2fa/setup">
     <% if (error) { %><div class="form-error"><%= error %></div><% } %>
     <div class="fg" style="text-align:left">
-      <img src="<%= qr %>" alt="Kod QR TOTP" width="196" height="196" style="border:2px solid rgba(32,30,29,0.4); background:#fff; padding:8px">
+      <img src="<%= qr %>" alt="Kod QR TOTP" width="196" height="196" style="border:1px solid var(--color-divider); border-radius:12px; background:#fff; padding:8px">
     </div>
     <div class="fg">
       <label>Klucz ręczny (jeśli nie możesz skanować)</label>

@@ -11,6 +11,7 @@ const mem = {
   actions: {},   // caseId → action
   events: [],    // nieuwste eerst
   scores: {},    // nip → { score, grade, pct, reco, signals, checkedAt }
+  comms: [],     // communicatielog
 };
 
 async function init() {
@@ -18,11 +19,27 @@ async function init() {
     console.log('DB: geen DATABASE_URL — in-memory modus (concept)');
     return false;
   }
-  pool = new Pool({
+  const cfg = {
     connectionString: process.env.DATABASE_URL,
     ssl: process.env.DATABASE_URL.includes('railway') || process.env.PGSSL === '1'
       ? { rejectUnauthorized: false } : false,
-  });
+  };
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      pool = new Pool(cfg);
+      await pool.query('SELECT 1');
+      break;
+    } catch (e) {
+      console.error(`DB: poging ${attempt}/3 mislukt — ${e.message}`);
+      try { await pool.end(); } catch {}
+      pool = null;
+      if (attempt < 3) await new Promise((r) => setTimeout(r, 2000));
+    }
+  }
+  if (!pool) {
+    console.error('DB: onbereikbaar — fallback naar in-memory modus');
+    return false;
+  }
   await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
@@ -47,6 +64,17 @@ async function init() {
       type TEXT,
       title TEXT,
       source TEXT,
+      created_at TIMESTAMPTZ DEFAULT now()
+    );
+    CREATE TABLE IF NOT EXISTS comm_log (
+      id SERIAL PRIMARY KEY,
+      case_id TEXT NOT NULL,
+      channel TEXT NOT NULL,
+      tone TEXT,
+      subject TEXT,
+      body TEXT,
+      status TEXT,
+      outcome TEXT,
       created_at TIMESTAMPTZ DEFAULT now()
     );
     CREATE TABLE IF NOT EXISTS debtor_scores (
@@ -131,6 +159,29 @@ async function listEvents(limit = 20) {
   return r.rows;
 }
 
+// ── Communicatielog ──────────────────────────────────────────────────────
+async function logComm(e) {
+  const row = { ...e, created_at: new Date() };
+  if (!pool) { mem.comms.unshift(row); mem.comms = mem.comms.slice(0, 500); return row; }
+  await pool.query(
+    'INSERT INTO comm_log (case_id, channel, tone, subject, body, status, outcome) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+    [e.case_id, e.channel, e.tone || null, e.subject || null, e.body || null, e.status || null, e.outcome || null]
+  );
+  return row;
+}
+
+async function listComms(caseId, limit = 10) {
+  if (!pool) return mem.comms.filter((x) => x.case_id === caseId).slice(0, limit);
+  const r = await pool.query('SELECT * FROM comm_log WHERE case_id=$1 ORDER BY created_at DESC LIMIT $2', [caseId, limit]);
+  return r.rows;
+}
+
+async function countComms() {
+  if (!pool) return mem.comms.length;
+  const r = await pool.query('SELECT count(*)::int AS n FROM comm_log');
+  return r.rows[0].n;
+}
+
 // ── AIScores ─────────────────────────────────────────────────────────────
 async function saveScore(nip, s) {
   if (!pool) { mem.scores[nip] = { ...s, checkedAt: new Date() }; return; }
@@ -158,4 +209,5 @@ module.exports = {
   loadActions, saveAction,
   insertEvent, listEvents,
   saveScore, loadScores,
+  logComm, listComms, countComms,
 };

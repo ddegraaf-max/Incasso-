@@ -1,0 +1,64 @@
+<%- include('partials/head', { title: 'Rozmowa — ' + c.debtor + ' — Creditline Poland' }) %>
+<%- include('partials/nav') %>
+
+<div class="two-pane" style="flex:1">
+  <div class="pane-left">
+    <div class="kicker">Przygotowanie rozmowy · <%= c.nr %> · AIScore <%= c.ai.score %></div>
+    <h2 style="font-size:26px"><%= c.debtor %></h2>
+    <p class="meta tnum" style="color:var(--ink-70); font-size:13.5px"><%= D.fmt(c.amount) %> · <%= D.daysFmt(c.days) %> po terminie · odsetki <%= D.fmt(D.interest(c.amount, c.days)) %> · rekompensata <%= D.fmt(D.rekompZl(c.amount)) %></p>
+
+    <a class="tel-big tnum" href="tel:<%= c.tel.replace(/\s/g,'') %>"><%= c.tel %></a>
+
+    <hr class="rule">
+    <div class="label">Cel rozmowy</div>
+    <p style="font-size:14.5px; font-weight:600; max-width:60ch"><%= script.cel %></p>
+
+    <div class="label" style="margin-top:18px">Otwarcie</div>
+    <p class="script-line"><%= script.otwarcie %></p>
+
+    <div class="label" style="margin-top:18px">Argumenty</div>
+    <% script.argumenty.forEach(function(a) { %>
+    <div class="dot-row"><span class="dot"></span><span><%= a %></span></div>
+    <% }) %>
+
+    <div class="label" style="margin-top:18px">Reakcje na wymówki</div>
+    <% script.wymowki.forEach(function(w) { %>
+    <div class="wymowka">
+      <div class="w-q"><%= w[0] %></div>
+      <div class="w-a"><%= w[1] %></div>
+    </div>
+    <% }) %>
+
+    <div class="label" style="margin-top:18px">Zamknięcie</div>
+    <p class="script-line"><%= script.zamkniecie %></p>
+  </div>
+
+  <aside class="pane-right">
+    <div class="kicker">Po rozmowie — zarejestruj wynik</div>
+    <p class="helper">Wynik trafia do historii sprawy i sterowania agentem (kolejne kroki, ton, eskalacja).</p>
+
+    <form class="calc-form" method="post" action="/app/sprawy/<%= c.id %>/rozmowa">
+      <div class="fg">
+        <label for="wynik">Wynik</label>
+        <select id="wynik" name="wynik" required>
+          <% Object.entries(OUTCOMES).forEach(function(o) { %>
+          <option value="<%= o[0] %>"><%= o[1] %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="fg">
+        <label for="termin">Obiecany termin (opcjonalnie)</label>
+        <input type="date" id="termin" name="termin" class="tnum">
+      </div>
+      <div class="fg">
+        <label for="notatka">Notatka</label>
+        <textarea id="notatka" name="notatka" rows="4" placeholder="Z kim rozmawiano, co ustalono…"></textarea>
+      </div>
+      <button class="btn" type="submit">Zapisz wynik</button>
+    </form>
+
+    <p style="font-size:13.5px"><a href="/app/sprawy?sel=<%= c.id %>">← Wróć do sprawy</a></p>
+  </aside>
+</div>
+
+<%- include('partials/footer') %>

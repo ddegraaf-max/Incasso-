@@ -31,11 +31,33 @@
 </nav>
 
 <section class="hero">
-  <h1><%= t.heroH1 %></h1>
-  <p class="sub"><%= t.heroSub %></p>
-  <div class="cta">
-    <a class="btn" href="#kontakt"><%= t.ctaTalk %></a>
-    <a class="btn btn-secondary" href="/app/sprawy"><%= t.ctaSee %></a>
+  <canvas id="hero-net" aria-hidden="true"></canvas>
+  <div class="hero-inner">
+    <div class="hero-copy">
+      <h1><%= t.heroH1 %></h1>
+      <p class="sub"><%= t.heroSub %></p>
+      <div class="cta">
+        <a class="btn" href="#kontakt"><%= t.ctaTalk %></a>
+        <a class="btn btn-secondary" href="/app/sprawy"><%= t.ctaSee %></a>
+      </div>
+    </div>
+    <div class="hero-visual" aria-hidden="true">
+      <div class="hero-card">
+        <div class="hc-top">
+          <span class="hc-brand">Creditline <em>Poland</em></span>
+          <span class="hc-seal tnum">14%</span>
+        </div>
+        <div class="hc-title">Wezwanie do zapłaty</div>
+        <div class="hc-row"><span>Faktura</span><span class="tnum">FV 2026/06/089</span></div>
+        <div class="hc-row"><span>Należność</span><span class="tnum">12 400 zł</span></div>
+        <div class="hc-row"><span>Odsetki</span><span class="tnum">597 zł</span></div>
+        <div class="hc-row hc-total"><span>Razem</span><span class="tnum">13 297 zł</span></div>
+        <div class="hc-bar"><span class="hc-fill"></span></div>
+        <div class="hc-foot">AIScore 67 · klasa C · windykacja w toku</div>
+      </div>
+      <div class="hero-chip hc-a tnum">+ rekompensata 300 zł</div>
+      <div class="hero-chip hc-b">KRZ: brak wpisów</div>
+    </div>
   </div>
 </section>
 
@@ -133,5 +155,6 @@
 </footer>
 
 </div>
+<script src="/js/motion.js" defer></script>
 </body>
 </html>

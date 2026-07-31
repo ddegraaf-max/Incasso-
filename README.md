@@ -46,14 +46,21 @@ Bronnen/connectors in `src/aiscore.js`:
 
 De **monitor** draait als continue loop over alle dłużnicy in de database (`MONITOR_INTERVAL_MS`, default 60s — niet letterlijk per seconde: registers publiceren batchgewijs en API's rate-limiten; het effect is hetzelfde). Nieuw obwieszczenie → event in het panel (Agent AI-tab + admin) → AIScore herberekend. Demo-tijdlijn: AgroSad krijgt na 1 tick een restrukturyzacja (47→12) en na 5 ticks een upadłość (→0, rekomendacja zamknięcie). `DEMO_EVENTS=0` schakelt naar echte bronnen.
 
+## Communicatielaag (agent-acties)
+Vanuit het detailpaneel van elke zaak, in de gekozen toon (Uprzejmy/Stanowczy/Prawniczy):
+- **E-mail** — treść genereert de agent (Anthropic API indien `ANTHROPIC_API_KEY` gezet, anders professionele PL-templates), verzending via **Resend** (`RESEND_API_KEY`, afzender `FROM_EMAIL`). Zonder key: symulacja-modus, volledig gelogd.
+- **SMS** — via **SMSAPI.pl** (`SMSAPI_TOKEN`, afzendernaam `SMS_FROM`, default "Creditline"). Zonder token: symulacja.
+- **Telefoon** — jij belt zelf: knop "Zadzwoń — skrypt" opent de belvoorbereiding met klikbaar nummer (tel:), AI-gespreksscript (cel, otwarcie, argumenten met actuele odsetki/rekompensata, reacties op 4 standaard-wymówki, zamknięcie) en na afloop een resultaatformulier (obietnica/raty/sporna/odmowa/brak + termin + notatka). Het resultaat stuurt de zaakfase bij (raty → "Harmonogram rat", odmowa → "Eskalacja").
+
+Alles wordt gelogd in `comm_log` (PostgreSQL/memory), verschijnt als "Historia komunikacji" in het detailpaneel en als event op de Agent AI-tab. Extra env vars: `RESEND_API_KEY`, `FROM_EMAIL`, `SMSAPI_TOKEN`, `SMS_FROM`, `ANTHROPIC_API_KEY`.
+
 ## Status / architectuur
 - **PostgreSQL-koppeling actief**: met `DATABASE_URL` (Railway Postgres-plugin) worden users, sessies (connect-pg-simple), zaakacties, AIScores en events persistent; schema wordt automatisch aangemaakt. Zonder `DATABASE_URL` draait alles in-memory (demo). In demo-modus wordt de KRZ-status bij herstart vers herberekend uit de bronnen (by design — events blijven wel staan).
 - Rentevoet 14% (NBP 4% + 10 p.p., I półrocze 2026) staat in `src/data.js` (`INTEREST_RATE`) — halfjaarlijks bijwerken.
 
 ## Roadmap-ideeën (nog niet gebouwd)
 1. **KSeF-koppeling** — echte API-integratie zodra klant-tokens beschikbaar; nu gestubd in intake.
-2. **Anthropic API** voor de agent zelf: toon-afhankelijke e-mails genereren, XML/PDF-faktura's uitlezen (Claude Vision), scoring-samenvatting.
-3. **Resend** voor przypomnienia + nota's per e-mail (zelfde patroon als je andere projecten).
+2. **Claude Vision** voor XML/PDF-faktura's uitlezen bij intake.
 4. **Stripe** voor de 99 zł serviceopłata (P24/BLIK voor de Poolse markt).
 5. **KRZ-connector productie** (MGBI-API of portal-poller) + KRD/BIG-aansluiting voor niet-openbare data.
 6. **Klantportaal-login** met TOTP/2FA (patroon uit bestelkozijnenopmaat hergebruiken).
