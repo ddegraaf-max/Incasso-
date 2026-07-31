@@ -160,14 +160,55 @@ app.get('/logout', (req, res) => {
 // ── Admin ────────────────────────────────────────────────────────────────
 app.get('/admin', Auth.requireAdmin, async (req, res) => {
   const events = await db.listEvents(15).catch(() => []);
-  res.render('admin', common({ page: 'admin', user: req.user, usersList: Auth.allUsers(), done: D.getDone(), events }));
+  const leads = await db.listLeads(15).catch(() => []);
+  res.render('admin', common({ page: 'admin', user: req.user, usersList: Auth.allUsers(), done: D.getDone(), events, leads }));
 });
 
-// ── Marketing ────────────────────────────────────────────────────────────
+// ── Marketing (host-routing: creditline vs sprzedamfakture) ──────────────
 const i18n = require('./src/i18n');
+const SPRZEDAM_HOSTS = (process.env.SPRZEDAM_HOSTS || 'sprzedamfakture.pl,www.sprzedamfakture.pl').split(',');
+
+function isSprzedamHost(req) {
+  const host = (req.hostname || '').toLowerCase();
+  return SPRZEDAM_HOSTS.includes(host);
+}
+
+function renderSprzedam(req, res, extra = {}) {
+  const kwota = parseFloat(String(req.query.kwota || '').replace(',', '.')) || null;
+  const dni = parseInt(req.query.dni, 10) || null;
+  const est = kwota && dni && kwota > 0 && dni > 0 ? AiScore.estimateOffer(kwota, dni) : null;
+  res.render('sprzedam', common({
+    page: 'sprzedam', est,
+    q: { kwota: req.query.kwota || '', dni: req.query.dni || '' },
+    leadOk: req.query.lead === 'ok',
+    ...extra,
+  }));
+}
+
 app.get('/', (req, res) => {
+  if (isSprzedamHost(req)) return renderSprzedam(req, res);
   const lang = req.query.lang === 'en' ? 'en' : 'pl';
   res.render('landing', common({ page: 'landing', lang, t: i18n[lang] }));
+});
+
+// preview op hoofddomein + eigen route
+app.get('/sprzedam', (req, res) => renderSprzedam(req, res));
+
+app.post('/sprzedaj', async (req, res) => {
+  const { company, nip, kwota, dni, email, tel } = req.body;
+  const kw = parseFloat(String(kwota || '').replace(',', '.')) || 0;
+  const dn = parseInt(dni, 10) || 0;
+  if (!company || !email || !kw || !dn) {
+    return res.redirect((isSprzedamHost(req) ? '/' : '/sprzedam') + '#formularz');
+  }
+  const est = AiScore.estimateOffer(kw, dn);
+  await db.saveLead({ company, nip, email, tel, kwota: kw, dni: dn, oferta_pct: est.pct }).catch(() => {});
+  await db.insertEvent({
+    nip, debtor: company, type: 'lead',
+    title: 'Nowy lead sprzedamfakture.pl: ' + D.fmt(kw) + ' · ' + dn + ' dni · wstępnie ' + est.pct + '%',
+    source: 'sprzedamfakture.pl',
+  }).catch(() => {});
+  res.redirect((isSprzedamHost(req) ? '/' : '/sprzedam') + '?lead=ok#formularz');
 });
 
 // ── App ──────────────────────────────────────────────────────────────────

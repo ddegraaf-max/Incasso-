@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sprzedam Fakturę — gotówka za fakturę w 24 godziny | sprzedamfakture.pl</title>
+<meta name="description" content="Sprzedaj przeterminowaną fakturę B2B. Wycena AI w kilka minut, cesja online, przelew w 24 godziny. Ryzyko niewypłacalności przechodzi na nas. Usługa Creditline Poland.">
+<link rel="stylesheet" href="/css/app.css">
+</head>
+<body class="sf">
+<div style="min-height:100vh; display:flex; flex-direction:column">
+
+<nav class="nav">
+  <a class="nav-brand" href="/">
+    <span class="b1">Sprzedam Fakturę</span>
+    <span class="b2"></span>
+    <span class="b3" style="letter-spacing:0.14em"><span>2</span><span>4</span><span>&nbsp;</span><span>G</span><span>O</span><span>D</span><span>Z</span><span>I</span><span>N</span><span>Y</span></span>
+  </a>
+  <span class="nav-right nav-links">
+    <a href="#jak">Jak to działa</a>
+    <a href="#wycena">Wycena</a>
+    <a href="#faq">FAQ</a>
+    <a href="#formularz" class="nav-cta">Sprzedaj fakturę</a>
+  </span>
+</nav>
+
+<section class="hero sf-hero">
+  <canvas id="hero-net" aria-hidden="true"></canvas>
+  <div class="hero-inner">
+    <div class="hero-copy">
+      <h1>Sprzedaj fakturę.<br>Gotówka w 24 godziny.</h1>
+      <p class="sub">Kontrahent nie płaci? Nie czekaj miesiącami na windykację. Sprzedaj nam przeterminowaną fakturę B2B — wycena AI w kilka minut, cesja online, przelew następnego dnia roboczego. Ryzyko niewypłacalności przechodzi na nas.</p>
+      <div class="cta">
+        <a class="btn" href="#wycena">Sprawdź wycenę</a>
+        <a class="btn btn-secondary" href="#jak">Jak to działa</a>
+      </div>
+    </div>
+    <div class="hero-visual" aria-hidden="true">
+      <div class="hero-card">
+        <div class="hc-top">
+          <span class="hc-brand">Sprzedam <em>Fakturę</em></span>
+          <span class="hc-seal tnum">24h</span>
+        </div>
+        <div class="hc-title">Oferta wykupu</div>
+        <div class="hc-row"><span>Faktura</span><span class="tnum">12 400 zł</span></div>
+        <div class="hc-row"><span>45 dni po terminie</span><span class="tnum">AIScore 67</span></div>
+        <div class="hc-row hc-total"><span>Nasza oferta</span><span class="tnum">9 424 zł</span></div>
+        <div class="hc-bar"><span class="hc-fill"></span></div>
+        <div class="hc-foot">Cesja online · przelew w 24 godziny</div>
+      </div>
+      <div class="hero-chip hc-a tnum">76% wartości</div>
+      <div class="hero-chip hc-b">Ryzyko: nasze</div>
+    </div>
+  </div>
+</section>
+
+<section class="path" id="jak">
+  <div class="kicker">Jak to działa</div>
+  <div class="path-grid">
+    <div class="cell"><div class="p-step tnum">01 · 2 minuty</div><div class="p-desc">Wyślij fakturę i NIP dłużnika</div></div>
+    <div class="cell"><div class="p-step tnum">02 · Kilka minut</div><div class="p-desc">AI sprawdza KRZ, KRS i białą listę — dostajesz ofertę</div></div>
+    <div class="cell"><div class="p-step tnum">03 · Online</div><div class="p-desc">Podpisujesz cesję elektronicznie</div></div>
+    <div class="cell"><div class="p-step tnum">04 · 24 godziny</div><div class="p-desc">Pieniądze na Twoim koncie</div></div>
+  </div>
+</section>
+
+<section class="law" id="wycena">
+  <div class="wrap">
+    <div class="kicker">Wstępna wycena — od razu</div>
+    <div class="sf-wycena">
+      <form method="get" action="/#wycena" class="sf-wycena-form">
+        <div>
+          <label for="w-kwota">Kwota faktury (zł)</label>
+          <input class="tnum" type="text" id="w-kwota" name="kwota" inputmode="decimal" placeholder="np. 12400" value="<%= q.kwota %>" required>
+        </div>
+        <div>
+          <label for="w-dni">Dni po terminie</label>
+          <input class="tnum" type="number" id="w-dni" name="dni" min="1" placeholder="np. 45" value="<%= q.dni %>" required>
+        </div>
+        <button class="btn btn-gold" type="submit">Policz ofertę</button>
+      </form>
+      <% if (est) { %>
+      <div class="sf-wycena-result">
+        <div class="swr-main"><span class="tnum"><%= D.fmt(est.amountLow) %> – <%= D.fmt(est.amount) %></span></div>
+        <div class="swr-sub">wstępna oferta (<%= est.pctLow %>–<%= est.pct %>% wartości) — ostateczna po weryfikacji dłużnika w KRZ, KRS i białej liście. Odsetki nabywamy razem z wierzytelnością (art. 509 § 2 KC).</div>
+        <a class="btn btn-gold" href="#formularz">Przyjmuję — wyślij fakturę</a>
+      </div>
+      <% } %>
+    </div>
+  </div>
+</section>
+
+<section class="model">
+  <div class="kicker">Dlaczego warto sprzedać</div>
+  <div class="model-grid">
+    <div class="cell"><div class="m-who">Płynność</div><h4>Gotówka od ręki</h4><p>Zamiast czekać 3–12 miesięcy na windykację lub sąd, masz pieniądze następnego dnia roboczego.</p></div>
+    <div class="cell"><div class="m-who">Ryzyko</div><h4>Upadłość? Nasz problem</h4><p>Po cesji ryzyko niewypłacalności dłużnika w całości przechodzi na nas — bez regresu.</p></div>
+    <div class="cell alt"><div class="m-who">Spokój</div><h4>Czysty bilans, zero windykacji</h4><p>Koniec telefonów, wezwań i pilnowania terminów. Wierzytelność znika z Twoich ksiąg.</p></div>
+  </div>
+</section>
+
+<section class="why" id="faq">
+  <div class="why-grid">
+    <div class="cell">
+      <div class="kicker">FAQ</div>
+      <h2>Najczęstsze pytania</h2>
+      <div class="sf-faq">
+        <div class="sf-q">Ile dostanę za fakturę?</div>
+        <div class="sf-a">Zależnie od AIScore dłużnika: zwykle 55–90% wartości. Im krótsze opóźnienie i czystszy dłużnik w rejestrach, tym wyższa oferta. Odsetki za opóźnienie przechodzą na nas razem z wierzytelnością.</div>
+        <div class="sf-q">Czy każda faktura się kwalifikuje?</div>
+        <div class="sf-a">Kupujemy bezsporne faktury B2B. Sprawdzamy, czy umowa z dłużnikiem nie zawiera zakazu cesji (art. 509 § 1 KC) i czy dłużnik nie jest w upadłości — wtedy oferta nie jest możliwa.</div>
+        <div class="sf-q">Co z rekompensatą 40/70/100 €?</div>
+        <div class="sf-a">Ta pozostaje przy Tobie — z mocy ustawy (art. 10 ust. 4) nie podlega cesji. Możesz jej dochodzić samodzielnie, oferta dotyczy należności głównej z odsetkami.</div>
+        <div class="sf-q">Czy dłużnik się dowie?</div>
+        <div class="sf-a">Tak — po cesji zawiadamiamy dłużnika na piśmie (art. 512 KC). Od tego momentu płaci wyłącznie nam.</div>
+      </div>
+    </div>
+    <div class="cell">
+      <div class="kicker" id="formularz">Sprzedaj fakturę</div>
+      <% if (leadOk) { %>
+      <div class="confirm"><span class="sq"></span><span>Dziękujemy! Analizujemy dłużnika — ofertę wyślemy w ciągu kilku godzin roboczych na podany e-mail.</span></div>
+      <% } else { %>
+      <form class="calc-form" method="post" action="/sprzedaj">
+        <div class="fg"><label for="f-firma">Twoja firma</label><input type="text" id="f-firma" name="company" required></div>
+        <div class="fg"><label for="f-nip">NIP dłużnika</label><input type="text" id="f-nip" name="nip" class="tnum" required></div>
+        <div class="fg"><label for="f-kwota">Kwota faktury (zł)</label><input type="text" id="f-kwota" name="kwota" class="tnum" inputmode="decimal" required></div>
+        <div class="fg"><label for="f-dni">Dni po terminie</label><input type="number" id="f-dni" name="dni" class="tnum" min="1" required></div>
+        <div class="fg"><label for="f-email">E-mail</label><input type="email" id="f-email" name="email" required></div>
+        <div class="fg"><label for="f-tel">Telefon</label><input type="tel" id="f-tel" name="tel" class="tnum" required></div>
+        <button class="btn btn-gold" type="submit">Wyślij do wyceny</button>
+        <p class="legal-note" style="margin-top:12px">Wysłanie formularza nie zobowiązuje do sprzedaży. Ofertę możesz odrzucić bez kosztów.</p>
+      </form>
+      <% } %>
+    </div>
+  </div>
+</section>
+
+<footer class="sources">
+  <div class="wrap">
+    <div class="cr">sprzedamfakture.pl — usługa <a href="https://creditline.pl">Creditline Poland</a> · kontakt@sprzedamfakture.pl · Podstawa: art. 509–512 KC, ustawa z 8.03.2013 r.</div>
+  </div>
+</footer>
+
+</div>
+<script src="/js/motion.js" defer></script>
+</body>
+</html>

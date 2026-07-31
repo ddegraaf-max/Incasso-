@@ -45,6 +45,20 @@
       </tbody>
     </table>
     <hr class="rule">
+    <div class="label">Leady — sprzedamfakture.pl</div>
+    <% if (!leads.length) { %><p class="helper">Brak leadów.</p><% } %>
+    <% leads.slice(0, 6).forEach(function(l) { %>
+    <div class="feed-row">
+      <span class="time tnum"><%= new Date(l.created_at).toLocaleDateString('pl-PL', {day:'numeric', month:'short'}) %></span>
+      <span class="dot"></span>
+      <span>
+        <div class="fx"><%= l.company %> · <span class="tnum"><%= D.fmt(Number(l.kwota)) %> · <%= l.dni %> dni · wstępnie <%= l.oferta_pct %>%</span></div>
+        <div class="fr2 tnum"><%= l.email %> · <%= l.tel || '' %> · NIP dłużnika: <%= l.nip %></div>
+      </span>
+    </div>
+    <% }) %>
+
+    <hr class="rule">
     <div class="label">Zdarzenia monitoringu</div>
     <% events.slice(0, 8).forEach(function(ev) { %>
     <div class="feed-row">

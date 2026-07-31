@@ -12,6 +12,7 @@ const mem = {
   events: [],    // nieuwste eerst
   scores: {},    // nip → { score, grade, pct, reco, signals, checkedAt }
   comms: [],     // communicatielog
+  leads: [],     // sprzedamfakture-leads
 };
 
 async function init() {
@@ -64,6 +65,19 @@ async function init() {
       type TEXT,
       title TEXT,
       source TEXT,
+      created_at TIMESTAMPTZ DEFAULT now()
+    );
+    CREATE TABLE IF NOT EXISTS leads (
+      id SERIAL PRIMARY KEY,
+      source TEXT DEFAULT 'sprzedamfakture',
+      company TEXT,
+      nip TEXT,
+      email TEXT,
+      tel TEXT,
+      kwota NUMERIC,
+      dni INT,
+      oferta_pct INT,
+      note TEXT,
       created_at TIMESTAMPTZ DEFAULT now()
     );
     CREATE TABLE IF NOT EXISTS comm_log (
@@ -159,6 +173,23 @@ async function listEvents(limit = 20) {
   return r.rows;
 }
 
+// ── Leads (sprzedamfakture.pl) ───────────────────────────────────────────
+async function saveLead(l) {
+  const row = { ...l, created_at: new Date() };
+  if (!pool) { mem.leads.unshift(row); return row; }
+  await pool.query(
+    'INSERT INTO leads (source, company, nip, email, tel, kwota, dni, oferta_pct, note) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
+    [l.source || 'sprzedamfakture', l.company, l.nip, l.email, l.tel, l.kwota, l.dni, l.oferta_pct, l.note || null]
+  );
+  return row;
+}
+
+async function listLeads(limit = 30) {
+  if (!pool) return mem.leads.slice(0, limit);
+  const r = await pool.query('SELECT * FROM leads ORDER BY created_at DESC LIMIT $1', [limit]);
+  return r.rows;
+}
+
 // ── Communicatielog ──────────────────────────────────────────────────────
 async function logComm(e) {
   const row = { ...e, created_at: new Date() };
@@ -210,4 +241,5 @@ module.exports = {
   insertEvent, listEvents,
   saveScore, loadScores,
   logComm, listComms, countComms,
+  saveLead, listLeads,
 };

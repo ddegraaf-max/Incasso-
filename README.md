@@ -35,6 +35,9 @@ Env vars: `PORT` (Railway zet die zelf), `SESSION_SECRET` (VERPLICHT in producti
 - **Demo-account**: `demo@creditline.pl` / `Demo1234!` (zonder 2FA, alleen om te klikken) — **verwijderen vóór livegang** in `src/auth.js`.
 - Gebruikers, sessies, acties, scores en events staan in PostgreSQL zodra `DATABASE_URL` gezet is.
 
+## sprzedamfakture.pl (tweede domein, zelfde deployment)
+Aparte wykup-voorkant op dezelfde backend via host-routing: hang beide domeinen aan dezelfde Railway-service; requests met host `sprzedamfakture.pl` / `www.sprzedamfakture.pl` (instelbaar via `SPRZEDAM_HOSTS`) krijgen de sprzedam-landing op `/`. Preview op het hoofddomein: `/sprzedam`. Bevat: instant wycena-widget (indicatieve oferta via `AiScore.estimateOffer`, definitief na KRZ/KRS/biała lista-check), 4-stappenflow, FAQ (incl. zakaz cesji, rekompensata blijft bij verkoper, art. 512-notificatie) en een leadformulier → tabel `leads` + event in het admin-dashboard en de Agent-tab. Railway: custom domain toevoegen aan de service en DNS bij dns.pl naar Railway wijzen.
+
 ## AIScore & monitoring
 Elke dłużnik krijgt een **AIScore** (0–100, klasa A–E) — geen kredietscore van een biuro, maar een eigen AI-inschatting van de inbaarheid van déze vordering. Bepaalt de eerlijke wykup-oferta (formule in `src/aiscore.js`) en de rekomendacja: **windykacja** (≥60), **sprzedaż** (45–59) of **zamknięcie** (kansloos: upadłość of score <25, met odpis-optie in het detailpaneel).
 

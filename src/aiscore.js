@@ -180,4 +180,15 @@ async function init(claims) {
   if (timer.unref) timer.unref();
 }
 
-module.exports = { init, computeScore, scoreClaim, monitorTick, RECO_TXT };
+// Indicatieve wycena vóór KRZ-check (sprzedamfakture.pl)
+function estimateOffer(kwota, dni) {
+  let score = 100;
+  score -= Math.min(35, Math.round(dni * 0.4));
+  score -= 7; // gemiddelde betaalhistorie, nog onbekend
+  if (kwota >= 50000) score -= 3;
+  score = Math.max(0, Math.min(100, score));
+  const pct = offerPct(score);
+  return { score, pct, pctLow: Math.max(35, pct - 4), amount: Math.round(kwota * pct / 100), amountLow: Math.round(kwota * Math.max(35, pct - 4) / 100) };
+}
+
+module.exports = { init, computeScore, scoreClaim, monitorTick, RECO_TXT, estimateOffer };
