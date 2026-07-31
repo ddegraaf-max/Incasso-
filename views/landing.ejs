@@ -81,6 +81,7 @@
 </section>
 
 <section class="law">
+  <div class="wrap">
   <div class="kicker"><%= t.lawKicker %></div>
   <div class="law-grid">
     <% t.law.forEach(function(l) { %>
@@ -92,6 +93,7 @@
     <% }) %>
   </div>
   <p style="margin-top:24px"><a href="/kalkulator"><%= t.calcLink %></a></p>
+  </div>
 </section>
 
 <section class="path">
@@ -147,11 +149,13 @@
 </section>
 
 <footer class="sources">
+  <div class="wrap">
   <div class="kicker" style="color:var(--ink-70)"><%= t.srcKicker %></div>
   <ol>
     <% t.sources.forEach(function(s) { %><li><%= s %></li><% }) %>
   </ol>
   <div class="cr"><%= t.copyright %> · kontakt@creditline.pl</div>
+  </div>
 </footer>
 
 </div>

@@ -380,3 +380,14 @@ html { scroll-behavior: smooth; }
   .hc-fill { width: 78%; }
   .rv { opacity: 1; transform: none; transition: none; }
 }
+
+/* ── Breedte-fixes voor grote schermen ── */
+.wrap { max-width: 1360px; margin: 0 auto; }
+.hero-inner { max-width: 1360px; margin: 0 auto; }
+.stats-strip, .svc, .svc-kicker, .path, .model, .why, .closing, .calc-wrap { max-width: 1424px; margin-left: auto; margin-right: auto; }
+.stats-strip, .path, .model, .why { border-bottom: 0; }
+.svc-wrap { border-bottom: 0; padding-bottom: 24px; }
+.path, .model, .why { padding-top: 30px; padding-bottom: 30px; }
+.hero-chip.hc-a { right: 0; top: 4%; }
+.hc-foot { text-transform: none; letter-spacing: 0.02em; font-size: 11.5px; }
+.src-ref { font-size: 0.42em; top: -0.9em; position: relative; vertical-align: baseline; }

@@ -64,34 +64,44 @@
     }).observe(hero);
   }
 
-  // ── 2. Tellende cijfers ───────────────────────────────────────────────
+  // ── 2. Tellende cijfers (alleen het tekst-node — <sup> blijft intact) ──
   function animateCount(el) {
-    var raw = el.getAttribute('data-count-done') ? null : el.textContent;
-    if (!raw) return;
-    var m = raw.match(/^([^0-9]*)([\d\s.,]+)(.*)$/);
-    if (!m) return;
-    var numStr = m[2].trim();
-    var clean = numStr.replace(/[\s]/g, '').replace(',', '.');
+    if (el.getAttribute('data-count-done')) return;
+    var node = null;
+    for (var k = 0; k < el.childNodes.length; k++) {
+      var n = el.childNodes[k];
+      if (n.nodeType === 3 && /\d/.test(n.nodeValue)) { node = n; break; }
+    }
+    if (!node) return;
+    var raw = node.nodeValue;
+    var m2 = raw.match(/^([^0-9]*)([\d\s.,\u00a0]*\d)(.*)$/);
+    if (!m2) return;
+    var pre = m2[1], numStr = m2[2], post = m2[3];
+    var thousandsComma = /^\d{1,3}(,\d{3})+$/.test(numStr);
+    var thousandsSpace = /\d[\s\u00a0]\d/.test(numStr);
+    var decimalComma = /^\d+,\d{1,2}$/.test(numStr);
+    var clean = numStr.replace(/[\s\u00a0]/g, '');
+    if (thousandsComma) clean = clean.replace(/,/g, '');
+    else if (decimalComma) clean = clean.replace(',', '.');
     var target = parseFloat(clean);
     if (isNaN(target)) return;
-    var decimals = /[.,]\d/.test(numStr) ? 1 : 0;
-    var useSpace = /\d\s\d/.test(numStr);
     el.setAttribute('data-count-done', '1');
     if (reduced) return;
-    var t0 = null, DUR = 1300;
-    var pre = m[1], post = m[3];
+    var decimals = decimalComma || /\.\d/.test(clean) ? 1 : 0;
     function fmt(v) {
       var s = decimals ? v.toFixed(1).replace('.', ',') : Math.round(v).toString();
-      if (useSpace) s = s.replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
+      if (thousandsComma) s = s.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+      else if (thousandsSpace) s = s.replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
       return s;
     }
+    var t0 = null, DUR = 1300;
     function step(ts) {
       if (!t0) t0 = ts;
       var p = Math.min(1, (ts - t0) / DUR);
       var e = 1 - Math.pow(1 - p, 3);
-      el.textContent = pre + fmt(target * e) + post;
+      node.nodeValue = pre + fmt(target * e) + post;
       if (p < 1) requestAnimationFrame(step);
-      else el.textContent = pre + numStr + post;
+      else node.nodeValue = raw;
     }
     requestAnimationFrame(step);
   }
