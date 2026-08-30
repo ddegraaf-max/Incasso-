@@ -1,4 +1,4 @@
-// Creditline Poland — communicatielaag van de agent
+// sprzedamfakture.pl — communicatielaag van de agent
 // E-mail: Resend (RESEND_API_KEY). SMS: SMSAPI.pl (SMSAPI_TOKEN).
 // Teksten: Anthropic API (ANTHROPIC_API_KEY) of professionele PL-templates.
 // Zonder keys: alles werkt in symulacja-modus, volledig gelogd — de flow is
@@ -9,8 +9,8 @@ const D = require('./data');
 const RESEND_KEY = process.env.RESEND_API_KEY || '';
 const SMSAPI_TOKEN = process.env.SMSAPI_TOKEN || '';
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || '';
-const FROM_EMAIL = process.env.FROM_EMAIL || 'windykacja@creditline.pl';
-const SMS_FROM = process.env.SMS_FROM || 'Creditline';
+const FROM_EMAIL = process.env.FROM_EMAIL || 'windykacja@sprzedamfakture.pl';
+const SMS_FROM = process.env.SMS_FROM || 'SprzedamFV';
 
 // ── Tekstgeneratie ───────────────────────────────────────────────────────
 function baseFacts(c) {
@@ -28,21 +28,21 @@ const TPL = {
   email: {
     Uprzejmy: (c, f) => ({
       subject: `Przypomnienie o płatności — faktura ${c.nr}`,
-      body: `Dzień dobry,\n\nuprzejmie przypominamy o fakturze ${c.nr} na kwotę ${f.kwota}, której termin płatności minął ${f.dni} dni temu.\n\nByć może płatność umknęła w natłoku spraw — prosimy o uregulowanie należności w tym tygodniu lub kontakt, jeśli potrzebują Państwo innego terminu.\n\nZ poważaniem\nCreditline Poland — dział windykacji\nw imieniu wierzyciela`,
+      body: `Dzień dobry,\n\nuprzejmie przypominamy o fakturze ${c.nr} na kwotę ${f.kwota}, której termin płatności minął ${f.dni} dni temu.\n\nByć może płatność umknęła w natłoku spraw — prosimy o uregulowanie należności w tym tygodniu lub kontakt, jeśli potrzebują Państwo innego terminu.\n\nZ poważaniem\nsprzedamfakture.pl — dział windykacji\nw imieniu wierzyciela`,
     }),
     Stanowczy: (c, f) => ({
       subject: `Wezwanie do zapłaty — faktura ${c.nr} (${f.dni} dni po terminie)`,
-      body: `Szanowni Państwo,\n\ntermin płatności faktury ${c.nr} na kwotę ${f.kwota} minął ${f.dni} dni temu. Wzywamy do zapłaty w terminie 7 dni od otrzymania niniejszej wiadomości.\n\nDo należności głównej doliczamy odsetki ustawowe za opóźnienie (14% rocznie, obecnie ${D.fmt(f.odsetki)}) oraz rekompensatę za koszty odzyskiwania należności w wysokości ${D.fmt(f.rekomp)}.\n\nBrak wpłaty skutkować będzie zgłoszeniem do biura informacji gospodarczej (KRD/BIG) oraz skierowaniem sprawy na drogę sądową — na koszt dłużnika.\n\nCreditline Poland — dział windykacji`,
+      body: `Szanowni Państwo,\n\ntermin płatności faktury ${c.nr} na kwotę ${f.kwota} minął ${f.dni} dni temu. Wzywamy do zapłaty w terminie 7 dni od otrzymania niniejszej wiadomości.\n\nDo należności głównej doliczamy odsetki ustawowe za opóźnienie (14% rocznie, obecnie ${D.fmt(f.odsetki)}) oraz rekompensatę za koszty odzyskiwania należności w wysokości ${D.fmt(f.rekomp)}.\n\nBrak wpłaty skutkować będzie zgłoszeniem do biura informacji gospodarczej (KRD/BIG) oraz skierowaniem sprawy na drogę sądową — na koszt dłużnika.\n\nsprzedamfakture.pl — dział windykacji`,
     }),
     Prawniczy: (c, f) => ({
       subject: `Ostateczne przedsądowe wezwanie do zapłaty — ${c.nr}`,
-      body: `Szanowni Państwo,\n\ndziałając w imieniu wierzyciela, na podstawie art. 4a, 7 i 10 ustawy z dnia 8 marca 2013 r. o przeciwdziałaniu nadmiernym opóźnieniom w transakcjach handlowych, wzywamy do zapłaty:\n\n— należność główna (faktura ${c.nr}): ${f.kwota}\n— odsetki ustawowe za opóźnienie (14% w skali roku): ${D.fmt(f.odsetki)}\n— rekompensata (art. 10 ustawy): ${D.fmt(f.rekomp)}\n\nw nieprzekraczalnym terminie 7 dni. Po bezskutecznym upływie terminu sprawa zostanie skierowana na drogę postępowania sądowego bez ponownego wezwania, wraz z wnioskiem o zasądzenie kosztów procesu i egzekucji od dłużnika.\n\nCreditline Poland`,
+      body: `Szanowni Państwo,\n\ndziałając w imieniu wierzyciela, na podstawie art. 4a, 7 i 10 ustawy z dnia 8 marca 2013 r. o przeciwdziałaniu nadmiernym opóźnieniom w transakcjach handlowych, wzywamy do zapłaty:\n\n— należność główna (faktura ${c.nr}): ${f.kwota}\n— odsetki ustawowe za opóźnienie (14% w skali roku): ${D.fmt(f.odsetki)}\n— rekompensata (art. 10 ustawy): ${D.fmt(f.rekomp)}\n\nw nieprzekraczalnym terminie 7 dni. Po bezskutecznym upływie terminu sprawa zostanie skierowana na drogę postępowania sądowego bez ponownego wezwania, wraz z wnioskiem o zasądzenie kosztów procesu i egzekucji od dłużnika.\n\nsprzedamfakture.pl`,
     }),
   },
   sms: {
-    Uprzejmy: (c, f) => `Creditline: przypominamy o fakturze ${c.nr} na ${f.kwota} (${f.dni} dni po terminie). Prosimy o wplate lub kontakt. Dziekujemy.`,
-    Stanowczy: (c, f) => `Creditline: faktura ${c.nr} na ${f.kwota} jest ${f.dni} dni po terminie. Prosimy o wplate w 7 dni — po tym terminie wpis do KRD i odsetki.`,
-    Prawniczy: (c, f) => `Creditline: ostateczne wezwanie ws. ${c.nr} (${f.kwota} + odsetki). Brak wplaty w 7 dni = sprawa sadowa na koszt dluznika.`,
+    Uprzejmy: (c, f) => `sprzedamfakture.pl: przypominamy o fakturze ${c.nr} na ${f.kwota} (${f.dni} dni po terminie). Prosimy o wplate lub kontakt. Dziekujemy.`,
+    Stanowczy: (c, f) => `sprzedamfakture.pl: faktura ${c.nr} na ${f.kwota} jest ${f.dni} dni po terminie. Prosimy o wplate w 7 dni — po tym terminie wpis do KRD i odsetki.`,
+    Prawniczy: (c, f) => `sprzedamfakture.pl: ostateczne wezwanie ws. ${c.nr} (${f.kwota} + odsetki). Brak wplaty w 7 dni = sprawa sadowa na koszt dluznika.`,
   },
 };
 
@@ -50,7 +50,7 @@ function callScript(c, f) {
   const eskalacja = c.days > 30;
   return {
     cel: `Uzyskać wiążącą deklarację zapłaty ${f.kwota}${eskalacja ? ` + odsetki ${D.fmt(f.odsetki)} i rekompensata ${D.fmt(f.rekomp)}` : ''} — najlepiej z konkretną datą przelewu.`,
-    otwarcie: `Dzień dobry, [Twoje imię], Creditline Poland, w imieniu wierzyciela w sprawie faktury ${c.nr} na ${f.kwota} — termin minął ${f.dni} dni temu. Czy rozmawiam z osobą odpowiedzialną za płatności?`,
+    otwarcie: `Dzień dobry, [Twoje imię], sprzedamfakture.pl, w imieniu wierzyciela w sprawie faktury ${c.nr} na ${f.kwota} — termin minął ${f.dni} dni temu. Czy rozmawiam z osobą odpowiedzialną za płatności?`,
     argumenty: [
       `Odsetki naliczają się z mocy ustawy (14% rocznie) — dziś to już ${D.fmt(f.odsetki)}, każdy tydzień zwłoki podnosi kwotę.`,
       `Rekompensata ${D.fmt(f.rekomp)} należy się od każdej faktury po terminie — bez dowodu kosztów.`,
@@ -93,7 +93,7 @@ async function composeEmail(c, tone) {
   const tpl = (TPL.email[tone] || TPL.email.Uprzejmy)(c, f);
   if (!ANTHROPIC_KEY) return { ...tpl, engine: 'szablon' };
   const body = await aiGenerate(
-    `Napisz profesjonalny e-mail windykacyjny po polsku, ton: ${tone}. Faktura ${c.nr}, dłużnik ${c.debtor}, kwota ${f.kwota}, ${f.dni} dni po terminie, odsetki ${D.fmt(f.odsetki)}, rekompensata ${D.fmt(f.rekomp)}. Podstawa: ustawa z 8.03.2013. Zwróć wyłącznie treść e-maila, bez tematu, bez komentarzy. Podpis: Creditline Poland — dział windykacji.`,
+    `Napisz profesjonalny e-mail windykacyjny po polsku, ton: ${tone}. Faktura ${c.nr}, dłużnik ${c.debtor}, kwota ${f.kwota}, ${f.dni} dni po terminie, odsetki ${D.fmt(f.odsetki)}, rekompensata ${D.fmt(f.rekomp)}. Podstawa: ustawa z 8.03.2013. Zwróć wyłącznie treść e-maila, bez tematu, bez komentarzy. Podpis: sprzedamfakture.pl — dział windykacji.`,
     tpl.body
   );
   return { subject: tpl.subject, body, engine: 'AI' };

@@ -1,4 +1,4 @@
-// Creditline Poland — motion-laag (landing)
+// sprzedamfakture.pl — motion-laag (landing)
 // Subtiel en performant: respecteert prefers-reduced-motion, pauzeert buiten beeld.
 (function () {
   'use strict';

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 312 56" width="312" height="56">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&amp;display=swap');
+    .word { font-family: 'Fraunces', Georgia, 'Times New Roman', serif; font-size: 28px; font-weight: 500; letter-spacing: -0.4px; fill: #17233a; }
+    .bold { font-weight: 600; } .tld { font-weight: 600; fill: #a3781f; }
+  </style>
+  <defs>
+    <linearGradient id="coin" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e6c56f"/><stop offset="1" stop-color="#b8892d"/>
+    </linearGradient>
+    <mask id="cut"><rect width="48" height="48" fill="#fff"/><circle cx="36" cy="36" r="12.2" fill="#000"/></mask>
+  </defs>
+  <g transform="translate(0 4)">
+    <g mask="url(#cut)">
+      <path fill="#17233a" d="M11 3h13l9 9v22a5 5 0 0 1-5 5H11a5 5 0 0 1-5-5V8a5 5 0 0 1 5-5z"/>
+      <path fill="#b8892d" d="M24 3v5a4 4 0 0 0 4 4h5z"/>
+      <g stroke="#f6f4ef" stroke-width="2.4" stroke-linecap="round" opacity=".9"><path d="M12 18h9"/><path d="M12 23.5h13"/><path d="M12 29h8"/></g>
+    </g>
+    <circle cx="36" cy="36" r="9.8" fill="url(#coin)"/>
+    <path d="M31.2 36.3l3.2 3.1 6.2-6.6" fill="none" stroke="#1d1707" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text class="word" x="58" y="38">sprzedam<tspan class="bold">fakture</tspan><tspan class="tld">.pl</tspan></text>
+</svg>

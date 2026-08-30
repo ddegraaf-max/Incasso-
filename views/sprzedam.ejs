@@ -3,23 +3,25 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sprzedam Fakturę — gotówka za fakturę w 24 godziny | sprzedamfakture.pl</title>
-<meta name="description" content="Sprzedaj przeterminowaną fakturę B2B. Wycena AI w kilka minut, cesja online, przelew w 24 godziny. Ryzyko niewypłacalności przechodzi na nas. Usługa Creditline Poland.">
+<title>sprzedamfakture.pl — Sprzedaj fakturę. Gotówka w 24 godziny.</title>
+<meta name="description" content="Sprzedaj przeterminowaną fakturę B2B na sprzedamfakture.pl. Wycena AI w kilka minut, cesja online, przelew w 24 godziny. Ryzyko niewypłacalności dłużnika przechodzi na nas.">
+<meta property="og:title" content="sprzedamfakture.pl — Sprzedaj fakturę. Gotówka w 24 godziny.">
+<meta property="og:description" content="Kontrahent nie płaci? Sprzedaj nam fakturę B2B: wycena AI w kilka minut, cesja online, przelew następnego dnia roboczego.">
+<meta property="og:url" content="https://sprzedamfakture.pl/">
+<%- include('partials/meta') %>
 <link rel="stylesheet" href="/css/app.css">
 </head>
 <body class="sf">
 <div style="min-height:100vh; display:flex; flex-direction:column">
 
 <nav class="nav">
-  <a class="nav-brand" href="/">
-    <span class="b1">Sprzedam Fakturę</span>
-    <span class="b2"></span>
-    <span class="b3" style="letter-spacing:0.14em"><span>2</span><span>4</span><span>&nbsp;</span><span>G</span><span>O</span><span>D</span><span>Z</span><span>I</span><span>N</span><span>Y</span></span>
-  </a>
+  <%- include('partials/logo', { tagline: true }) %>
   <span class="nav-right nav-links">
     <a href="#jak">Jak to działa</a>
     <a href="#wycena">Wycena</a>
     <a href="#faq">FAQ</a>
+    <a href="/windykacja">Windykacja</a>
+    <a href="/login">Panel klienta</a>
     <a href="#formularz" class="nav-cta">Sprzedaj fakturę</a>
   </span>
 </nav>
@@ -38,7 +40,7 @@
     <div class="hero-visual" aria-hidden="true">
       <div class="hero-card">
         <div class="hc-top">
-          <span class="hc-brand">Sprzedam <em>Fakturę</em></span>
+          <%- include('partials/logo', { size: 'sm', asLink: false }) %>
           <span class="hc-seal tnum">24h</span>
         </div>
         <div class="hc-title">Oferta wykupu</div>
@@ -113,6 +115,8 @@
         <div class="sf-a">Ta pozostaje przy Tobie — z mocy ustawy (art. 10 ust. 4) nie podlega cesji. Możesz jej dochodzić samodzielnie, oferta dotyczy należności głównej z odsetkami.</div>
         <div class="sf-q">Czy dłużnik się dowie?</div>
         <div class="sf-a">Tak — po cesji zawiadamiamy dłużnika na piśmie (art. 512 KC). Od tego momentu płaci wyłącznie nam.</div>
+        <div class="sf-q">Wolę nie sprzedawać — tylko odzyskać pieniądze?</div>
+        <div class="sf-a">Też możemy: <a href="/windykacja">windykacja na koszt dłużnika</a> — Ty płacisz <%= SERVICE_FEE %> zł od sprawy, odsetki (14%), rekompensatę i koszty pokrywa dłużnik. Agent AI prowadzi sprawę w panelu.</div>
       </div>
     </div>
     <div class="cell">
@@ -137,7 +141,11 @@
 
 <footer class="sources">
   <div class="wrap">
-    <div class="cr">sprzedamfakture.pl — usługa <a href="https://creditline.pl">Creditline Poland</a> · kontakt@sprzedamfakture.pl · Podstawa: art. 509–512 KC, ustawa z 8.03.2013 r.</div>
+    <div class="sf-footer">
+      <%- include('partials/logo', { size: 'sm', tagline: true }) %>
+      <span class="sf-footer-links"><a href="/windykacja">Windykacja i faktoring</a> · <a href="/kalkulator">Kalkulator odsetek</a> · <a href="/login">Panel klienta</a></span>
+    </div>
+    <div class="cr">© 2026 sprzedamfakture.pl · kontakt@sprzedamfakture.pl · Podstawa: art. 509–512 KC, ustawa z 8.03.2013 r. o przeciwdziałaniu nadmiernym opóźnieniom w transakcjach handlowych.</div>
   </div>
 </footer>
 

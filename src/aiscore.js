@@ -1,4 +1,4 @@
-// Creditline Poland — AIScore-engine + monitoring
+// sprzedamfakture.pl — AIScore-engine + monitoring
 //
 // AIScore (0–100, klasa A–E): geen kredietscore van een biuro, maar een eigen
 // AI-inschatting van de INBAARHEID van deze concrete vordering, op basis van

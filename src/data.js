@@ -1,4 +1,4 @@
-// Creditline Poland — demodata & businesslogica
+// sprzedamfakture.pl — demodata & businesslogica
 // Rentevoet transacties handlowe: NBP referencyjna (4%) + 10 p.p. = 14% (I półrocze 2026)
 const INTEREST_RATE = 0.14;
 const SERVICE_FEE = parseInt(process.env.SERVICE_FEE || '99', 10);

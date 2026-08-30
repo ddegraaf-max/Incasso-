@@ -1,0 +1,39 @@
+<%
+/* sprzedamfakture.pl — logo (beeldmerk + woordmerk)
+   Opties: size ('sm' | 'lg'), tagline (bool), tagText, asLink (default true), href, light (bool, op donkere achtergrond) */
+var lgSize = (typeof size !== 'undefined' && size) ? ' brand-' + size : '';
+var lgTag = (typeof tagline !== 'undefined') && !!tagline;
+var lgTagText = (typeof tagText !== 'undefined' && tagText) ? tagText : 'Gotówka za fakturę w 24 h';
+var lgLink = (typeof asLink === 'undefined') ? true : !!asLink;
+var lgHref = (typeof href !== 'undefined' && href) ? href : '/';
+var lgLight = (typeof light !== 'undefined') && !!light;
+var lgId = 'lg' + Math.random().toString(36).slice(2, 8);
+var lgEl = lgLink ? 'a' : 'span';
+%>
+<<%= lgEl %> class="brand<%= lgSize %><%= lgLight ? ' brand-light' : '' %>"<% if (lgLink) { %> href="<%= lgHref %>" aria-label="sprzedamfakture.pl — strona główna"<% } %>>
+  <svg class="brand-mark" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+    <defs>
+      <linearGradient id="<%= lgId %>-coin" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#e6c56f"/>
+        <stop offset="1" stop-color="#b8892d"/>
+      </linearGradient>
+      <mask id="<%= lgId %>-cut">
+        <rect width="48" height="48" fill="#fff"/>
+        <circle cx="36" cy="36" r="12.2" fill="#000"/>
+      </mask>
+    </defs>
+    <g mask="url(#<%= lgId %>-cut)">
+      <path class="brand-sheet" fill="currentColor" d="M11 3h13l9 9v22a5 5 0 0 1-5 5H11a5 5 0 0 1-5-5V8a5 5 0 0 1 5-5z"/>
+      <path fill="#b8892d" d="M24 3v5a4 4 0 0 0 4 4h5z"/>
+      <g class="brand-lines" stroke="#f6f4ef" stroke-width="2.4" stroke-linecap="round" opacity=".9">
+        <path d="M12 18h9"/><path d="M12 23.5h13"/><path d="M12 29h8"/>
+      </g>
+    </g>
+    <circle cx="36" cy="36" r="9.8" fill="url(#<%= lgId %>-coin)"/>
+    <path d="M31.2 36.3l3.2 3.1 6.2-6.6" fill="none" stroke="#1d1707" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <span class="brand-text">
+    <span class="brand-word">sprzedam<b>fakture</b><i>.pl</i></span>
+    <% if (lgTag) { %><span class="brand-tag"><%= lgTagText %></span><% } %>
+  </span>
+</<%= lgEl %>>

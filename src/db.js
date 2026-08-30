@@ -1,4 +1,4 @@
-// Creditline Poland — databaselaag
+// sprzedamfakture.pl — databaselaag
 // Met DATABASE_URL (Railway PostgreSQL): volledige persistentie.
 // Zonder: in-memory fallback zodat lokaal/demo alles blijft werken.
 const { Pool } = require('pg');

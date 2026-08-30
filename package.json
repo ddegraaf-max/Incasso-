@@ -1,7 +1,7 @@
 {
-  "name": "creditline-poland",
+  "name": "sprzedamfakture-pl",
   "version": "0.1.0",
-  "description": "Creditline Poland — AI windykacja naleznosci (koncept)",
+  "description": "sprzedamfakture.pl — sprzedaz faktur B2B i windykacja AI (koncept)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"

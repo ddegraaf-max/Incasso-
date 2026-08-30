@@ -18,7 +18,7 @@ app.set('trust proxy', 1); // Railway zit achter een proxy
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: true }));
 const sessionOpts = {
-  secret: process.env.SESSION_SECRET || 'creditline-dev-secret-zmien-mnie',
+  secret: process.env.SESSION_SECRET || 'sprzedamfakture-dev-secret-zmien-mnie',
   resave: false,
   saveUninitialized: false,
   cookie: {
@@ -164,16 +164,11 @@ app.get('/admin', Auth.requireAdmin, async (req, res) => {
   res.render('admin', common({ page: 'admin', user: req.user, usersList: Auth.allUsers(), done: D.getDone(), events, leads }));
 });
 
-// ── Marketing (host-routing: creditline vs sprzedamfakture) ──────────────
+// ── Marketing ────────────────────────────────────────────────────────────
 const i18n = require('./src/i18n');
-const SPRZEDAM_HOSTS = (process.env.SPRZEDAM_HOSTS || 'sprzedamfakture.pl,www.sprzedamfakture.pl').split(',');
 
-function isSprzedamHost(req) {
-  const host = (req.hostname || '').toLowerCase();
-  return SPRZEDAM_HOSTS.includes(host);
-}
-
-function renderSprzedam(req, res, extra = {}) {
+// Strona główna: sprzedaż faktur (instant wycena + leadformulier)
+function renderHome(req, res, extra = {}) {
   const kwota = parseFloat(String(req.query.kwota || '').replace(',', '.')) || null;
   const dni = parseInt(req.query.dni, 10) || null;
   const est = kwota && dni && kwota > 0 && dni > 0 ? AiScore.estimateOffer(kwota, dni) : null;
@@ -185,22 +180,25 @@ function renderSprzedam(req, res, extra = {}) {
   }));
 }
 
-app.get('/', (req, res) => {
-  if (isSprzedamHost(req)) return renderSprzedam(req, res);
+app.get('/', (req, res) => renderHome(req, res));
+
+// Oude route van de aparte sprzedam-landing blijft werken
+app.get('/sprzedam', (req, res) => {
+  const qs = req.url.indexOf('?') >= 0 ? req.url.slice(req.url.indexOf('?')) : '';
+  res.redirect(301, '/' + qs);
+});
+
+// Windykacja, faktoring, panel AI — aanvullende landing (PL/EN)
+app.get('/windykacja', (req, res) => {
   const lang = req.query.lang === 'en' ? 'en' : 'pl';
   res.render('landing', common({ page: 'landing', lang, t: i18n[lang] }));
 });
-
-// preview op hoofddomein + eigen route
-app.get('/sprzedam', (req, res) => renderSprzedam(req, res));
 
 app.post('/sprzedaj', async (req, res) => {
   const { company, nip, kwota, dni, email, tel } = req.body;
   const kw = parseFloat(String(kwota || '').replace(',', '.')) || 0;
   const dn = parseInt(dni, 10) || 0;
-  if (!company || !email || !kw || !dn) {
-    return res.redirect((isSprzedamHost(req) ? '/' : '/sprzedam') + '#formularz');
-  }
+  if (!company || !email || !kw || !dn) return res.redirect('/#formularz');
   const est = AiScore.estimateOffer(kw, dn);
   await db.saveLead({ company, nip, email, tel, kwota: kw, dni: dn, oferta_pct: est.pct }).catch(() => {});
   await db.insertEvent({
@@ -208,8 +206,9 @@ app.post('/sprzedaj', async (req, res) => {
     title: 'Nowy lead sprzedamfakture.pl: ' + D.fmt(kw) + ' · ' + dn + ' dni · wstępnie ' + est.pct + '%',
     source: 'sprzedamfakture.pl',
   }).catch(() => {});
-  res.redirect((isSprzedamHost(req) ? '/' : '/sprzedam') + '?lead=ok#formularz');
+  res.redirect('/?lead=ok#formularz');
 });
+
 
 // ── App ──────────────────────────────────────────────────────────────────
 app.get('/app', Auth.requireAuth, (req, res) => res.redirect('/app/sprawy'));
@@ -327,6 +326,6 @@ async function start() {
   await Auth.initFromDb().catch(() => {});
   await D.initActions().catch(() => {});
   await AiScore.init(D.claims).catch((e) => console.error('AIScore init:', e.message));
-  app.listen(PORT, () => console.log('Creditline Poland draait op poort ' + PORT));
+  app.listen(PORT, () => console.log('sprzedamfakture.pl draait op poort ' + PORT));
 }
 start();

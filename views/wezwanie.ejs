@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Wezwanie do zapłaty — <%= nr %></title>
+<%- include('partials/meta') %>
 <link rel="stylesheet" href="/css/app.css">
 <style>
   .doc { max-width: 760px; margin: 0 auto; padding: 56px 28px; }
@@ -21,11 +22,7 @@
 <body>
 <div class="doc">
   <div class="doc-head">
-    <span class="nav-brand">
-      <span class="b1">Creditline</span>
-      <span class="b2"></span>
-      <span class="b3"><span>P</span><span>O</span><span>L</span><span>A</span><span>N</span><span>D</span></span>
-    </span>
+    <%- include('partials/logo', { asLink: false, tagline: true }) %>
     <span style="font-size:13px; color:var(--ink-70)" class="tnum">Data: <%= today %></span>
   </div>
 

@@ -1,12 +1,12 @@
-// Creditline Poland — landingscopy PL/EN (uit de design handoff one-pager)
+// sprzedamfakture.pl — landingscopy PL/EN voor /windykacja (windykacja, faktoring, panel AI) (uit de design handoff one-pager)
 module.exports = {
   pl: {
     langName: 'PL', otherLang: 'en', otherLangName: 'EN', htmlLang: 'pl',
-    metaTitle: 'Creditline Poland — Faktura wystawiona. Pieniądze odzyskane.',
+    metaTitle: 'Windykacja B2B, faktoring i panel AI — sprzedamfakture.pl',
     metaDesc: 'Windykacja B2B, faktoring i software AI do należności. Ty płacisz stałą opłatę — odsetki, rekompensatę i koszty pokrywa dłużnik.',
-    navServices: 'Usługi', navWhy: 'Dlaczego my', navContact: 'Kontakt', navCalc: 'Kalkulator odsetek', navApp: 'Panel klienta',
+    navServices: 'Usługi', navWhy: 'Dlaczego my', navContact: 'Kontakt', navCalc: 'Kalkulator odsetek', navSell: 'Sprzedaj fakturę', navApp: 'Panel klienta',
     heroH1: 'Faktura wystawiona. Pieniądze odzyskane.',
-    heroSub: 'Creditline łączy holenderską dyscyplinę płatniczą z realiami polskiego rynku: windykacja B2B, faktoring i oprogramowanie AI do zarządzania należnościami — od pierwszego przypomnienia po odzyskane środki.',
+    heroSub: 'sprzedamfakture.pl łączy holenderską dyscyplinę płatniczą z realiami polskiego rynku: sprzedaż faktur, windykacja B2B, faktoring i oprogramowanie AI do zarządzania należnościami — od pierwszego przypomnienia po odzyskane środki.',
     ctaTalk: 'Porozmawiajmy', ctaSee: 'Zobacz, jak pracujemy',
     stats: [
       ['38%', 'faktur B2B w Polsce jest przeterminowanych', '1'],
@@ -52,7 +52,7 @@ module.exports = {
       ['8,5%', 'tylko tyle firm nie ma żadnych zaległości — rok wcześniej było to 14,6%.', '2'],
     ],
     closingH: 'Przestań darmowo kredytować swoich kontrahentów.',
-    ctaCall: 'Umów rozmowę', ctaPanel: 'Wypróbuj panel',
+    ctaCall: 'Umów rozmowę', ctaPanel: 'Wypróbuj panel', ctaSell: 'Sprzedaj fakturę — wycena od razu',
     srcKicker: 'Źródła',
     sources: [
       'Atradius, B2B Payment Practices Trends: Poland, 2025.',
@@ -62,16 +62,16 @@ module.exports = {
       'Biznes.gov.pl — odsetki ustawowe za opóźnienie w transakcjach handlowych, stawka na I półrocze 2026 (stopa ref. NBP 4% + 10 p.p.).',
       'Ustawa z dnia 8 marca 2013 r. o przeciwdziałaniu nadmiernym opóźnieniom w transakcjach handlowych, art. 7 i 10.',
     ],
-    copyright: '© 2026 Creditline Poland',
+    copyright: '© 2026 sprzedamfakture.pl',
   },
 
   en: {
     langName: 'EN', otherLang: 'pl', otherLangName: 'PL', htmlLang: 'en',
-    metaTitle: 'Creditline Poland — Invoice issued. Money recovered.',
+    metaTitle: 'B2B debt collection, factoring and AI panel — sprzedamfakture.pl',
     metaDesc: 'B2B debt collection, factoring and AI receivables software in Poland. You pay a flat fee — interest, the fixed recovery fee and costs are borne by the debtor.',
-    navServices: 'Services', navWhy: 'Why us', navContact: 'Contact', navCalc: 'Interest calculator', navApp: 'Client panel',
+    navServices: 'Services', navWhy: 'Why us', navContact: 'Contact', navCalc: 'Interest calculator', navSell: 'Sell an invoice', navApp: 'Client panel',
     heroH1: 'Invoice issued. Money recovered.',
-    heroSub: 'Creditline brings Dutch payment discipline to the Polish market: B2B debt collection, factoring and AI receivables software — from the first reminder to recovered funds.',
+    heroSub: 'sprzedamfakture.pl brings Dutch payment discipline to the Polish market: invoice purchase, B2B debt collection, factoring and AI receivables software — from the first reminder to recovered funds.',
     ctaTalk: "Let's talk", ctaSee: 'See how we work',
     stats: [
       ['38%', 'of B2B invoices in Poland are overdue', '1'],
@@ -117,7 +117,7 @@ module.exports = {
       ['8.5%', 'of companies are entirely free of overdue receivables — down from 14.6% a year earlier.', '2'],
     ],
     closingH: 'Stop financing your clients for free.',
-    ctaCall: 'Book a call', ctaPanel: 'Try the panel',
+    ctaCall: 'Book a call', ctaPanel: 'Try the panel', ctaSell: 'Sell an invoice — instant quote',
     srcKicker: 'Sources',
     sources: [
       'Atradius, B2B Payment Practices Trends: Poland, 2025.',
@@ -127,6 +127,6 @@ module.exports = {
       'Biznes.gov.pl — statutory interest for late payment in commercial transactions, H1 2026 rate (NBP reference rate 4% + 10 pp).',
       'Act of 8 March 2013 on counteracting excessive delays in commercial transactions, arts. 7 and 10.',
     ],
-    copyright: '© 2026 Creditline Poland',
+    copyright: '© 2026 sprzedamfakture.pl',
   },
 };

@@ -5,27 +5,25 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title><%= t.metaTitle %></title>
 <meta name="description" content="<%= t.metaDesc %>">
-<link rel="alternate" hreflang="pl" href="/?lang=pl">
-<link rel="alternate" hreflang="en" href="/?lang=en">
+<link rel="alternate" hreflang="pl" href="/windykacja?lang=pl">
+<link rel="alternate" hreflang="en" href="/windykacja?lang=en">
+<%- include('partials/meta') %>
 <link rel="stylesheet" href="/css/app.css">
 </head>
 <body>
 <div style="min-height:100vh; display:flex; flex-direction:column">
 
 <nav class="nav">
-  <a class="nav-brand" href="/?lang=<%= lang %>">
-    <span class="b1">Creditline</span>
-    <span class="b2"></span>
-    <span class="b3"><span>P</span><span>O</span><span>L</span><span>A</span><span>N</span><span>D</span></span>
-  </a>
+  <%- include('partials/logo', { tagline: true, href: '/windykacja?lang=' + lang }) %>
   <span class="nav-right nav-links">
     <a href="#uslugi"><%= t.navServices %></a>
     <a href="#dlaczego"><%= t.navWhy %></a>
     <a href="#kontakt"><%= t.navContact %></a>
     <a href="/kalkulator"><%= t.navCalc %></a>
+    <a href="/"><%= t.navSell %></a>
     <a href="/app/sprawy"><%= t.navApp %></a>
     <span class="lang-switch">
-      <a href="/?lang=pl" class="<%= lang === 'pl' ? 'active' : '' %>">PL</a><span class="sep">·</span><a href="/?lang=en" class="<%= lang === 'en' ? 'active' : '' %>">EN</a>
+      <a href="/windykacja?lang=pl" class="<%= lang === 'pl' ? 'active' : '' %>">PL</a><span class="sep">·</span><a href="/windykacja?lang=en" class="<%= lang === 'en' ? 'active' : '' %>">EN</a>
     </span>
   </span>
 </nav>
@@ -44,7 +42,7 @@
     <div class="hero-visual" aria-hidden="true">
       <div class="hero-card">
         <div class="hc-top">
-          <span class="hc-brand">Creditline <em>Poland</em></span>
+          <%- include('partials/logo', { size: 'sm', asLink: false }) %>
           <span class="hc-seal tnum">14%</span>
         </div>
         <div class="hc-title">Wezwanie do zapłaty</div>
@@ -143,8 +141,8 @@
 <section class="closing" id="kontakt">
   <h2><%= t.closingH %></h2>
   <div class="cta" style="display:flex; gap:14px; margin-top:20px; flex-wrap:wrap">
-    <a class="btn" href="mailto:kontakt@creditline.pl"><%= t.ctaCall %></a>
-    <a class="btn btn-ghost" href="/app/sprawy"><%= t.ctaPanel %></a>
+    <a class="btn" href="mailto:kontakt@sprzedamfakture.pl"><%= t.ctaCall %></a>
+    <a class="btn btn-ghost" href="/#wycena"><%= t.ctaSell %></a>
   </div>
 </section>
 
@@ -154,7 +152,7 @@
   <ol>
     <% t.sources.forEach(function(s) { %><li><%= s %></li><% }) %>
   </ol>
-  <div class="cr"><%= t.copyright %> · kontakt@creditline.pl</div>
+  <div class="cr"><%= t.copyright %> · kontakt@sprzedamfakture.pl · <a href="/">sprzedaj fakturę</a> · <a href="/kalkulator"><%= t.navCalc %></a></div>
   </div>
 </footer>
 

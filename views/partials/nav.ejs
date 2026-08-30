@@ -1,9 +1,5 @@
 <nav class="nav">
-  <a class="nav-brand" href="/">
-    <span class="b1">Creditline</span>
-    <span class="b2"></span>
-    <span class="b3"><span>P</span><span>O</span><span>L</span><span>A</span><span>N</span><span>D</span></span>
-  </a>
+  <%- include('logo', { tagline: page !== 'app' && page !== 'admin' }) %>
   <span class="nav-right">
     <% if (page === 'app' || page === 'admin') { %>
       <%= user ? user.company : '' %><% if (user && user.totpConfirmed) { %> · 2FA<% } %>
@@ -14,6 +10,8 @@
       <a href="/">Strona główna</a>
       <a href="/kalkulator">Kalkulator odsetek</a>
     <% } else { %>
+      <a href="/#wycena">Sprzedaj fakturę</a>
+      <a href="/windykacja">Windykacja</a>
       <a href="/kalkulator">Kalkulator odsetek</a>
       <a href="/login">Panel klienta</a>
     <% } %>

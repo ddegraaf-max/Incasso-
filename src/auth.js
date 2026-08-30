@@ -1,4 +1,4 @@
-// Creditline Poland — authenticatie & beveiliging
+// sprzedamfakture.pl — authenticatie & beveiliging
 // Concept: in-memory store (reset bij redeploy). Productie: PostgreSQL.
 const bcrypt = require('bcryptjs');
 const speakeasy = require('speakeasy');
@@ -50,12 +50,12 @@ function allUsers() { return Array.from(users.values()); }
 
 // ── Seeds ────────────────────────────────────────────────────────────────
 // Demo-klant (zonder 2FA, alleen om te testen — verwijderen vóór livegang)
-addUser({ email: 'demo@creditline.pl', password: 'Demo1234!', company: 'Twoja Firma Sp. z o.o.', nip: '521-000-00-00', role: 'client' });
+addUser({ email: 'demo@sprzedamfakture.pl', password: 'Demo1234!', company: 'Twoja Firma Sp. z o.o.', nip: '521-000-00-00', role: 'client' });
 // Admin uit env vars; 2FA wordt bij eerste login verplicht ingesteld
 addUser({
-  email: process.env.ADMIN_EMAIL || 'admin@creditline.pl',
+  email: process.env.ADMIN_EMAIL || 'admin@sprzedamfakture.pl',
   password: process.env.ADMIN_PASSWORD || 'Admin-Zmien-Mnie-1!',
-  company: 'Creditline Poland', role: 'admin',
+  company: 'sprzedamfakture.pl', role: 'admin',
 });
 
 // ── Wachtwoordcontrole ───────────────────────────────────────────────────
@@ -74,7 +74,7 @@ function passwordPolicy(pw) {
 // ── TOTP / 2FA ───────────────────────────────────────────────────────────
 function newTotpSecret() { return speakeasy.generateSecret({ length: 20 }).base32; }
 function totpUri(user, secret) {
-  return speakeasy.otpauthURL({ secret, encoding: 'base32', label: user.email, issuer: 'Creditline Poland' });
+  return speakeasy.otpauthURL({ secret, encoding: 'base32', label: user.email, issuer: 'sprzedamfakture.pl' });
 }
 function verifyTotp(secret, token) {
   try {

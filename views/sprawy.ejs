@@ -1,4 +1,4 @@
-<%- include('partials/head', { title: 'Sprawy — Creditline Poland' }) %>
+<%- include('partials/head', { title: 'Sprawy — sprzedamfakture.pl' }) %>
 <%- include('partials/nav') %>
 
 <div class="stats">
@@ -108,7 +108,7 @@
       <hr class="rule">
       <div class="action-block">
         <h3>Albo sprzedaj wierzytelność</h3>
-        <p>Wycena agenta AI: <%= sel.pct %>% wartości. Wypłata w 24 godziny, ryzyko przechodzi na Creditline.</p>
+        <p>Wycena agenta AI: <%= sel.pct %>% wartości. Wypłata w 24 godziny, ryzyko przechodzi na nas.</p>
         <form class="inline" method="post" action="/app/sprawy/<%= sel.id %>/sell">
           <button class="btn btn-secondary" type="submit">Przyjmij ofertę — <%= D.fmt(Math.round(sel.amount * sel.pct / 100)) %></button>
         </form>
