@@ -1,20 +1,21 @@
-<%- include('partials/head', { title: 'Admin — sprzedamfakture.pl' }) %>
+<% var M = t.app.admin, fill = t.fill; %>
+<%- include('partials/head', { title: t.app.titles.admin + ' — sprzedamfakture.pl' }) %>
 <%- include('partials/nav') %>
 
 <div class="stats">
-  <div class="stat"><div class="v tnum"><%= usersList.filter(u => u.role === 'client').length %></div><div class="l">Klienci</div></div>
-  <div class="stat"><div class="v tnum"><%= D.claims.length %></div><div class="l">Sprawy</div></div>
-  <div class="stat"><div class="v tnum accent"><%= Object.values(done).filter(v => v === 'collect').length %></div><div class="l">Zlecone windykacje</div></div>
-  <div class="stat"><div class="v tnum"><%= Object.values(done).filter(v => v === 'sell').length %></div><div class="l">Wykupione</div></div>
+  <div class="stat"><div class="v tnum"><%= usersList.filter(u => u.role === 'client').length %></div><div class="l"><%= M.stats.clients %></div></div>
+  <div class="stat"><div class="v tnum"><%= D.claims.length %></div><div class="l"><%= M.stats.cases %></div></div>
+  <div class="stat"><div class="v tnum accent"><%= Object.values(done).filter(v => v === 'collect').length %></div><div class="l"><%= M.stats.collections %></div></div>
+  <div class="stat"><div class="v tnum"><%= Object.values(done).filter(v => v === 'sell').length %></div><div class="l"><%= M.stats.bought %></div></div>
 </div>
 
 <div class="two-pane">
   <div class="pane-left">
-    <div class="kicker">Użytkownicy</div>
-    <p class="helper">Konta klientów i administratorów. Store w pamięci — po restarcie pozostają tylko konta seedowane (produkcja: PostgreSQL).</p>
+    <div class="kicker"><%= M.usersKicker %></div>
+    <p class="helper"><%= M.usersHelper %></p>
     <table class="cases">
       <thead>
-        <tr><th>Firma</th><th>E-mail</th><th>NIP</th><th>Rola</th><th>2FA</th></tr>
+        <tr><th><%= M.th.company %></th><th><%= M.th.email %></th><th><%= M.th.nip %></th><th><%= M.th.role %></th><th><%= M.th.twofa %></th></tr>
       </thead>
       <tbody>
         <% usersList.forEach(function(u) { %>
@@ -23,7 +24,7 @@
           <td><%= u.email %></td>
           <td class="tnum"><%= u.nip || '—' %></td>
           <td><span class="tag <%= u.role === 'admin' ? 'tag-accent' : 'tag-neutral' %>"><%= u.role %></span></td>
-          <td><span class="tag <%= u.totpConfirmed ? 'tag-outline' : 'tag-neutral' %>"><%= u.totpConfirmed ? 'Włączone' : 'Brak' %></span></td>
+          <td><span class="tag <%= u.totpConfirmed ? 'tag-outline' : 'tag-neutral' %>"><%= u.totpConfirmed ? M.on : M.off %></span></td>
         </tr>
         <% }) %>
       </tbody>
@@ -31,53 +32,50 @@
   </div>
 
   <aside class="pane-right">
-    <div class="kicker">Sprawy — status akcji</div>
+    <div class="kicker"><%= M.casesKicker %></div>
     <table class="cases">
-      <thead><tr><th>Faktura</th><th class="num">Kwota</th><th>Status</th></tr></thead>
+      <thead><tr><th><%= M.th.invoice %></th><th class="num"><%= M.th.amount %></th><th><%= M.th.status %></th></tr></thead>
       <tbody>
         <% D.claims.forEach(function(c) { var st = done[c.id]; %>
         <tr>
           <td class="tnum"><%= c.nr %></td>
           <td class="num tnum"><%= D.fmt(c.amount) %></td>
-          <td><span class="tag <%= st ? 'tag-accent' : 'tag-neutral' %>"><%= st === 'collect' ? 'Windykacja' : st === 'sell' ? 'Sprzedana' : c.phase %></span></td>
+          <td><span class="tag <%= st ? 'tag-accent' : 'tag-neutral' %>"><%= st === 'collect' ? M.stCollect : st === 'sell' ? M.stSold : t.tr(c.phase) %></span></td>
         </tr>
         <% }) %>
       </tbody>
     </table>
     <hr class="rule">
-    <div class="label">Leady — formularz „Sprzedaj fakturę”</div>
-    <% if (!leads.length) { %><p class="helper">Brak leadów.</p><% } %>
+    <div class="label"><%= M.leadsLabel %></div>
+    <% if (!leads.length) { %><p class="helper"><%= M.noLeads %></p><% } %>
     <% leads.slice(0, 6).forEach(function(l) { %>
     <div class="feed-row">
-      <span class="time tnum"><%= new Date(l.created_at).toLocaleDateString('pl-PL', {day:'numeric', month:'short'}) %></span>
+      <span class="time tnum"><%= new Date(l.created_at).toLocaleDateString(t.locale, {day:'numeric', month:'short'}) %></span>
       <span class="dot"></span>
       <span>
-        <div class="fx"><%= l.company %> · <span class="tnum"><%= D.fmt(Number(l.kwota)) %> · <%= l.dni %> dni · wstępnie <%= l.oferta_pct %>%</span></div>
-        <div class="fr2 tnum"><%= l.email %> · <%= l.tel || '' %> · NIP dłużnika: <%= l.nip %></div>
+        <div class="fx"><%= l.company %> · <span class="tnum"><%= fill(M.leadLine, { kwota: D.fmt(Number(l.kwota)), dni: l.dni, pct: l.oferta_pct }) %></span></div>
+        <div class="fr2 tnum"><%= l.email %> · <%= l.tel || '' %> · <%= fill(M.leadNip, { nip: l.nip }) %></div>
       </span>
     </div>
     <% }) %>
 
     <hr class="rule">
-    <div class="label">Zdarzenia monitoringu</div>
+    <div class="label"><%= M.eventsLabel %></div>
     <% events.slice(0, 8).forEach(function(ev) { %>
     <div class="feed-row">
-      <span class="time tnum"><%= new Date(ev.created_at).toLocaleTimeString('pl-PL', {hour:'2-digit', minute:'2-digit'}) %></span>
+      <span class="time tnum"><%= new Date(ev.created_at).toLocaleTimeString(t.locale, {hour:'2-digit', minute:'2-digit'}) %></span>
       <span class="dot"></span>
       <span>
-        <div class="fx"><%= ev.title %></div>
-        <div class="fr2"><%= ev.debtor || 'system' %> · <%= ev.source %></div>
+        <div class="fx"><%= t.tr(ev.title) %></div>
+        <div class="fr2"><%= ev.debtor || M.system %> · <%= t.tr(ev.source) %></div>
       </span>
     </div>
     <% }) %>
 
     <hr class="rule">
-    <div class="label">Bezpieczeństwo</div>
+    <div class="label"><%= M.secLabel %></div>
     <ul class="rules-list">
-      <li>Hasła: bcrypt (koszt 12)</li>
-      <li>2FA: TOTP, obowiązkowe dla admina i nowych kont</li>
-      <li>Blokada: 5 nieudanych prób → 15 minut</li>
-      <li>Sesje: httpOnly, sameSite=lax</li>
+      <% M.sec.forEach(function(s) { %><li><%= s %></li><% }) %>
     </ul>
   </aside>
 </div>

@@ -1,27 +1,36 @@
-<%- include('partials/head', { title: 'Logowanie — sprzedamfakture.pl' }) %>
+<% var L = t.app.login; %>
+<%- include('partials/head', { title: t.app.titles.login + ' — sprzedamfakture.pl' }) %>
 <%- include('partials/nav') %>
 
 <div class="calc-wrap auth-wrap" style="flex:1">
-  <div class="kicker">Panel klienta</div>
-  <h1 style="font-size:32px">Zaloguj się</h1>
-  <p class="helper">Dostęp do spraw, agenta AI i ofert wykupu.</p>
+  <div class="kicker"><%= L.kicker %></div>
+  <h1 style="font-size:32px"><%= L.h %></h1>
+  <p class="helper"><%= L.helper %></p>
 
-  <form class="calc-form" method="post" action="/login">
+  <form class="calc-form" method="post" action="/login" id="login-form">
     <input type="hidden" name="next" value="<%= next %>">
-    <% if (error) { %><div class="form-error"><%= error %></div><% } %>
+    <% if (error) { %><div class="form-error" role="alert"><%= error %></div><% } %>
     <div class="fg">
-      <label for="email">E-mail</label>
+      <label for="email"><%= L.email %></label>
       <input type="email" id="email" name="email" autocomplete="username" value="<%= email %>" required>
     </div>
     <div class="fg">
-      <label for="password">Hasło</label>
+      <label for="password"><%= L.password %></label>
       <input type="password" id="password" name="password" autocomplete="current-password" required>
     </div>
-    <button class="btn" type="submit">Zaloguj się</button>
+    <button class="btn" type="submit"><%= L.btn %></button>
   </form>
 
-  <p style="font-size:13.5px">Nie masz konta? <a href="/rejestracja">Zarejestruj firmę</a></p>
-  <p class="legal-note">Logowanie chronione: hasła haszowane (bcrypt), weryfikacja dwuetapowa (TOTP), blokada po 5 nieudanych próbach.</p>
+  <% if (typeof demo !== 'undefined' && demo) { %>
+  <div class="demo-box">
+    <span class="tag tag-accent"><%= L.demoTitle %></span>
+    <span><%= L.demoText %> <code class="tnum"><%= demo.email %></code> / <code class="tnum"><%= demo.password %></code></span>
+    <button type="button" class="btn btn-secondary chan-btn" onclick="document.getElementById('email').value='<%= demo.email %>';document.getElementById('password').value='<%= demo.password %>';document.getElementById('login-form').submit()"><%= L.demoFill %></button>
+  </div>
+  <% } %>
+
+  <p style="font-size:13.5px"><%= L.noAccount %> <a href="/rejestracja"><%= L.register %></a></p>
+  <p class="legal-note"><%= L.note %></p>
 </div>
 
 <%- include('partials/footer') %>

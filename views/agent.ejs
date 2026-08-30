@@ -1,31 +1,32 @@
-<%- include('partials/head', { title: 'Agent AI — sprzedamfakture.pl' }) %>
+<% var G = t.app.agent, fill = t.fill; %>
+<%- include('partials/head', { title: t.app.titles.agent + ' — sprzedamfakture.pl' }) %>
 <%- include('partials/nav') %>
 
 <div class="agent-panes">
   <section class="agent-left">
-    <div class="kicker">Monitoring — dane publiczne na żywo</div>
-    <p class="helper">Agent w pętli sprawdza KRZ, MSiG i białą listę dla każdego dłużnika w bazie. Nowe obwieszczenie = zdarzenie + przeliczenie AIScore.</p>
-    <% if (!events.length) { %><p class="helper">Brak zdarzeń — monitoring aktywny.</p><% } %>
+    <div class="kicker"><%= G.monKicker %></div>
+    <p class="helper"><%= G.monHelper %></p>
+    <% if (!events.length) { %><p class="helper"><%= G.noEvents %></p><% } %>
     <% events.forEach(function(ev) { %>
     <div class="feed-row">
-      <span class="time tnum"><%= new Date(ev.created_at).toLocaleTimeString('pl-PL', {hour:'2-digit', minute:'2-digit'}) %></span>
+      <span class="time tnum"><%= new Date(ev.created_at).toLocaleTimeString(t.locale, {hour:'2-digit', minute:'2-digit'}) %></span>
       <span class="dot"></span>
       <span>
-        <div class="fx"><span class="tag tag-outline" style="margin-right:8px"><%= ev.type %></span><%= ev.title %></div>
-        <div class="fr2 tnum"><%= ev.debtor ? ev.debtor + ' · ' : '' %><%= ev.source %></div>
+        <div class="fx"><span class="tag tag-outline" style="margin-right:8px"><%= t.tr(ev.type) %></span><%= t.tr(ev.title) %></div>
+        <div class="fr2 tnum"><%= ev.debtor ? ev.debtor + " · " : "" %><%= t.tr(ev.source) %></div>
       </span>
     </div>
     <% }) %>
 
     <hr class="rule">
-    <div class="kicker">Dziś — praca agenta</div>
-    <p class="helper">Każde działanie zapisane, każdy krok widoczny — kluczowe decyzje zawsze za Twoją zgodą.</p>
+    <div class="kicker"><%= G.todayKicker %></div>
+    <p class="helper"><%= G.todayHelper %></p>
     <% feed.forEach(function(f) { %>
     <div class="feed-row <%= f.planned ? 'planned' : '' %>">
       <span class="time tnum"><%= f.time %></span>
       <span class="dot"></span>
       <span>
-        <div class="fx"><%= f.text %></div>
+        <div class="fx"><%= t.tr(f.text) %></div>
         <div class="fr2 tnum"><%= f.ref %></div>
       </span>
     </div>
@@ -33,29 +34,28 @@
   </section>
 
   <section class="agent-right">
-    <div class="kicker">Negocjacje — FV 2026/06/089 · TransLog Polska S.A.</div>
+    <div class="kicker"><%= G.negKicker %></div>
 
-    <div class="label" style="margin-top:16px">Ton agenta</div>
+    <div class="label" style="margin-top:16px"><%= G.toneLabel %></div>
     <div class="tone-switch">
-      <% TONES.forEach(function(t) { %>
-      <a href="/app/agent?ton=<%= t %>" class="<%= t === tone ? 'active' : '' %>"><%= t %></a>
+      <% TONES.forEach(function(tn) { %>
+      <a href="/app/agent?ton=<%= tn %>" class="<%= tn === tone ? 'active' : '' %>"><%= t.app.tones[tn] || tn %></a>
       <% }) %>
     </div>
 
     <% thread.forEach(function(m) { %>
     <div class="msg <%= m.agent ? 'agent' : '' %>">
-      <div class="who"><%= m.label %></div>
-      <div class="body"><%= m.text %></div>
+      <div class="who"><%= t.tr(m.label) %></div>
+      <div class="body"><%= t.tr(m.text) %></div>
     </div>
     <% }) %>
 
     <hr class="rule">
-    <div class="label">Zasady agenta</div>
+    <div class="label"><%= G.rulesLabel %></div>
     <ul class="rules-list">
-      <li>Ton komunikacji: <strong><%= tone %></strong></li>
-      <li>Kontakt: dni robocze 8:00–18:00, PL / EN</li>
-      <li>Wpis do KRD i pozew: zawsze za Twoją zgodą</li>
-      <li>Każdy krok zapisany w historii sprawy</li>
+      <% G.rules.forEach(function(r, i) { %>
+      <li><%- i === 0 ? fill(r, { tone: '<strong>' + (t.app.tones[tone] || tone) + '</strong>' }) : r %></li>
+      <% }) %>
     </ul>
   </section>
 </div>

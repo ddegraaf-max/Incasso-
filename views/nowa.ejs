@@ -1,64 +1,59 @@
-<%- include('partials/head', { title: 'Nowa sprawa — sprzedamfakture.pl' }) %>
+<% var N = t.app.nowa, fill = t.fill; %>
+<%- include('partials/head', { title: t.app.titles.nowa + ' — sprzedamfakture.pl' }) %>
 <%- include('partials/nav') %>
 
 <div class="cols3">
   <section>
-    <div class="kicker">01 · Źródło</div>
-    <p class="helper">Trzy drogi do założenia sprawy — wybierz wygodną dla siebie.</p>
+    <div class="kicker"><%= N.k1 %></div>
+    <p class="helper"><%= N.h1 %></p>
 
+    <% N.sources.forEach(function(s, i) { %>
     <div class="source-row">
-      <div class="sr-head"><span>KSeF — synchronizacja</span><span class="tag tag-accent">Auto</span></div>
-      <p>Każda faktura po terminie pojawia się tu automatycznie.</p>
+      <div class="sr-head"><span><%= s[0] %></span><span class="tag <%= i === 0 ? 'tag-accent' : 'tag-neutral' %>"><%= s[1] %></span></div>
+      <p><%= s[2] %></p>
     </div>
-    <div class="source-row">
-      <div class="sr-head"><span>Plik XML / PDF</span><span class="tag tag-neutral">Ręcznie</span></div>
-      <p>Przeciągnij fakturę tutaj — agent AI odczyta dane i założy sprawę.</p>
-    </div>
-    <div class="source-row">
-      <div class="sr-head"><span>E-mail</span><span class="tag tag-neutral">Przekaż</span></div>
-      <p>Prześlij fakturę na sprawy@sprzedamfakture.pl — resztą zajmie się agent.</p>
-    </div>
+    <% }) %>
   </section>
 
   <section>
-    <div class="kicker">02 · Analiza AI</div>
-    <p class="helper">Przykład: tak agent czyta świeżo zaimportowaną fakturę.</p>
+    <div class="kicker"><%= N.k2 %></div>
+    <p class="helper"><%= N.h2 %></p>
     <div class="faktura-card">
       <div class="fc-nr tnum">FV 2026/07/233</div>
-      <div class="field-row"><span class="fk">Dłużnik</span><span>Betmix Beton Sp. z o.o.</span></div>
-      <div class="field-row"><span class="fk">NIP</span><span class="tnum">527-020-38-15</span></div>
-      <div class="field-row"><span class="fk">Kwota</span><span class="tnum">23 400 zł</span></div>
-      <div class="field-row"><span class="fk">Termin</span><span class="tnum">12 lip · 5 dni po terminie</span></div>
+      <div class="field-row"><span class="fk"><%= N.fields.debtor %></span><span>Betmix Beton Sp. z o.o.</span></div>
+      <div class="field-row"><span class="fk"><%= N.fields.nip %></span><span class="tnum">527-020-38-15</span></div>
+      <div class="field-row"><span class="fk"><%= N.fields.amount %></span><span class="tnum">23 400 zł</span></div>
+      <div class="field-row"><span class="fk"><%= N.fields.due %></span><span class="tnum"><%= N.fields.dueVal %></span></div>
     </div>
     <div style="margin-top:18px">
-      <div class="dot-row"><span class="dot"></span><span>KRD / BIG: brak wpisów, KRS aktywny</span></div>
-      <div class="dot-row"><span class="dot"></span><span>Historia: płaci średnio 12 dni po terminie</span></div>
-      <div class="dot-row"><span class="dot"></span><span>AIScore 83 · klasa B · prognoza odzyskania 91% w 21 dni</span></div>
+      <% N.signals.forEach(function(s) { %>
+      <div class="dot-row"><span class="dot"></span><span><%= s %></span></div>
+      <% }) %>
     </div>
   </section>
 
   <section>
-    <div class="kicker">03 · Decyzja</div>
-    <p class="helper">Rekomendacja agenta: ścieżka polubowna — wysokie prawdopodobieństwo szybkiej wpłaty.</p>
+    <div class="kicker"><%= N.k3 %></div>
+    <p class="helper"><%= N.h3 %></p>
 
     <% if (!nowaDone) { %>
       <div class="action-block">
-        <h3>Uruchom agenta AI</h3>
-        <p>Monitoring, przypomnienia, negocjacje i eskalacja — odsetki 14%, rekompensata 300 zł i koszty obciążają dłużnika.</p>
+        <h3><%= N.run.h %></h3>
+        <p><%= N.run.p %></p>
         <form class="inline" method="post" action="/app/nowa/collect">
-          <button class="btn" type="submit">Uruchom — <%= SERVICE_FEE %> zł</button>
+          <button class="btn" type="submit"><%= fill(N.run.btn, { fee: SERVICE_FEE }) %></button>
         </form>
       </div>
       <hr class="rule">
       <div class="action-block">
-        <h3>Albo sprzedaj od razu</h3>
-        <p>Wycena agenta AI: 86% wartości. Wypłata w 24 godziny, ryzyko przechodzi na nas.</p>
+        <h3><%= N.sell.h %></h3>
+        <p><%= N.sell.p %></p>
         <form class="inline" method="post" action="/app/nowa/sell">
-          <button class="btn btn-secondary" type="submit">Przyjmij ofertę — 20 124 zł</button>
+          <button class="btn btn-secondary" type="submit"><%= N.sell.btn %></button>
         </form>
       </div>
     <% } else { %>
-      <div class="confirm"><span class="sq"></span><span><%= nowaDone === 'collect' ? 'Agent AI uruchomiony — pierwsze przypomnienie jutro o 9:00.' : 'Oferta przyjęta — cesja do podpisu, wypłata w 24 godziny.' %></span></div>
+      <div class="confirm"><span class="sq"></span><span><%= nowaDone === 'collect' ? N.done.collect : N.done.sell %></span></div>
     <% } %>
   </section>
 </div>

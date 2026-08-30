@@ -83,27 +83,27 @@ function safeNext(n) {
 // ── Auth ─────────────────────────────────────────────────────────────────
 app.get('/login', (req, res) => {
   if (Auth.currentUser(req)) return res.redirect('/app/sprawy');
-  res.render('login', common({ page: 'auth', error: null, email: '', next: safeNext(req.query.next) }));
+  res.render('login', common({ page: 'auth', error: null, email: '', next: safeNext(req.query.next), demo: Auth.DEMO }));
 });
 
 app.post('/login', (req, res) => {
   const { email, password } = req.body;
   const next = safeNext(req.body.next);
   const ip = req.ip;
-  const fail = (msg) => res.status(401).render('login', common({ page: 'auth', error: msg, email: email || '', next }));
+  const fail = (msg) => res.status(401).render('login', common({ page: 'auth', error: msg, email: email || '', next, demo: Auth.DEMO }));
 
   if (Auth.isLocked(ip, email)) {
-    return fail('Zbyt wiele nieudanych prób. Spróbuj ponownie za 15 minut.');
+    return fail(res.locals.t.app.msg.tooMany);
   }
   const user = Auth.findUser(email);
   if (!user || !Auth.checkPassword(user, password)) {
     Auth.registerFail(ip, email);
-    return fail('Nieprawidłowy e-mail lub hasło.');
+    return fail(res.locals.t.app.msg.badCreds);
   }
   Auth.registerSuccess(ip, email);
 
   req.session.regenerate((err) => {
-    if (err) return fail('Błąd sesji — spróbuj ponownie.');
+    if (err) return fail(res.locals.t.app.msg.sessionErr);
     req.session.userId = user.id;
     // Admin zonder 2FA → verplichte setup; klant met 2FA → verificatie
     if (user.totpConfirmed) {
@@ -129,11 +129,11 @@ app.post('/rejestracja', (req, res) => {
   const form = { company: company || '', nip: nip || '', email: email || '' };
   const fail = (msg) => res.status(400).render('rejestracja', common({ page: 'auth', error: msg, form }));
 
-  if (!company || !email) return fail('Uzupełnij nazwę firmy i e-mail.');
-  if (Auth.findUser(email)) return fail('Konto z tym adresem już istnieje. Zaloguj się.');
+  if (!company || !email) return fail(res.locals.t.app.msg.fillCompanyEmail);
+  if (Auth.findUser(email)) return fail(res.locals.t.app.msg.exists);
   const policyErr = Auth.passwordPolicy(password);
-  if (policyErr) return fail(policyErr);
-  if (password !== password2) return fail('Hasła nie są identyczne.');
+  if (policyErr) return fail(res.locals.t.app.msg[policyErr] || policyErr);
+  if (password !== password2) return fail(res.locals.t.app.msg.pwMismatch);
 
   const user = Auth.addUser({ email, password, company, nip, role: 'client' });
   req.session.regenerate(() => {
@@ -159,7 +159,7 @@ app.post('/2fa/setup', async (req, res) => {
   if (!Auth.verifyTotp(req.session.totpSecret, req.body.token)) {
     const uri = Auth.totpUri(user, req.session.totpSecret);
     const qr = await QRCode.toDataURL(uri, { margin: 0, width: 196 });
-    return res.status(401).render('twofa-setup', common({ page: 'auth', error: 'Nieprawidłowy kod — spróbuj ponownie.', qr, secret: req.session.totpSecret }));
+    return res.status(401).render('twofa-setup', common({ page: 'auth', error: res.locals.t.app.msg.badCodeRetry, qr, secret: req.session.totpSecret }));
   }
   user.totpSecret = req.session.totpSecret;
   user.totpConfirmed = true;
@@ -181,11 +181,11 @@ app.post('/2fa', (req, res) => {
   if (!user || !req.session.pending2fa) return res.redirect('/login');
   const ip = req.ip;
   if (Auth.isLocked(ip, user.email + ':2fa')) {
-    return res.status(401).render('twofa', common({ page: 'auth', error: 'Zbyt wiele prób. Spróbuj za 15 minut.', next }));
+    return res.status(401).render('twofa', common({ page: 'auth', error: res.locals.t.app.msg.tooManyCodes, next }));
   }
   if (!Auth.verifyTotp(user.totpSecret, req.body.token)) {
     Auth.registerFail(ip, user.email + ':2fa');
-    return res.status(401).render('twofa', common({ page: 'auth', error: 'Nieprawidłowy kod.', next }));
+    return res.status(401).render('twofa', common({ page: 'auth', error: res.locals.t.app.msg.badCode, next }));
   }
   Auth.registerSuccess(ip, user.email + ':2fa');
   req.session.pending2fa = false;
@@ -336,7 +336,7 @@ app.post('/app/sprawy/:id/email', Auth.requireAuth, async (req, res) => {
   if (!c) return res.redirect('/app/sprawy');
   const tone = TONES.includes(req.body.ton) ? req.body.ton : 'Uprzejmy';
   const r = await Comms.sendEmail(c, tone).catch(() => ({ status: 'błąd' }));
-  res.redirect('/app/sprawy?sel=' + c.id + '&msg=' + encodeURIComponent('E-mail (' + tone + '): ' + r.status));
+  res.redirect('/app/sprawy?sel=' + c.id + '&msg=' + encodeURIComponent(res.locals.t.app.msg.flashEmail + ' (' + res.locals.t.app.tones[tone] + '): ' + res.locals.t.tr(r.status)));
 });
 
 app.post('/app/sprawy/:id/sms', Auth.requireAuth, async (req, res) => {
@@ -344,7 +344,7 @@ app.post('/app/sprawy/:id/sms', Auth.requireAuth, async (req, res) => {
   if (!c) return res.redirect('/app/sprawy');
   const tone = TONES.includes(req.body.ton) ? req.body.ton : 'Uprzejmy';
   const r = await Comms.sendSms(c, tone).catch(() => ({ status: 'błąd' }));
-  res.redirect('/app/sprawy?sel=' + c.id + '&msg=' + encodeURIComponent('SMS (' + tone + '): ' + r.status));
+  res.redirect('/app/sprawy?sel=' + c.id + '&msg=' + encodeURIComponent(res.locals.t.app.msg.flashSms + ' (' + res.locals.t.app.tones[tone] + '): ' + res.locals.t.tr(r.status)));
 });
 
 app.get('/app/sprawy/:id/rozmowa', Auth.requireAuth, (req, res) => {
@@ -357,7 +357,7 @@ app.post('/app/sprawy/:id/rozmowa', Auth.requireAuth, async (req, res) => {
   const c = caseById(req.params.id);
   if (!c) return res.redirect('/app/sprawy');
   const detail = await Comms.logCall(c, req.body.wynik, req.body.notatka, req.body.termin).catch(() => 'zapisano');
-  res.redirect('/app/sprawy?sel=' + c.id + '&msg=' + encodeURIComponent('Rozmowa: ' + detail));
+  res.redirect('/app/sprawy?sel=' + c.id + '&msg=' + encodeURIComponent(res.locals.t.app.msg.flashCall + ': ' + res.locals.t.tr(detail)));
 });
 
 app.post('/app/sprawy/:id/:action', Auth.requireAuth, (req, res) => {

@@ -1,24 +1,25 @@
-<%- include('partials/head', { title: 'Sprawy — sprzedamfakture.pl' }) %>
+<% var S = t.app.sprawy, fill = t.fill; %>
+<%- include('partials/head', { title: t.app.titles.sprawy + ' — sprzedamfakture.pl' }) %>
 <%- include('partials/nav') %>
 
 <div class="stats">
-  <div class="stat"><div class="v tnum"><%= D.fmt(stats.portfolio) %></div><div class="l">Portfel po terminie</div></div>
-  <div class="stat"><div class="v tnum"><%= stats.active %></div><div class="l">Aktywne sprawy</div></div>
-  <div class="stat"><div class="v tnum accent">93%</div><div class="l">Zamknięte polubownie</div></div>
-  <div class="stat"><div class="v tnum">18 dni</div><div class="l">Śr. czas odzyskania</div></div>
+  <div class="stat"><div class="v tnum"><%= D.fmt(stats.portfolio) %></div><div class="l"><%= S.stats.portfolio %></div></div>
+  <div class="stat"><div class="v tnum"><%= stats.active %></div><div class="l"><%= S.stats.active %></div></div>
+  <div class="stat"><div class="v tnum accent">93%</div><div class="l"><%= S.stats.amicable %></div></div>
+  <div class="stat"><div class="v tnum"><%= S.stats.avgTimeVal %></div><div class="l"><%= S.stats.avgTime %></div></div>
   <div class="actions">
-    <a class="btn" href="/app/nowa">Importuj z KSeF</a>
-    <a class="btn btn-ghost" href="/app/nowa">Wgraj XML / PDF</a>
+    <a class="btn" href="/app/nowa"><%= S.importKsef %></a>
+    <a class="btn btn-ghost" href="/app/nowa"><%= S.upload %></a>
   </div>
 </div>
 
 <div class="two-pane">
   <div class="pane-left">
-    <div class="kicker">Sprawy</div>
-    <p class="helper">Agent AI czyta każdą zaimportowaną fakturę i sam zakłada sprawę. Kliknij wiersz, aby zobaczyć działania agenta.</p>
+    <div class="kicker"><%= S.kicker %></div>
+    <p class="helper"><%= S.helper %></p>
     <table class="cases">
       <thead>
-        <tr><th>Faktura</th><th>Dłużnik</th><th class="num">Kwota</th><th class="num">Po terminie</th><th>Agent AI</th></tr>
+        <tr><th><%= S.th.invoice %></th><th><%= S.th.debtor %></th><th class="num"><%= S.th.amount %></th><th class="num"><%= S.th.overdue %></th><th><%= S.th.agent %></th></tr>
       </thead>
       <tbody>
         <% D.claims.forEach(function(c) { %>
@@ -26,8 +27,8 @@
           <td class="tnum"><%= c.nr %></td>
           <td><%= c.debtor %></td>
           <td class="num tnum"><%= D.fmt(c.amount) %></td>
-          <td class="num tnum"><%= D.daysFmt(c.days) %></td>
-          <td><span class="tag <%= c.tag %>"><%= c.phase %></span></td>
+          <td class="num tnum"><%= t.app.days(c.days) %></td>
+          <td><span class="tag <%= c.tag %>"><%= t.tr(c.phase) %></span></td>
         </tr>
         <% }) %>
       </tbody>
@@ -36,53 +37,53 @@
 
   <aside class="pane-right detail">
     <% if (flash) { %><div class="confirm" style="margin-bottom:14px"><span class="sq"></span><span><%= flash %></span></div><% } %>
-    <div class="kicker">Sprawa <%= sel.nr %> · AIScore <%= sel.ai.score %> · klasa <%= sel.ai.grade %></div>
+    <div class="kicker"><%= fill(S.caseKicker, { nr: sel.nr, score: sel.ai.score, grade: sel.ai.grade }) %></div>
     <h2><%= sel.debtor %></h2>
     <div class="amount tnum"><%= D.fmt(sel.amount) %></div>
-    <p class="meta tnum"><%= D.daysFmt(sel.days) %> po terminie · odsetki naliczone: <%= D.fmt(D.interest(sel.amount, sel.days)) %></p>
+    <p class="meta tnum"><%= fill(S.meta, { days: t.app.days(sel.days), interest: D.fmt(D.interest(sel.amount, sel.days)) }) %></p>
 
     <hr class="rule">
-    <div class="label">AIScore — analiza danych publicznych</div>
+    <div class="label"><%= S.aiLabel %></div>
     <div class="aiscore-head">
       <span class="ai-num tnum"><%= sel.ai.score %><span class="ai-max">/100</span></span>
-      <span class="tag <%= sel.ai.grade === 'E' || sel.ai.grade === 'D' ? 'tag-accent' : (sel.ai.grade === 'C' ? 'tag-outline' : 'tag-neutral') %>">klasa <%= sel.ai.grade %></span>
+      <span class="tag <%= sel.ai.grade === 'E' || sel.ai.grade === 'D' ? 'tag-accent' : (sel.ai.grade === 'C' ? 'tag-outline' : 'tag-neutral') %>"><%= fill(S.grade, { grade: sel.ai.grade }) %></span>
     </div>
     <ul class="ai-signals">
       <% sel.ai.signals.forEach(function(sg) { %>
-      <li><span class="s-label"><%= sg.label %></span><span class="s-impact tnum <%= sg.impact < 0 ? 'neg' : '' %>"><%= sg.impact < 0 ? sg.impact : '—' %></span></li>
+      <li><span class="s-label"><%= t.tr(sg.label) %></span><span class="s-impact tnum <%= sg.impact < 0 ? 'neg' : '' %>"><%= sg.impact < 0 ? sg.impact : '—' %></span></li>
       <% }) %>
     </ul>
-    <p class="ai-reco <%= sel.ai.reco === 'zamknij' ? 'warn' : '' %>"><%= sel.ai.recoTxt %></p>
+    <p class="ai-reco <%= sel.ai.reco === 'zamknij' ? 'warn' : '' %>"><%= t.tr(sel.ai.recoTxt) %></p>
 
     <hr class="rule">
-    <div class="label">Akcje agenta — kanały</div>
+    <div class="label"><%= S.channelsLabel %></div>
     <form method="post" class="chan-form" id="chan-email" action="/app/sprawy/<%= sel.id %>/email"></form>
     <form method="post" class="chan-form" id="chan-sms" action="/app/sprawy/<%= sel.id %>/sms"></form>
     <div class="chan-row">
       <select name="ton" form="chan-email" class="chan-tone" onchange="document.querySelector('#chan-sms-tone').value=this.value">
-        <option>Uprzejmy</option><option>Stanowczy</option><option>Prawniczy</option>
+        <% Object.keys(t.app.tones).forEach(function(k) { %><option value="<%= k %>"><%= t.app.tones[k] %></option><% }) %>
       </select>
       <input type="hidden" name="ton" id="chan-sms-tone" value="Uprzejmy" form="chan-sms">
-      <button class="btn btn-secondary chan-btn" type="submit" form="chan-email">E-mail</button>
-      <button class="btn btn-secondary chan-btn" type="submit" form="chan-sms">SMS</button>
-      <a class="btn chan-btn" href="/app/sprawy/<%= sel.id %>/rozmowa">Zadzwoń — skrypt</a>
+      <button class="btn btn-secondary chan-btn" type="submit" form="chan-email"><%= S.emailBtn %></button>
+      <button class="btn btn-secondary chan-btn" type="submit" form="chan-sms"><%= S.smsBtn %></button>
+      <a class="btn chan-btn" href="/app/sprawy/<%= sel.id %>/rozmowa"><%= S.callBtn %></a>
     </div>
-    <p class="helper" style="margin-top:8px; margin-bottom:0">E-mail i SMS generuje agent AI w wybranym tonie; telefon wykonujesz sam — ze skryptem i rejestracją wyniku.</p>
+    <p class="helper" style="margin-top:8px; margin-bottom:0"><%= S.channelsHelper %></p>
 
     <% if (comms.length) { %>
-    <div class="label" style="margin-top:16px">Historia komunikacji</div>
+    <div class="label" style="margin-top:16px"><%= S.commsLabel %></div>
     <ul class="timeline">
       <% comms.forEach(function(k) { %>
-      <li><span class="dot"></span><span class="t"><span class="tag tag-outline" style="margin-right:6px"><%= k.channel %></span><%= k.outcome || k.subject || k.body.slice(0, 60) %> · <%= k.status %></span><span class="d tnum"><%= new Date(k.created_at).toLocaleDateString('pl-PL', {day:'numeric', month:'short'}) %></span></li>
+      <li><span class="dot"></span><span class="t"><span class="tag tag-outline" style="margin-right:6px"><%= t.tr(k.channel) %></span><%= t.tr(k.outcome || k.subject || k.body.slice(0, 60)) %> · <%= t.tr(k.status) %></span><span class="d tnum"><%= new Date(k.created_at).toLocaleDateString(t.locale, {day:'numeric', month:'short'}) %></span></li>
       <% }) %>
     </ul>
     <% } %>
 
     <hr class="rule">
-    <div class="label">Działania agenta AI</div>
+    <div class="label"><%= S.actionsLabel %></div>
     <ul class="timeline">
-      <% sel.timeline.forEach(function(t) { %>
-      <li class="<%= t.planned ? 'planned' : '' %>"><span class="dot"></span><span class="t"><%= t.text %></span><span class="d"><%= t.date %></span></li>
+      <% sel.timeline.forEach(function(tl) { %>
+      <li class="<%= tl.planned ? 'planned' : '' %>"><span class="dot"></span><span class="t"><%= t.tr(tl.text) %></span><span class="d"><%= t.tr(tl.date) %></span></li>
       <% }) %>
     </ul>
 
@@ -90,31 +91,31 @@
     <% if (!done[sel.id]) { %>
       <% if (sel.ai.reco === 'zamknij') { %>
       <div class="action-block">
-        <h3>Zamknij sprawę — wierzytelność nieściągalna</h3>
-        <p>AIScore <%= sel.ai.score %>: wpisy w KRZ wskazują na brak realnych szans odzyskania. Odpis pozwala rozliczyć stratę podatkowo (art. 16 ust. 1 pkt 25 CIT) zamiast dopłacać do windykacji.</p>
+        <h3><%= S.close.h %></h3>
+        <p><%= fill(S.close.p, { score: sel.ai.score }) %></p>
         <form class="inline" method="post" action="/app/sprawy/<%= sel.id %>/close">
-          <button class="btn" type="submit">Zamknij i odpisz</button>
+          <button class="btn" type="submit"><%= S.close.btn %></button>
         </form>
       </div>
       <hr class="rule">
       <% } %>
       <div class="action-block">
-        <h3>Windykacja — Ty płacisz tylko opłatę serwisową</h3>
-        <p>Odsetki 14%, rekompensata <%= D.rekompZl(sel.amount) %> zł i koszty obciążają dłużnika. Odzyskana kwota w całości trafia do Ciebie.</p>
+        <h3><%= S.collect.h %></h3>
+        <p><%= fill(S.collect.p, { rekomp: D.rekompZl(sel.amount) }) %></p>
         <form class="inline" method="post" action="/app/sprawy/<%= sel.id %>/collect">
-          <button class="btn" type="submit">Zleć windykację — <%= SERVICE_FEE %> zł</button>
+          <button class="btn" type="submit"><%= fill(S.collect.btn, { fee: SERVICE_FEE }) %></button>
         </form>
       </div>
       <hr class="rule">
       <div class="action-block">
-        <h3>Albo sprzedaj wierzytelność</h3>
-        <p>Wycena agenta AI: <%= sel.pct %>% wartości. Wypłata w 24 godziny, ryzyko przechodzi na nas.</p>
+        <h3><%= S.sell.h %></h3>
+        <p><%= fill(S.sell.p, { pct: sel.pct }) %></p>
         <form class="inline" method="post" action="/app/sprawy/<%= sel.id %>/sell">
-          <button class="btn btn-secondary" type="submit">Przyjmij ofertę — <%= D.fmt(Math.round(sel.amount * sel.pct / 100)) %></button>
+          <button class="btn btn-secondary" type="submit"><%= fill(S.sell.btn, { amount: D.fmt(Math.round(sel.amount * sel.pct / 100)) }) %></button>
         </form>
       </div>
     <% } else { %>
-      <div class="confirm"><span class="sq"></span><span><%= done[sel.id] === 'collect' ? 'Zlecono windykację — agent AI przejął sprawę.' : done[sel.id] === 'close' ? 'Sprawa zamknięta — wierzytelność odpisana (rekomendacja AI).' : 'Oferta przyjęta — wypłata w ciągu 24 godzin.' %></span></div>
+      <div class="confirm"><span class="sq"></span><span><%= S.done[done[sel.id]] || S.done.sell %></span></div>
     <% } %>
   </aside>
 </div>

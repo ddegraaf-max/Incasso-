@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="<%= lang %>">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title><%= typeof title !== 'undefined' ? title : 'sprzedamfakture.pl — Sprzedaj fakturę. Gotówka w 24 godziny.' %></title>
-<meta name="description" content="sprzedamfakture.pl — sprzedaj przeterminowaną fakturę B2B: wycena AI w kilka minut, cesja online, przelew w 24 godziny. Albo windykacja na koszt dłużnika za 99 zł od sprawy.">
+<title><%= typeof title !== 'undefined' ? title : t.home.metaTitle %></title>
+<meta name="description" content="<%= t.home.metaDesc %>">
 <%- include('meta') %>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

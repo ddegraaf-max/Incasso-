@@ -1,13 +1,14 @@
-<%- include('partials/head', { title: 'Wykup wierzytelności — sprzedamfakture.pl' }) %>
+<% var W = t.app.wykup; %>
+<%- include('partials/head', { title: t.app.titles.wykup + ' — sprzedamfakture.pl' }) %>
 <%- include('partials/nav') %>
 
 <div class="wykup-wrap" style="flex:1">
-  <div class="kicker">Wykup wierzytelności</div>
-  <p class="intro helper" style="max-width:72ch">Agent AI wycenia każdą wierzytelność na żywo — na podstawie scoringu dłużnika, historii płatności i etapu sprawy. Akceptujesz ofertę, podpisujesz cesję online, pieniądze masz w 24 godziny. Ryzyko niewypłacalności przechodzi na nas.</p>
+  <div class="kicker"><%= W.kicker %></div>
+  <p class="intro helper" style="max-width:72ch"><%= W.intro %></p>
 
   <table class="cases wykup">
     <thead>
-      <tr><th>Faktura</th><th>Dłużnik</th><th class="num">Kwota</th><th>AIScore</th><th class="num">Oferta AI</th><th></th></tr>
+      <tr><th><%= W.th.invoice %></th><th><%= W.th.debtor %></th><th class="num"><%= W.th.amount %></th><th><%= W.th.aiscore %></th><th class="num"><%= W.th.offer %></th><th></th></tr>
     </thead>
     <tbody>
       <% D.claims.forEach(function(c) {
@@ -22,10 +23,10 @@
         <td class="num tnum"><%= D.fmt(Math.round(c.amount * c.pct / 100)) %> · <%= c.pct %>%</td>
         <td>
           <% if (sold) { %>
-            <span class="tag tag-accent">Sprzedana · wypłata do 24 h</span>
+            <span class="tag tag-accent"><%= W.sold %></span>
           <% } else { %>
             <form class="inline" method="post" action="/app/wykup/<%= c.id %>/sprzedaj">
-              <button class="btn btn-secondary" type="submit">Przyjmij</button>
+              <button class="btn btn-secondary" type="submit"><%= W.accept %></button>
             </form>
           <% } %>
         </td>
@@ -34,7 +35,7 @@
     </tbody>
   </table>
 
-  <p class="legal-note">Cesja obejmuje należność główną i odsetki. Rekompensata (170/300/430 zł) jest z mocy ustawy niezbywalna — przy windykacji serwisowej agent dochodzi jej w Twoim imieniu.</p>
+  <p class="legal-note"><%= W.note %></p>
 </div>
 
 <%- include('partials/footer') %>

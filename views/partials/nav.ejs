@@ -1,11 +1,12 @@
+<% var A = t.app; %>
 <nav class="nav">
   <%- include('logo', { tagline: page !== 'app' && page !== 'admin' }) %>
-  <span class="nav-right">
+  <span class="nav-right<%= (page === 'app' || page === 'admin' || page === 'auth') ? '' : ' nav-links' %>">
     <% if (page === 'app' || page === 'admin') { %>
       <%= user ? user.company : '' %><% if (user && user.totpConfirmed) { %> · 2FA<% } %>
-      <% if (user && user.role === 'admin') { %><a href="/admin">Admin</a><% } %>
-      <a href="/app/sprawy">Panel</a>
-      <a href="/logout">Wyloguj</a>
+      <% if (user && user.role === 'admin') { %><a href="/admin"><%= A.nav.admin %></a><% } %>
+      <a href="/app/sprawy"><%= A.nav.panel %></a>
+      <a href="/logout"><%= A.nav.logout %></a>
     <% } else if (page === 'auth') { %>
       <a href="/"><%= t.common.navHome %></a>
       <a href="/kalkulator"><%= t.common.navCalc %></a>
@@ -15,13 +16,16 @@
       <a href="/kalkulator"><%= t.common.navCalc %></a>
       <a href="/login"><%= t.common.navPanel %></a>
     <% } %>
+    <span class="lang-switch">
+      <a href="<%= langUrl('pl') %>" class="<%= lang === 'pl' ? 'active' : '' %>" hreflang="pl">PL</a><span class="sep">·</span><a href="<%= langUrl('en') %>" class="<%= lang === 'en' ? 'active' : '' %>" hreflang="en">EN</a>
+    </span>
   </span>
 </nav>
 <% if (page === 'app') { %>
 <div class="tabbar">
-  <a href="/app/sprawy" class="<%= tab === 'sprawy' ? 'active' : '' %>">Sprawy</a>
-  <a href="/app/nowa" class="<%= tab === 'nowa' ? 'active' : '' %>">Nowa sprawa</a>
-  <a href="/app/agent" class="<%= tab === 'agent' ? 'active' : '' %>">Agent AI</a>
-  <a href="/app/wykup" class="<%= tab === 'wykup' ? 'active' : '' %>">Wykup</a>
+  <a href="/app/sprawy" class="<%= tab === 'sprawy' ? 'active' : '' %>"><%= A.nav.tabs.sprawy %></a>
+  <a href="/app/nowa" class="<%= tab === 'nowa' ? 'active' : '' %>"><%= A.nav.tabs.nowa %></a>
+  <a href="/app/agent" class="<%= tab === 'agent' ? 'active' : '' %>"><%= A.nav.tabs.agent %></a>
+  <a href="/app/wykup" class="<%= tab === 'wykup' ? 'active' : '' %>"><%= A.nav.tabs.wykup %></a>
 </div>
 <% } %>

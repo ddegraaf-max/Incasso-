@@ -28,7 +28,7 @@ Node/Express/EJS-app achter **sprzedamfakture.pl**: wykup wierzytelności (insta
 - Losse bestanden in `public/img/`: `favicon.svg` (dark-mode aware), `logo-mark.svg`, `logo.svg` (lockup; gebruikt Google Fonts — voor drukwerk tekst naar paden omzetten), `apple-touch-icon.png`, `og.png` (1200×630 social preview). Meta-tags in `views/partials/meta.ejs`.
 
 ## Taal (PL/EN) en versienummer
-- Publieke pagina's (`/`, `/windykacja`, nav/footer, 404) zijn tweetalig. `?lang=pl|en` zet een cookie (1 jaar); zonder cookie is PL de standaard. Alle teksten staan in `src/i18n.js` (`common`, `home`, `error` + de landing-keys). Kalkulator en het klantpanel zijn alleen PL.
+- De hele site is tweetalig: publieke pagina's (`/`, `/windykacja`, nav/footer, 404) én het klantpanel (login, rejestracja, 2FA, sprawy, nowa, agent, wykup, rozmowa, admin). `?lang=pl|en` zet een cookie (1 jaar); de PL·EN-schakelaar staat in elke nav; zonder cookie is PL de standaard. Teksten: `src/i18n.js` (`common`, `home`, `error` + landing-keys) en `src/i18n-app.js` (panel: `t.app.*`, plus `t.tr()` voor demodata/statussen, `t.days(n)`, `t.locale`, `t.fill()`). Servermeldingen (login/2FA/flash) zijn ook vertaald. Alleen de kalkulator en teksten richting de dłużnik (e-mail/SMS-templates, belscript, wezwanie) blijven PL — dat is de taal van de dłużnik.
 - Footer toont `v<versie> · <commit>`: versie uit `package.json`, commit uit Railway (`RAILWAY_GIT_COMMIT_SHA`) of lokaal uit git (`src/version.js`). Zelfde info op `/health`. Verhoog de versie in `package.json` bij een release; de CSS/JS-links krijgen automatisch `?v=<versie>` (cache-busting, statics cachen 7 dagen).
 
 ## Wat er verder in v0.2 zit
@@ -44,14 +44,14 @@ npm start        # poort 3000, of PORT env var
 
 ## Deploy (Railway)
 Standaard flow: repo → GitHub Desktop → Railway auto-deploy. Geen database nodig voor het concept. Custom domain `sprzedamfakture.pl` + `www` aan de service hangen en DNS bij dns.pl naar Railway wijzen.
-Env vars: `PORT` (Railway zet die zelf), `SESSION_SECRET` (VERPLICHT in productie — lange random string), `ADMIN_EMAIL` + `ADMIN_PASSWORD` (admin-account), optioneel `SERVICE_FEE` (default 99), `EUR_PLN` (default 4.30), `DATABASE_URL` (Railway Postgres — activeert persistentie), `MONITOR_INTERVAL_MS` (default 60000) en `DEMO_EVENTS` (default 1; op 0 voor echte bronnen). Zet `NODE_ENV=production` voor secure cookies.
+Env vars: `PORT` (Railway zet die zelf), `SESSION_SECRET` (VERPLICHT in productie — lange random string), `ADMIN_EMAIL` + `ADMIN_PASSWORD` (admin-account), optioneel `SERVICE_FEE` (default 99), `EUR_PLN` (default 4.30), `DATABASE_URL` (Railway Postgres — activeert persistentie), `MONITOR_INTERVAL_MS` (default 60000) en `DEMO_EVENTS` (default 1; op 0 voor echte bronnen). `DEMO_ACCOUNT=0` verwijdert het demo-account en de hint op de loginpagina. Zet `NODE_ENV=production` voor secure cookies.
 
 ## Beveiliging
 - **Wachtwoorden**: bcrypt, kosten 12; policy min. 10 tekens met kleine/hoofdletter + cijfer.
 - **2FA (TOTP)**: via `speakeasy` (CommonJS — draait ook op Node 18, zoals Railway standaard gebruikt); verplicht bij registratie en voor admin (eerste login forceert QR-setup). Issuer in de authenticator-app: `sprzedamfakture.pl`.
 - **Rate limiting**: 5 mislukte pogingen (per IP+e-mail) → 15 min blokkade, ook op de 2FA-stap.
 - **Sessies**: httpOnly, sameSite=lax, secure achter Railway-proxy, 8 uur geldig, sessie-regeneratie bij login (anti session fixation).
-- **Demo-account**: `demo@sprzedamfakture.pl` / `Demo1234!` (zonder 2FA, alleen om te klikken) — **verwijderen vóór livegang** in `src/auth.js`. Admin-default: `admin@sprzedamfakture.pl` (overschrijf met `ADMIN_EMAIL`).
+- **Demo-account**: `demo@sprzedamfakture.pl` / `Demo1234!` (zonder 2FA, alleen om te klikken; het oude `demo@creditline.pl` werkt als alias). Staat als hint op de loginpagina — **uitzetten vóór livegang** met env `DEMO_ACCOUNT=0`. Admin-default: `admin@sprzedamfakture.pl` (overschrijf met `ADMIN_EMAIL`). Bij een DB zijn DB-accounts leidend; seed-accounts die nog ontbreken krijgen een vrij id (geen botsing met oude Creditline-accounts).
 - Gebruikers, sessies, acties, scores en events staan in PostgreSQL zodra `DATABASE_URL` gezet is.
 
 ## Sprzedaj fakturę (homepage)

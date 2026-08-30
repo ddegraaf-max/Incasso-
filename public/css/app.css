@@ -444,3 +444,5 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .sf .lang-switch a { color: var(--ink-70); }
 .sf .lang-switch a.active { color: var(--color-accent-600); }
 @media (prefers-reduced-motion: reduce) { .sf-wycena-result.live .swr-main { animation: none; } }
+.demo-box { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 13.5px; color: var(--ink-70); background: var(--color-surface); border: 1px dashed var(--color-accent); border-radius: 12px; padding: 12px 14px; margin: -6px 0 18px; }
+.demo-box code { font-family: var(--font); font-weight: 700; color: var(--navy); background: var(--color-accent-100); padding: 2px 7px; border-radius: 6px; }

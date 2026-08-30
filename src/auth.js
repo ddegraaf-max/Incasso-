@@ -29,16 +29,25 @@ let persistNew = false;
 
 async function initFromDb() {
   const rows = await db.loadUsers().catch(() => []);
-  rows.forEach((u) => { users.set(u.email, u); if (u.id >= nextId) nextId = u.id + 1; });
-  // seeds naar DB schrijven als ze daar nog niet staan
-  for (const u of users.values()) {
-    if (!rows.find((r) => r.email === u.email)) await db.saveUser(u).catch(() => {});
+  if (rows.length) {
+    // DB is leidend: rijen behouden hun id; seeds die nog niet in de DB staan krijgen een vrij id
+    // (voorkomt id-botsingen tussen oude DB-accounts en nieuwe seed-accounts na een rename)
+    const seeds = Array.from(users.values());
+    users.clear();
+    rows.forEach((u) => { users.set(u.email, u); if (u.id >= nextId) nextId = u.id + 1; });
+    for (const s of seeds) {
+      if (users.has(s.email)) continue;
+      s.id = nextId++;
+      users.set(s.email, s);
+      await db.saveUser(s).catch(() => {});
+    }
   }
   persistNew = true;
 }
 
 function findUser(email) {
-  return users.get(String(email || '').toLowerCase().trim()) || null;
+  const key = String(email || '').toLowerCase().trim();
+  return users.get(key) || (LEGACY_EMAILS[key] ? users.get(LEGACY_EMAILS[key]) : null) || null;
 }
 
 function findUserById(id) {
@@ -49,8 +58,11 @@ function findUserById(id) {
 function allUsers() { return Array.from(users.values()); }
 
 // ── Seeds ────────────────────────────────────────────────────────────────
-// Demo-klant (zonder 2FA, alleen om te testen — verwijderen vóór livegang)
-addUser({ email: 'demo@sprzedamfakture.pl', password: 'Demo1234!', company: 'Twoja Firma Sp. z o.o.', nip: '521-000-00-00', role: 'client' });
+// Demo-klant (zonder 2FA, alleen om te testen — uitzetten met DEMO_ACCOUNT=0 vóór livegang)
+const DEMO = process.env.DEMO_ACCOUNT === '0' ? null : { email: 'demo@sprzedamfakture.pl', password: 'Demo1234!' };
+if (DEMO) addUser({ email: DEMO.email, password: DEMO.password, company: 'Twoja Firma Sp. z o.o.', nip: '521-000-00-00', role: 'client' });
+// Oud demo-adres (vóór de rebrand) blijft werken als alias
+const LEGACY_EMAILS = { 'demo@creditline.pl': 'demo@sprzedamfakture.pl' };
 // Admin uit env vars; 2FA wordt bij eerste login verplicht ingesteld
 addUser({
   email: process.env.ADMIN_EMAIL || 'admin@sprzedamfakture.pl',
@@ -64,10 +76,9 @@ function checkPassword(user, password) {
 }
 
 function passwordPolicy(pw) {
-  if (!pw || pw.length < 10) return 'Hasło musi mieć co najmniej 10 znaków.';
-  if (!/[a-z]/.test(pw) || !/[A-Z]/.test(pw) || !/[0-9]/.test(pw)) {
-    return 'Hasło musi zawierać małą literę, wielką literę i cyfrę.';
-  }
+  // geeft een i18n-sleutel terug (t.app.msg.pwLen / pwChars)
+  if (!pw || pw.length < 10) return 'pwLen';
+  if (!/[a-z]/.test(pw) || !/[A-Z]/.test(pw) || !/[0-9]/.test(pw)) return 'pwChars';
   return null;
 }
 
@@ -133,6 +144,7 @@ function requireAdmin(req, res, next) {
 }
 
 module.exports = {
+  DEMO,
   addUser, findUser, findUserById, allUsers, initFromDb,
   checkPassword, passwordPolicy,
   newTotpSecret, totpUri, verifyTotp,

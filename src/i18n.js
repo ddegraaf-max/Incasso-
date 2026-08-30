@@ -279,3 +279,13 @@ module.exports = {
     },
   },
 };
+
+// Klantpanel (PL/EN) + helpers: t.app, t.locale, t.days, t.tr, t.fill
+const appI18n = require('./i18n-app');
+for (const l of ['pl', 'en']) {
+  const a = appI18n[l];
+  module.exports[l].app = a;
+  module.exports[l].locale = a.locale;
+  module.exports[l].tr = a.tr;
+  module.exports[l].fill = appI18n.fill;
+}
