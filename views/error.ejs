@@ -1,0 +1,15 @@
+<% var notFound = code === 404; %>
+<%- include('partials/head', { title: (notFound ? t.error.notFoundH : t.error.errorH) + ' — sprzedamfakture.pl' }) %>
+<%- include('partials/nav') %>
+
+<div class="calc-wrap" style="flex:1">
+  <div class="kicker tnum"><%= code %></div>
+  <h1 style="font-size:36px"><%= notFound ? t.error.notFoundH : t.error.errorH %></h1>
+  <p class="helper" style="max-width:60ch"><%= notFound ? t.error.notFoundP : t.error.errorP %></p>
+  <div style="display:flex; gap:14px; flex-wrap:wrap; margin-top:24px">
+    <a class="btn" href="/"><%= t.error.back %></a>
+    <a class="btn btn-secondary" href="/kalkulator"><%= t.common.navCalc %></a>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

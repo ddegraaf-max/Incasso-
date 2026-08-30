@@ -8,6 +8,9 @@ const db = require('./src/db');
 const AiScore = require('./src/aiscore');
 const Comms = require('./src/comms');
 const pgSession = require('connect-pg-simple')(session);
+const compression = require('compression');
+const VER = require('./src/version');
+const i18n = require('./src/i18n');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -15,7 +18,43 @@ const PORT = process.env.PORT || 3000;
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.set('trust proxy', 1); // Railway zit achter een proxy
-app.use(express.static(path.join(__dirname, 'public')));
+app.disable('x-powered-by');
+app.use(compression());
+app.use((req, res, next) => {
+  res.set({
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'SAMEORIGIN',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  });
+  if (process.env.NODE_ENV === 'production') res.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  next();
+});
+app.use(express.static(path.join(__dirname, 'public'), { maxAge: '7d' }));
+
+// ── Taal (PL/EN): ?lang=… zet een cookie (1 jaar); anders cookie; anders PL ──
+const LANGS = ['pl', 'en'];
+app.use((req, res, next) => {
+  let lang;
+  if (typeof req.query.lang === 'string' && LANGS.includes(req.query.lang)) {
+    lang = req.query.lang;
+    res.cookie('lang', lang, { maxAge: 365 * 24 * 3600 * 1000, sameSite: 'lax', httpOnly: true, secure: process.env.NODE_ENV === 'production' });
+  } else {
+    const m = /(?:^|;\s*)lang=(pl|en)(?:;|$)/.exec(req.headers.cookie || '');
+    lang = m ? m[1] : 'pl';
+  }
+  res.locals.lang = lang;
+  res.locals.t = i18n[lang];
+  res.locals.langUrl = (l) => {
+    const isGet = req.method === 'GET';
+    const q = new URLSearchParams(isGet ? req.query : {});
+    q.set('lang', l);
+    return (isGet ? req.path : '/') + '?' + q.toString();
+  };
+  res.locals.version = VER.version;
+  res.locals.commit = VER.commit;
+  next();
+});
 app.use(express.urlencoded({ extended: true }));
 const sessionOpts = {
   secret: process.env.SESSION_SECRET || 'sprzedamfakture-dev-secret-zmien-mnie',
@@ -165,17 +204,17 @@ app.get('/admin', Auth.requireAdmin, async (req, res) => {
 });
 
 // ── Marketing ────────────────────────────────────────────────────────────
-const i18n = require('./src/i18n');
 
 // Strona główna: sprzedaż faktur (instant wycena + leadformulier)
 function renderHome(req, res, extra = {}) {
-  const kwota = parseFloat(String(req.query.kwota || '').replace(',', '.')) || null;
+  const kwota = parseFloat(String(req.query.kwota || '').replace(/\s/g, '').replace(',', '.')) || null;
   const dni = parseInt(req.query.dni, 10) || null;
   const est = kwota && dni && kwota > 0 && dni > 0 ? AiScore.estimateOffer(kwota, dni) : null;
   res.render('sprzedam', common({
     page: 'sprzedam', est,
     q: { kwota: req.query.kwota || '', dni: req.query.dni || '' },
     leadOk: req.query.lead === 'ok',
+    form: {}, errors: {},
     ...extra,
   }));
 }
@@ -188,27 +227,91 @@ app.get('/sprzedam', (req, res) => {
   res.redirect(301, '/' + qs);
 });
 
-// Windykacja, faktoring, panel AI — aanvullende landing (PL/EN)
+// Windykacja, faktoring, panel AI — aanvullende landing (PL/EN via taalcookie)
 app.get('/windykacja', (req, res) => {
-  const lang = req.query.lang === 'en' ? 'en' : 'pl';
-  res.render('landing', common({ page: 'landing', lang, t: i18n[lang] }));
+  res.render('landing', common({ page: 'landing', lang: res.locals.lang, t: res.locals.t }));
 });
 
+// Live wycena (JSON) voor de widget op de homepage
+app.get('/api/wycena', (req, res) => {
+  const kwota = parseFloat(String(req.query.kwota || '').replace(/\s/g, '').replace(',', '.'));
+  const dni = parseInt(req.query.dni, 10);
+  res.set('Cache-Control', 'no-store');
+  if (!(kwota > 0) || !(dni > 0) || kwota > 1e9 || dni > 3650) {
+    return res.status(400).json({ ok: false, error: 'invalid_input' });
+  }
+  const est = AiScore.estimateOffer(kwota, dni);
+  res.json({ ok: true, ...est, amountFmt: D.fmt(est.amount), amountLowFmt: D.fmt(est.amountLow) });
+});
+
+// Poolse NIP: 10 cijfers + modulo-11-controlecijfer
+function validNip(raw) {
+  const d = String(raw || '').replace(/\D/g, '');
+  if (d.length !== 10) return false;
+  const w = [6, 5, 7, 2, 3, 4, 5, 6, 7];
+  const sum = w.reduce((s, wi, i) => s + wi * parseInt(d[i], 10), 0);
+  return sum % 11 === parseInt(d[9], 10);
+}
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
 app.post('/sprzedaj', async (req, res) => {
-  const { company, nip, kwota, dni, email, tel } = req.body;
-  const kw = parseFloat(String(kwota || '').replace(',', '.')) || 0;
-  const dn = parseInt(dni, 10) || 0;
-  if (!company || !email || !kw || !dn) return res.redirect('/#formularz');
+  const b = req.body || {};
+  if (b.website) return res.redirect('/?lead=ok#formularz'); // honeypot: bot → doen alsof het gelukt is
+  const form = {
+    company: String(b.company || '').trim().slice(0, 200),
+    nip: String(b.nip || '').trim().slice(0, 20),
+    kwota: String(b.kwota || '').trim().slice(0, 20),
+    dni: String(b.dni || '').trim().slice(0, 6),
+    email: String(b.email || '').trim().slice(0, 200),
+    tel: String(b.tel || '').trim().slice(0, 40),
+  };
+  const kw = parseFloat(form.kwota.replace(/\s/g, '').replace(',', '.')) || 0;
+  const dn = parseInt(form.dni, 10) || 0;
+  const msg = res.locals.t.home.form.errors;
+  const errors = {};
+  if (!form.company) errors.company = msg.company;
+  if (!validNip(form.nip)) errors.nip = msg.nip;
+  if (!(kw > 0) || kw > 1e9) errors.kwota = msg.amount;
+  if (!(dn > 0) || dn > 3650) errors.dni = msg.days;
+  if (!EMAIL_RE.test(form.email)) errors.email = msg.email;
+  if (form.tel.replace(/\D/g, '').length < 7) errors.tel = msg.tel;
+  if (Object.keys(errors).length) {
+    res.status(400);
+    return renderHome(req, res, { form, errors });
+  }
   const est = AiScore.estimateOffer(kw, dn);
-  await db.saveLead({ company, nip, email, tel, kwota: kw, dni: dn, oferta_pct: est.pct }).catch(() => {});
+  const nip = form.nip.replace(/\D/g, '');
+  await db.saveLead({ company: form.company, nip, email: form.email, tel: form.tel, kwota: kw, dni: dn, oferta_pct: est.pct, note: 'lang=' + res.locals.lang }).catch(() => {});
   await db.insertEvent({
-    nip, debtor: company, type: 'lead',
+    nip, debtor: form.company, type: 'lead',
     title: 'Nowy lead sprzedamfakture.pl: ' + D.fmt(kw) + ' · ' + dn + ' dni · wstępnie ' + est.pct + '%',
     source: 'sprzedamfakture.pl',
   }).catch(() => {});
   res.redirect('/?lead=ok#formularz');
 });
 
+// ── Health, robots, sitemap ──────────────────────────────────────────────
+app.get('/health', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({ ok: true, name: 'sprzedamfakture.pl', version: VER.version, commit: VER.commit, startedAt: VER.startedAt, uptimeSec: Math.round(process.uptime()), db: db.hasDb() });
+});
+
+const SITE = 'https://sprzedamfakture.pl';
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain').send(['User-agent: *', 'Allow: /', 'Disallow: /app/', 'Disallow: /admin', 'Disallow: /login', 'Disallow: /2fa', 'Disallow: /api/', '', 'Sitemap: ' + SITE + '/sitemap.xml', ''].join('\n'));
+});
+app.get('/sitemap.xml', (req, res) => {
+  const urls = [
+    { loc: SITE + '/', alt: true, prio: '1.0' },
+    { loc: SITE + '/windykacja', alt: true, prio: '0.8' },
+    { loc: SITE + '/kalkulator', prio: '0.7' },
+  ];
+  const alt = (loc) => '<xhtml:link rel="alternate" hreflang="pl" href="' + loc + '?lang=pl"/><xhtml:link rel="alternate" hreflang="en" href="' + loc + '?lang=en"/>';
+  const xml = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">']
+    .concat(urls.map((u) => '<url><loc>' + u.loc + '</loc>' + (u.alt ? alt(u.loc) : '') + '<priority>' + u.prio + '</priority></url>'))
+    .concat(['</urlset>', '']).join('\n');
+  res.type('application/xml').send(xml);
+});
 
 // ── App ──────────────────────────────────────────────────────────────────
 app.get('/app', Auth.requireAuth, (req, res) => res.redirect('/app/sprawy'));
@@ -315,6 +418,16 @@ app.get('/wezwanie', (req, res) => {
     rekompZl: amount ? D.rekompZl(amount) : 170,
     today: new Date().toLocaleDateString('pl-PL'),
   });
+});
+
+// ── 404 & fouten ─────────────────────────────────────────────────────────
+app.use((req, res) => {
+  res.status(404).render('error', common({ page: 'error', code: 404 }));
+});
+app.use((err, req, res, next) => {
+  console.error(err);
+  if (res.headersSent) return next(err);
+  res.status(500).render('error', common({ page: 'error', code: 500 }));
 });
 
 async function start() {

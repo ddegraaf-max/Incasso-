@@ -3,7 +3,7 @@
    Opties: size ('sm' | 'lg'), tagline (bool), tagText, asLink (default true), href, light (bool, op donkere achtergrond) */
 var lgSize = (typeof size !== 'undefined' && size) ? ' brand-' + size : '';
 var lgTag = (typeof tagline !== 'undefined') && !!tagline;
-var lgTagText = (typeof tagText !== 'undefined' && tagText) ? tagText : 'Gotówka za fakturę w 24 h';
+var lgTagText = (typeof tagText !== 'undefined' && tagText) ? tagText : ((typeof t !== 'undefined' && t && t.common && t.common.tagline) ? t.common.tagline : 'Gotówka za fakturę w 24 h');
 var lgLink = (typeof asLink === 'undefined') ? true : !!asLink;
 var lgHref = (typeof href !== 'undefined' && href) ? href : '/';
 var lgLight = (typeof light !== 'undefined') && !!light;

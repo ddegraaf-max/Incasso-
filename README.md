@@ -18,11 +18,23 @@ Node/Express/EJS-app achter **sprzedamfakture.pl**: wykup wierzytelności (insta
 | `/app/wykup` | Wykup wierzytelności (AI-offertes, cesja) |
 | `/kalkulator` | Publieke kalkulator odsetek (14%) + rekompensata 40/70/100 € — leadmagnet/SEO |
 | `/wezwanie` | Printbaar wezwanie do zapłaty, gegenereerd vanuit de kalkulator |
+| `/api/wycena?kwota=&dni=` | JSON voor de live wycena-widget (indicatieve oferta) |
+| `/health` | JSON: versie, commit, uptime, db — voor deploy-checks |
+| `/robots.txt` · `/sitemap.xml` | SEO (hreflang PL/EN in de sitemap) |
 
 ## Branding & logo
 - **Beeldmerk**: factuur (navy) met gouden omgevouwen hoek + gouden munt met vinkje ("faktura → gotówka"). **Woordmerk**: `sprzedam**fakture**.pl` in Fraunces, `.pl` in goud; optionele tagline *Gotówka za fakturę w 24 h*.
 - Inline in de site via `views/partials/logo.ejs` — opties: `size: 'sm'|'lg'`, `tagline`, `tagText`, `asLink`, `href`, `light` (voor donkere achtergrond). Styling: `.brand*` in `public/css/app.css`.
 - Losse bestanden in `public/img/`: `favicon.svg` (dark-mode aware), `logo-mark.svg`, `logo.svg` (lockup; gebruikt Google Fonts — voor drukwerk tekst naar paden omzetten), `apple-touch-icon.png`, `og.png` (1200×630 social preview). Meta-tags in `views/partials/meta.ejs`.
+
+## Taal (PL/EN) en versienummer
+- Publieke pagina's (`/`, `/windykacja`, nav/footer, 404) zijn tweetalig. `?lang=pl|en` zet een cookie (1 jaar); zonder cookie is PL de standaard. Alle teksten staan in `src/i18n.js` (`common`, `home`, `error` + de landing-keys). Kalkulator en het klantpanel zijn alleen PL.
+- Footer toont `v<versie> · <commit>`: versie uit `package.json`, commit uit Railway (`RAILWAY_GIT_COMMIT_SHA`) of lokaal uit git (`src/version.js`). Zelfde info op `/health`. Verhoog de versie in `package.json` bij een release; de CSS/JS-links krijgen automatisch `?v=<versie>` (cache-busting, statics cachen 7 dagen).
+
+## Wat er verder in v0.2 zit
+- Live wycena op de homepage (`public/js/wycena.js` → `/api/wycena`), werkt ook zonder JS via de gewone submit.
+- Leadformulier: servervalidatie met foutmeldingen per veld, Poolse NIP-controlecijfer, honeypot tegen bots; ingevulde waarden blijven staan.
+- Nette 404/500-pagina (`views/error.ejs`), security-headers, gzip (`compression`), canonical/hreflang, JSON-LD (Organization + FAQPage), skip-link en focus-stijlen.
 
 ## Lokaal draaien
 ```

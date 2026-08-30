@@ -428,3 +428,19 @@ html { scroll-behavior: smooth; }
 .sf-footer { display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap; }
 .sf-footer-links { font-size: 13px; color: var(--ink-70); }
 .sf-footer-links a { text-decoration: none; font-weight: 600; }
+
+/* ── v0.2: taal, versie, formulier, live wycena, a11y ── */
+.footer .ver { color: var(--ink-30); font-weight: 600; }
+.sources .ver { color: var(--ink-55); font-weight: 600; }
+.field-err { font-size: 12.5px; color: var(--danger); margin-top: 5px; font-weight: 600; }
+.fg.has-err input { border-color: var(--danger); background: #fdf6f5; }
+.hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.skip-link { position: absolute; left: -9999px; top: 10px; z-index: 100; background: var(--navy); color: #fff; padding: 9px 16px; border-radius: 999px; font-weight: 700; text-decoration: none; }
+.skip-link:focus { left: 12px; color: #fff; outline: 2px solid var(--color-accent); outline-offset: 2px; }
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.sf-wycena-result.live .swr-main { animation: swr-pop 320ms ease-out; }
+@keyframes swr-pop { from { opacity: .35; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+.sf-wycena-hint { font-size: 12.5px; color: rgba(237,234,225,0.55); max-width: 70ch; margin: 16px 0 0; }
+.sf .lang-switch a { color: var(--ink-70); }
+.sf .lang-switch a.active { color: var(--color-accent-600); }
+@media (prefers-reduced-motion: reduce) { .sf-wycena-result.live .swr-main { animation: none; } }

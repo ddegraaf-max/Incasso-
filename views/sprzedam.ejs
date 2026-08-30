@@ -1,138 +1,179 @@
-<!DOCTYPE html>
-<html lang="pl">
+<%
+var h = t.home, c = t.common;
+var errors = (typeof errors !== 'undefined' && errors) ? errors : {};
+var form = (typeof form !== 'undefined' && form) ? form : {};
+var hasErr = Object.keys(errors).length > 0;
+var ld = [
+  { '@context': 'https://schema.org', '@type': 'Organization', name: 'sprzedamfakture.pl', url: 'https://sprzedamfakture.pl/', logo: 'https://sprzedamfakture.pl/img/logo.svg', email: 'kontakt@sprzedamfakture.pl' },
+  { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: h.faq.items.map(function (i) {
+      return { '@type': 'Question', name: i[0], acceptedAnswer: { '@type': 'Answer', text: i[1].replace(/<[^>]+>/g, '').replace('{fee}', SERVICE_FEE) } };
+    }) },
+];
+%><!DOCTYPE html>
+<html lang="<%= lang %>">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>sprzedamfakture.pl — Sprzedaj fakturę. Gotówka w 24 godziny.</title>
-<meta name="description" content="Sprzedaj przeterminowaną fakturę B2B na sprzedamfakture.pl. Wycena AI w kilka minut, cesja online, przelew w 24 godziny. Ryzyko niewypłacalności dłużnika przechodzi na nas.">
-<meta property="og:title" content="sprzedamfakture.pl — Sprzedaj fakturę. Gotówka w 24 godziny.">
-<meta property="og:description" content="Kontrahent nie płaci? Sprzedaj nam fakturę B2B: wycena AI w kilka minut, cesja online, przelew następnego dnia roboczego.">
+<title><%= h.metaTitle %></title>
+<meta name="description" content="<%= h.metaDesc %>">
+<link rel="canonical" href="https://sprzedamfakture.pl/<%= lang === 'en' ? '?lang=en' : '' %>">
+<link rel="alternate" hreflang="pl" href="https://sprzedamfakture.pl/?lang=pl">
+<link rel="alternate" hreflang="en" href="https://sprzedamfakture.pl/?lang=en">
+<link rel="alternate" hreflang="x-default" href="https://sprzedamfakture.pl/">
+<meta property="og:title" content="<%= h.metaTitle %>">
+<meta property="og:description" content="<%= h.ogDesc %>">
 <meta property="og:url" content="https://sprzedamfakture.pl/">
+<meta property="og:locale" content="<%= lang === 'en' ? 'en_GB' : 'pl_PL' %>">
 <%- include('partials/meta') %>
-<link rel="stylesheet" href="/css/app.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="/css/app.css?v=<%= version %>">
+<script type="application/ld+json"><%- JSON.stringify(ld).replace(/</g, '\\u003c') %></script>
 </head>
 <body class="sf">
+<a class="skip-link" href="#main"><%= c.skip %></a>
 <div style="min-height:100vh; display:flex; flex-direction:column">
 
 <nav class="nav">
   <%- include('partials/logo', { tagline: true }) %>
   <span class="nav-right nav-links">
-    <a href="#jak">Jak to działa</a>
-    <a href="#wycena">Wycena</a>
-    <a href="#faq">FAQ</a>
-    <a href="/windykacja">Windykacja</a>
-    <a href="/login">Panel klienta</a>
-    <a href="#formularz" class="nav-cta">Sprzedaj fakturę</a>
+    <a href="#jak"><%= h.nav.how %></a>
+    <a href="#wycena"><%= h.nav.quote %></a>
+    <a href="#faq"><%= h.nav.faq %></a>
+    <a href="/windykacja"><%= h.nav.collection %></a>
+    <a href="/login"><%= h.nav.panel %></a>
+    <a href="#formularz" class="nav-cta"><%= h.nav.cta %></a>
+    <span class="lang-switch">
+      <a href="<%= langUrl('pl') %>" class="<%= lang === 'pl' ? 'active' : '' %>" hreflang="pl">PL</a><span class="sep">·</span><a href="<%= langUrl('en') %>" class="<%= lang === 'en' ? 'active' : '' %>" hreflang="en">EN</a>
+    </span>
   </span>
 </nav>
 
-<section class="hero sf-hero">
+<section class="hero sf-hero" id="main">
   <canvas id="hero-net" aria-hidden="true"></canvas>
   <div class="hero-inner">
     <div class="hero-copy">
-      <h1>Sprzedaj fakturę.<br>Gotówka w 24 godziny.</h1>
-      <p class="sub">Kontrahent nie płaci? Nie czekaj miesiącami na windykację. Sprzedaj nam przeterminowaną fakturę B2B — wycena AI w kilka minut, cesja online, przelew następnego dnia roboczego. Ryzyko niewypłacalności przechodzi na nas.</p>
+      <h1><%= h.heroH1[0] %><br><%= h.heroH1[1] %></h1>
+      <p class="sub"><%= h.heroSub %></p>
       <div class="cta">
-        <a class="btn" href="#wycena">Sprawdź wycenę</a>
-        <a class="btn btn-secondary" href="#jak">Jak to działa</a>
+        <a class="btn" href="#wycena"><%= h.ctaQuote %></a>
+        <a class="btn btn-secondary" href="#jak"><%= h.ctaHow %></a>
       </div>
     </div>
     <div class="hero-visual" aria-hidden="true">
       <div class="hero-card">
         <div class="hc-top">
           <%- include('partials/logo', { size: 'sm', asLink: false }) %>
-          <span class="hc-seal tnum">24h</span>
+          <span class="hc-seal tnum"><%= h.card.seal %></span>
         </div>
-        <div class="hc-title">Oferta wykupu</div>
-        <div class="hc-row"><span>Faktura</span><span class="tnum">12 400 zł</span></div>
-        <div class="hc-row"><span>45 dni po terminie</span><span class="tnum">AIScore 67</span></div>
-        <div class="hc-row hc-total"><span>Nasza oferta</span><span class="tnum">9 424 zł</span></div>
+        <div class="hc-title"><%= h.card.title %></div>
+        <div class="hc-row"><span><%= h.card.invoice %></span><span class="tnum">12 400 zł</span></div>
+        <div class="hc-row"><span><%= h.card.overdue %></span><span class="tnum"><%= h.card.score %></span></div>
+        <div class="hc-row hc-total"><span><%= h.card.offer %></span><span class="tnum">9 424 zł</span></div>
         <div class="hc-bar"><span class="hc-fill"></span></div>
-        <div class="hc-foot">Cesja online · przelew w 24 godziny</div>
+        <div class="hc-foot"><%= h.card.foot %></div>
       </div>
-      <div class="hero-chip hc-a tnum">76% wartości</div>
-      <div class="hero-chip hc-b">Ryzyko: nasze</div>
+      <div class="hero-chip hc-a tnum"><%= h.card.chipA %></div>
+      <div class="hero-chip hc-b"><%= h.card.chipB %></div>
     </div>
   </div>
 </section>
 
 <section class="path" id="jak">
-  <div class="kicker">Jak to działa</div>
+  <div class="kicker"><%= h.steps.kicker %></div>
   <div class="path-grid">
-    <div class="cell"><div class="p-step tnum">01 · 2 minuty</div><div class="p-desc">Wyślij fakturę i NIP dłużnika</div></div>
-    <div class="cell"><div class="p-step tnum">02 · Kilka minut</div><div class="p-desc">AI sprawdza KRZ, KRS i białą listę — dostajesz ofertę</div></div>
-    <div class="cell"><div class="p-step tnum">03 · Online</div><div class="p-desc">Podpisujesz cesję elektronicznie</div></div>
-    <div class="cell"><div class="p-step tnum">04 · 24 godziny</div><div class="p-desc">Pieniądze na Twoim koncie</div></div>
+    <% h.steps.items.forEach(function (s) { %>
+    <div class="cell"><div class="p-step tnum"><%= s[0] %></div><div class="p-desc"><%= s[1] %></div></div>
+    <% }) %>
   </div>
 </section>
 
 <section class="law" id="wycena">
   <div class="wrap">
-    <div class="kicker">Wstępna wycena — od razu</div>
+    <div class="kicker"><%= h.quote.kicker %></div>
     <div class="sf-wycena">
-      <form method="get" action="/#wycena" class="sf-wycena-form">
+      <form method="get" action="/#wycena" class="sf-wycena-form" id="wycena-form">
         <div>
-          <label for="w-kwota">Kwota faktury (zł)</label>
-          <input class="tnum" type="text" id="w-kwota" name="kwota" inputmode="decimal" placeholder="np. 12400" value="<%= q.kwota %>" required>
+          <label for="w-kwota"><%= h.quote.labelAmount %></label>
+          <input class="tnum" type="text" id="w-kwota" name="kwota" inputmode="decimal" placeholder="<%= h.quote.phAmount %>" value="<%= q.kwota %>" autocomplete="off" required>
         </div>
         <div>
-          <label for="w-dni">Dni po terminie</label>
-          <input class="tnum" type="number" id="w-dni" name="dni" min="1" placeholder="np. 45" value="<%= q.dni %>" required>
+          <label for="w-dni"><%= h.quote.labelDays %></label>
+          <input class="tnum" type="number" id="w-dni" name="dni" min="1" max="3650" placeholder="<%= h.quote.phDays %>" value="<%= q.dni %>" autocomplete="off" required>
         </div>
-        <button class="btn btn-gold" type="submit">Policz ofertę</button>
+        <button class="btn btn-gold" type="submit"><%= h.quote.btn %></button>
       </form>
-      <% if (est) { %>
-      <div class="sf-wycena-result">
-        <div class="swr-main"><span class="tnum"><%= D.fmt(est.amountLow) %> – <%= D.fmt(est.amount) %></span></div>
-        <div class="swr-sub">wstępna oferta (<%= est.pctLow %>–<%= est.pct %>% wartości) — ostateczna po weryfikacji dłużnika w KRZ, KRS i białej liście. Odsetki nabywamy razem z wierzytelnością (art. 509 § 2 KC).</div>
-        <a class="btn btn-gold" href="#formularz">Przyjmuję — wyślij fakturę</a>
+      <div class="sf-wycena-result" id="wycena-live" aria-live="polite"<%- est ? '' : ' hidden' %>>
+        <div class="swr-main"><span class="tnum"><%= est ? D.fmt(est.amountLow) + ' – ' + D.fmt(est.amount) : '' %></span></div>
+        <div class="swr-sub" data-tpl="<%= h.quote.resultSub %>"><%= est ? h.quote.resultSub.replace('{low}', est.pctLow).replace('{high}', est.pct) : '' %></div>
+        <a class="btn btn-gold" href="#formularz"><%= h.quote.resultCta %></a>
       </div>
-      <% } %>
+      <p class="sf-wycena-hint"><%= h.quote.hint %></p>
     </div>
   </div>
 </section>
 
 <section class="model">
-  <div class="kicker">Dlaczego warto sprzedać</div>
+  <div class="kicker"><%= h.why.kicker %></div>
   <div class="model-grid">
-    <div class="cell"><div class="m-who">Płynność</div><h4>Gotówka od ręki</h4><p>Zamiast czekać 3–12 miesięcy na windykację lub sąd, masz pieniądze następnego dnia roboczego.</p></div>
-    <div class="cell"><div class="m-who">Ryzyko</div><h4>Upadłość? Nasz problem</h4><p>Po cesji ryzyko niewypłacalności dłużnika w całości przechodzi na nas — bez regresu.</p></div>
-    <div class="cell alt"><div class="m-who">Spokój</div><h4>Czysty bilans, zero windykacji</h4><p>Koniec telefonów, wezwań i pilnowania terminów. Wierzytelność znika z Twoich ksiąg.</p></div>
+    <% h.why.items.forEach(function (w, i) { %>
+    <div class="cell <%= i === 2 ? 'alt' : '' %>"><div class="m-who"><%= w[0] %></div><h4><%= w[1] %></h4><p><%= w[2] %></p></div>
+    <% }) %>
   </div>
 </section>
 
 <section class="why" id="faq">
   <div class="why-grid">
     <div class="cell">
-      <div class="kicker">FAQ</div>
-      <h2>Najczęstsze pytania</h2>
+      <div class="kicker"><%= h.faq.kicker %></div>
+      <h2><%= h.faq.h %></h2>
       <div class="sf-faq">
-        <div class="sf-q">Ile dostanę za fakturę?</div>
-        <div class="sf-a">Zależnie od AIScore dłużnika: zwykle 55–90% wartości. Im krótsze opóźnienie i czystszy dłużnik w rejestrach, tym wyższa oferta. Odsetki za opóźnienie przechodzą na nas razem z wierzytelnością.</div>
-        <div class="sf-q">Czy każda faktura się kwalifikuje?</div>
-        <div class="sf-a">Kupujemy bezsporne faktury B2B. Sprawdzamy, czy umowa z dłużnikiem nie zawiera zakazu cesji (art. 509 § 1 KC) i czy dłużnik nie jest w upadłości — wtedy oferta nie jest możliwa.</div>
-        <div class="sf-q">Co z rekompensatą 40/70/100 €?</div>
-        <div class="sf-a">Ta pozostaje przy Tobie — z mocy ustawy (art. 10 ust. 4) nie podlega cesji. Możesz jej dochodzić samodzielnie, oferta dotyczy należności głównej z odsetkami.</div>
-        <div class="sf-q">Czy dłużnik się dowie?</div>
-        <div class="sf-a">Tak — po cesji zawiadamiamy dłużnika na piśmie (art. 512 KC). Od tego momentu płaci wyłącznie nam.</div>
-        <div class="sf-q">Wolę nie sprzedawać — tylko odzyskać pieniądze?</div>
-        <div class="sf-a">Też możemy: <a href="/windykacja">windykacja na koszt dłużnika</a> — Ty płacisz <%= SERVICE_FEE %> zł od sprawy, odsetki (14%), rekompensatę i koszty pokrywa dłużnik. Agent AI prowadzi sprawę w panelu.</div>
+        <% h.faq.items.forEach(function (f) { %>
+        <div class="sf-q"><%= f[0] %></div>
+        <div class="sf-a"><%- f[1].replace('{fee}', SERVICE_FEE) %></div>
+        <% }) %>
       </div>
     </div>
     <div class="cell">
-      <div class="kicker" id="formularz">Sprzedaj fakturę</div>
+      <div class="kicker" id="formularz"><%= h.form.kicker %></div>
       <% if (leadOk) { %>
-      <div class="confirm"><span class="sq"></span><span>Dziękujemy! Analizujemy dłużnika — ofertę wyślemy w ciągu kilku godzin roboczych na podany e-mail.</span></div>
+      <div class="confirm"><span class="sq"></span><span><%= h.form.ok %></span></div>
       <% } else { %>
-      <form class="calc-form" method="post" action="/sprzedaj">
-        <div class="fg"><label for="f-firma">Twoja firma</label><input type="text" id="f-firma" name="company" required></div>
-        <div class="fg"><label for="f-nip">NIP dłużnika</label><input type="text" id="f-nip" name="nip" class="tnum" required></div>
-        <div class="fg"><label for="f-kwota">Kwota faktury (zł)</label><input type="text" id="f-kwota" name="kwota" class="tnum" inputmode="decimal" required></div>
-        <div class="fg"><label for="f-dni">Dni po terminie</label><input type="number" id="f-dni" name="dni" class="tnum" min="1" required></div>
-        <div class="fg"><label for="f-email">E-mail</label><input type="email" id="f-email" name="email" required></div>
-        <div class="fg"><label for="f-tel">Telefon</label><input type="tel" id="f-tel" name="tel" class="tnum" required></div>
-        <button class="btn btn-gold" type="submit">Wyślij do wyceny</button>
-        <p class="legal-note" style="margin-top:12px">Wysłanie formularza nie zobowiązuje do sprzedaży. Ofertę możesz odrzucić bez kosztów.</p>
+      <form class="calc-form" method="post" action="/sprzedaj" id="lead-form">
+        <% if (hasErr) { %><div class="form-error" role="alert"><%= h.form.errors.generic %></div><% } %>
+        <div class="fg<%= errors.company ? ' has-err' : '' %>">
+          <label for="f-firma"><%= h.form.company %></label>
+          <input type="text" id="f-firma" name="company" value="<%= form.company || '' %>" autocomplete="organization" required<%- errors.company ? ' aria-invalid="true"' : '' %>>
+          <% if (errors.company) { %><div class="field-err"><%= errors.company %></div><% } %>
+        </div>
+        <div class="fg<%= errors.nip ? ' has-err' : '' %>">
+          <label for="f-nip"><%= h.form.nip %></label>
+          <input type="text" id="f-nip" name="nip" class="tnum" inputmode="numeric" value="<%= form.nip || '' %>" placeholder="5210000000" required<%- errors.nip ? ' aria-invalid="true"' : '' %>>
+          <% if (errors.nip) { %><div class="field-err"><%= errors.nip %></div><% } %>
+        </div>
+        <div class="fg<%= errors.kwota ? ' has-err' : '' %>">
+          <label for="f-kwota"><%= h.form.amount %></label>
+          <input type="text" id="f-kwota" name="kwota" class="tnum" inputmode="decimal" value="<%= form.kwota || '' %>" required<%- errors.kwota ? ' aria-invalid="true"' : '' %>>
+          <% if (errors.kwota) { %><div class="field-err"><%= errors.kwota %></div><% } %>
+        </div>
+        <div class="fg<%= errors.dni ? ' has-err' : '' %>">
+          <label for="f-dni"><%= h.form.days %></label>
+          <input type="number" id="f-dni" name="dni" class="tnum" min="1" max="3650" value="<%= form.dni || '' %>" required<%- errors.dni ? ' aria-invalid="true"' : '' %>>
+          <% if (errors.dni) { %><div class="field-err"><%= errors.dni %></div><% } %>
+        </div>
+        <div class="fg<%= errors.email ? ' has-err' : '' %>">
+          <label for="f-email"><%= h.form.email %></label>
+          <input type="email" id="f-email" name="email" value="<%= form.email || '' %>" autocomplete="email" required<%- errors.email ? ' aria-invalid="true"' : '' %>>
+          <% if (errors.email) { %><div class="field-err"><%= errors.email %></div><% } %>
+        </div>
+        <div class="fg<%= errors.tel ? ' has-err' : '' %>">
+          <label for="f-tel"><%= h.form.tel %></label>
+          <input type="tel" id="f-tel" name="tel" class="tnum" value="<%= form.tel || '' %>" autocomplete="tel" required<%- errors.tel ? ' aria-invalid="true"' : '' %>>
+          <% if (errors.tel) { %><div class="field-err"><%= errors.tel %></div><% } %>
+        </div>
+        <div class="hp" aria-hidden="true"><label for="f-web">Website</label><input type="text" id="f-web" name="website" tabindex="-1" autocomplete="off"></div>
+        <button class="btn btn-gold" type="submit"><%= h.form.btn %></button>
+        <p class="legal-note" style="margin-top:12px"><%= h.form.note %></p>
       </form>
       <% } %>
     </div>
@@ -143,13 +184,14 @@
   <div class="wrap">
     <div class="sf-footer">
       <%- include('partials/logo', { size: 'sm', tagline: true }) %>
-      <span class="sf-footer-links"><a href="/windykacja">Windykacja i faktoring</a> · <a href="/kalkulator">Kalkulator odsetek</a> · <a href="/login">Panel klienta</a></span>
+      <span class="sf-footer-links"><a href="/windykacja"><%= h.footer.collection %></a> · <a href="/kalkulator"><%= h.footer.calc %></a> · <a href="/login"><%= h.footer.panel %></a></span>
     </div>
-    <div class="cr">© 2026 sprzedamfakture.pl · kontakt@sprzedamfakture.pl · Podstawa: art. 509–512 KC, ustawa z 8.03.2013 r. o przeciwdziałaniu nadmiernym opóźnieniom w transakcjach handlowych.</div>
+    <div class="cr"><%= h.footer.legal %> · <span class="ver tnum" title="<%= c.versionTitle %>">v<%= version %><%= commit ? ' · ' + commit : '' %></span></div>
   </div>
 </footer>
 
 </div>
-<script src="/js/motion.js" defer></script>
+<script src="/js/motion.js?v=<%= version %>" defer></script>
+<script src="/js/wycena.js?v=<%= version %>" defer></script>
 </body>
 </html>

@@ -6,7 +6,9 @@
 <title><%= typeof title !== 'undefined' ? title : 'sprzedamfakture.pl — Sprzedaj fakturę. Gotówka w 24 godziny.' %></title>
 <meta name="description" content="sprzedamfakture.pl — sprzedaj przeterminowaną fakturę B2B: wycena AI w kilka minut, cesja online, przelew w 24 godziny. Albo windykacja na koszt dłużnika za 99 zł od sprawy.">
 <%- include('meta') %>
-<link rel="stylesheet" href="/css/app.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="/css/app.css?v=<%= version %>">
 </head>
 <body>
 <div style="min-height:100vh; display:flex; flex-direction:column">

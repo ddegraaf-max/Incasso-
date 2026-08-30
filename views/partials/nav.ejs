@@ -7,13 +7,13 @@
       <a href="/app/sprawy">Panel</a>
       <a href="/logout">Wyloguj</a>
     <% } else if (page === 'auth') { %>
-      <a href="/">Strona główna</a>
-      <a href="/kalkulator">Kalkulator odsetek</a>
+      <a href="/"><%= t.common.navHome %></a>
+      <a href="/kalkulator"><%= t.common.navCalc %></a>
     <% } else { %>
-      <a href="/#wycena">Sprzedaj fakturę</a>
-      <a href="/windykacja">Windykacja</a>
-      <a href="/kalkulator">Kalkulator odsetek</a>
-      <a href="/login">Panel klienta</a>
+      <a href="/#wycena"><%= t.common.navSell %></a>
+      <a href="/windykacja"><%= t.common.navCollection %></a>
+      <a href="/kalkulator"><%= t.common.navCalc %></a>
+      <a href="/login"><%= t.common.navPanel %></a>
     <% } %>
   </span>
 </nav>

@@ -8,9 +8,12 @@
 <link rel="alternate" hreflang="pl" href="/windykacja?lang=pl">
 <link rel="alternate" hreflang="en" href="/windykacja?lang=en">
 <%- include('partials/meta') %>
-<link rel="stylesheet" href="/css/app.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="/css/app.css?v=<%= version %>">
 </head>
 <body>
+<a class="skip-link" href="#main"><%= t.common.skip %></a>
 <div style="min-height:100vh; display:flex; flex-direction:column">
 
 <nav class="nav">
@@ -23,12 +26,12 @@
     <a href="/"><%= t.navSell %></a>
     <a href="/app/sprawy"><%= t.navApp %></a>
     <span class="lang-switch">
-      <a href="/windykacja?lang=pl" class="<%= lang === 'pl' ? 'active' : '' %>">PL</a><span class="sep">·</span><a href="/windykacja?lang=en" class="<%= lang === 'en' ? 'active' : '' %>">EN</a>
+      <a href="<%= langUrl('pl') %>" class="<%= lang === 'pl' ? 'active' : '' %>" hreflang="pl">PL</a><span class="sep">·</span><a href="<%= langUrl('en') %>" class="<%= lang === 'en' ? 'active' : '' %>" hreflang="en">EN</a>
     </span>
   </span>
 </nav>
 
-<section class="hero">
+<section class="hero" id="main">
   <canvas id="hero-net" aria-hidden="true"></canvas>
   <div class="hero-inner">
     <div class="hero-copy">
@@ -152,11 +155,11 @@
   <ol>
     <% t.sources.forEach(function(s) { %><li><%= s %></li><% }) %>
   </ol>
-  <div class="cr"><%= t.copyright %> · kontakt@sprzedamfakture.pl · <a href="/">sprzedaj fakturę</a> · <a href="/kalkulator"><%= t.navCalc %></a></div>
+  <div class="cr"><%= t.copyright %> · kontakt@sprzedamfakture.pl · <a href="/"><%= t.navSell %></a> · <a href="/kalkulator"><%= t.navCalc %></a> · <span class="ver tnum" title="<%= t.common.versionTitle %>">v<%= version %><%= commit ? ' · ' + commit : '' %></span></div>
   </div>
 </footer>
 
 </div>
-<script src="/js/motion.js" defer></script>
+<script src="/js/motion.js?v=<%= version %>" defer></script>
 </body>
 </html>
