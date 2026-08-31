@@ -7,6 +7,7 @@ const Auth = require('./src/auth');
 const db = require('./src/db');
 const AiScore = require('./src/aiscore');
 const Comms = require('./src/comms');
+const Mailer = require('./src/mailer');
 const pgSession = require('connect-pg-simple')(session);
 const compression = require('compression');
 const VER = require('./src/version');
@@ -136,6 +137,7 @@ app.post('/rejestracja', (req, res) => {
   if (password !== password2) return fail(res.locals.t.app.msg.pwMismatch);
 
   const user = Auth.addUser({ email, password, company, nip, role: 'client' });
+  Mailer.welcome(user, res.locals.lang).catch(() => {});
   req.session.regenerate(() => {
     req.session.userId = user.id;
     req.session.pending2fa = true;
@@ -200,7 +202,14 @@ app.get('/logout', (req, res) => {
 app.get('/admin', Auth.requireAdmin, async (req, res) => {
   const events = await db.listEvents(15).catch(() => []);
   const leads = await db.listLeads(15).catch(() => []);
-  res.render('admin', common({ page: 'admin', user: req.user, usersList: Auth.allUsers(), done: D.getDone(), events, leads }));
+  res.render('admin', common({ page: 'admin', user: req.user, usersList: Auth.allUsers(), done: D.getDone(), events, leads, flash: req.query.msg || null, integr: { ...Mailer.status(), db: db.hasDb() } }));
+});
+
+// Testmail naar MAIL_NOTIFY — om de Resend-koppeling na deploy te controleren
+app.post('/admin/test-mail', Auth.requireAdmin, async (req, res) => {
+  const r = await Mailer.testMail(res.locals.lang, VER.version).catch((e) => ({ status: 'błąd: ' + e.message, to: null }));
+  const msg = res.locals.t.app.admin.testMailResult + ': ' + res.locals.t.tr(r.status) + (r.to ? ' → ' + r.to : '');
+  res.redirect('/admin?msg=' + encodeURIComponent(msg));
 });
 
 // ── Marketing ────────────────────────────────────────────────────────────
@@ -281,10 +290,16 @@ app.post('/sprzedaj', async (req, res) => {
   }
   const est = AiScore.estimateOffer(kw, dn);
   const nip = form.nip.replace(/\D/g, '');
-  await db.saveLead({ company: form.company, nip, email: form.email, tel: form.tel, kwota: kw, dni: dn, oferta_pct: est.pct, note: 'lang=' + res.locals.lang }).catch(() => {});
+  const lead = { company: form.company, nip, email: form.email, tel: form.tel, kwota: kw, dni: dn };
+  await db.saveLead({ ...lead, oferta_pct: est.pct, note: 'lang=' + res.locals.lang }).catch(() => {});
+  // e-mails: notificatie naar MAIL_NOTIFY + bevestiging aan de klant (PL/EN); fouten blokkeren het formulier niet
+  const [notify, confirm] = await Promise.all([
+    Mailer.leadNotify(lead, est, res.locals.lang).catch((e) => ({ status: 'błąd: ' + e.message })),
+    Mailer.leadConfirm(lead, est, res.locals.lang).catch((e) => ({ status: 'błąd: ' + e.message })),
+  ]);
   await db.insertEvent({
     nip, debtor: form.company, type: 'lead',
-    title: 'Nowy lead sprzedamfakture.pl: ' + D.fmt(kw) + ' · ' + dn + ' dni · wstępnie ' + est.pct + '%',
+    title: 'Nowy lead sprzedamfakture.pl: ' + D.fmt(kw) + ' · ' + dn + ' dni · wstępnie ' + est.pct + '% · mail: ' + notify.status + ' / ' + confirm.status,
     source: 'sprzedamfakture.pl',
   }).catch(() => {});
   res.redirect('/?lead=ok#formularz');
@@ -293,7 +308,8 @@ app.post('/sprzedaj', async (req, res) => {
 // ── Health, robots, sitemap ──────────────────────────────────────────────
 app.get('/health', (req, res) => {
   res.set('Cache-Control', 'no-store');
-  res.json({ ok: true, name: 'sprzedamfakture.pl', version: VER.version, commit: VER.commit, startedAt: VER.startedAt, uptimeSec: Math.round(process.uptime()), db: db.hasDb() });
+  const m = Mailer.status();
+  res.json({ ok: true, name: 'sprzedamfakture.pl', version: VER.version, commit: VER.commit, startedAt: VER.startedAt, uptimeSec: Math.round(process.uptime()), db: db.hasDb(), mail: m.resend ? 'resend' : 'simulation', mailFrom: m.from, mailNotify: !!m.notify, liveComms: m.liveComms, smsapi: m.smsapi, anthropic: m.anthropic });
 });
 
 const SITE = 'https://sprzedamfakture.pl';

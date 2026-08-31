@@ -98,6 +98,9 @@ const pl = {
     leadsLabel: 'Leady — formularz „Sprzedaj fakturę”', noLeads: 'Brak leadów.', leadLine: '{kwota} · {dni} dni · wstępnie {pct}%', leadNip: 'NIP dłużnika: {nip}',
     eventsLabel: 'Zdarzenia monitoringu', system: 'system', secLabel: 'Bezpieczeństwo',
     sec: ['Hasła: bcrypt (koszt 12)', '2FA: TOTP, obowiązkowe dla admina i nowych kont', 'Blokada: 5 nieudanych prób → 15 minut', 'Sesje: httpOnly, sameSite=lax'],
+    integrLabel: 'Integracje', integrOn: 'Aktywne', integrOff: 'Brak', notSet: 'nie ustawiono',
+    integr: { resend: 'Resend — e-mail z formularzy', from: 'Nadawca', notify: 'Powiadomienia o leadach →', live: 'Wysyłka do dłużników (LIVE_COMMS)', sms: 'SMSAPI — SMS', ai: 'Anthropic — teksty AI', db: 'PostgreSQL' },
+    testMail: 'Wyślij testowy e-mail', testMailResult: 'Test e-mail', testMailHint: 'Wysyła wiadomość na adres MAIL_NOTIFY przez Resend.',
   },
 };
 
@@ -151,7 +154,7 @@ const RULES = [
   [/^(\d+) dni po terminie$/, '$1 days overdue'],
   [/^Historia: płaci śr\. (\d+) dni po terminie$/, 'History: pays on average $1 days late'],
   [/^za (\d+) dni$/, 'in $1 days'],
-  [/^Nowy lead sprzedamfakture\.pl: (.*) · (\d+) dni · wstępnie (\d+)%$/, 'New lead sprzedamfakture.pl: $1 · $2 days · preliminary $3%'],
+  [/^Nowy lead sprzedamfakture\.pl: (.*) · (\d+) dni · wstępnie (\d+)%(.*)$/, 'New lead sprzedamfakture.pl: $1 · $2 days · preliminary $3%$4'],
   [/^Rozmowa telefoniczna: (.*)$/, 'Phone call: $1'],
 ];
 
@@ -171,6 +174,8 @@ const FRAGMENTS = [
   ['brak wpisów', 'no entries'], ['podatnik VAT nieaktywny', 'VAT taxpayer inactive'], ['czynny podatnik VAT', 'active VAT taxpayer'],
   ['AIScore przeliczony', 'AIScore recalculated'], ['rekomendacja: zamknięcie', 'recommendation: close'], ['rekomendacja: sprzedaż', 'recommendation: sell'],
   ['Obietnica zapłaty', 'Promise to pay'], ['Uzgodniono raty', 'Instalments agreed'], ['Faktura sporna', 'Invoice disputed'], ['Odmowa zapłaty', 'Refusal to pay'], ['Brak kontaktu', 'No contact'],
+  ['mail: wysłano', 'mail: sent'], ['mail: symulacja', 'mail: simulation'], ['/ wysłano', '/ sent'], ['/ symulacja', '/ simulation'],
+  ['brak MAIL_NOTIFY', 'MAIL_NOTIFY not set'], ['brak adresata', 'no recipient'], ['błąd sieci', 'network error'], ['błąd ', 'error '], ['błąd:', 'error:'],
   ['termin:', 'date:'], ['dziś', 'today'], ['jutro', 'tomorrow'],
 ];
 
@@ -283,6 +288,9 @@ const en = {
     leadsLabel: 'Leads — "Sell an invoice" form', noLeads: 'No leads.', leadLine: '{kwota} · {dni} days · preliminary {pct}%', leadNip: 'Debtor NIP: {nip}',
     eventsLabel: 'Monitoring events', system: 'system', secLabel: 'Security',
     sec: ['Passwords: bcrypt (cost 12)', '2FA: TOTP, mandatory for admin and new accounts', 'Lockout: 5 failed attempts → 15 minutes', 'Sessions: httpOnly, sameSite=lax'],
+    integrLabel: 'Integrations', integrOn: 'Active', integrOff: 'None', notSet: 'not set',
+    integr: { resend: 'Resend — form e-mails', from: 'Sender', notify: 'Lead notifications →', live: 'Sending to debtors (LIVE_COMMS)', sms: 'SMSAPI — SMS', ai: 'Anthropic — AI texts', db: 'PostgreSQL' },
+    testMail: 'Send a test e-mail', testMailResult: 'Test e-mail', testMailHint: 'Sends a message to the MAIL_NOTIFY address via Resend.',
   },
 };
 

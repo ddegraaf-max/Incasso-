@@ -19,7 +19,7 @@ Node/Express/EJS-app achter **sprzedamfakture.pl**: wykup wierzytelności (insta
 | `/kalkulator` | Publieke kalkulator odsetek (14%) + rekompensata 40/70/100 € — leadmagnet/SEO |
 | `/wezwanie` | Printbaar wezwanie do zapłaty, gegenereerd vanuit de kalkulator |
 | `/api/wycena?kwota=&dni=` | JSON voor de live wycena-widget (indicatieve oferta) |
-| `/health` | JSON: versie, commit, uptime, db — voor deploy-checks |
+| `/health` | JSON: versie, commit, uptime, db, mail/Resend-status — voor deploy-checks |
 | `/robots.txt` · `/sitemap.xml` | SEO (hreflang PL/EN in de sitemap) |
 
 ## Branding & logo
@@ -54,6 +54,18 @@ Env vars: `PORT` (Railway zet die zelf), `SESSION_SECRET` (VERPLICHT in producti
 - **Demo-account**: `demo@sprzedamfakture.pl` / `Demo1234!` (zonder 2FA, alleen om te klikken; het oude `demo@creditline.pl` werkt als alias). Staat als hint op de loginpagina — **uitzetten vóór livegang** met env `DEMO_ACCOUNT=0`. Admin-default: `admin@sprzedamfakture.pl` (overschrijf met `ADMIN_EMAIL`). Bij een DB zijn DB-accounts leidend; seed-accounts die nog ontbreken krijgen een vrij id (geen botsing met oude Creditline-accounts).
 - Gebruikers, sessies, acties, scores en events staan in PostgreSQL zodra `DATABASE_URL` gezet is.
 
+## E-mail (Resend) — formulieren
+Het leadformulier stuurt via **Resend** twee mails: een **notificatie naar jou** (`MAIL_NOTIFY`, met alle velden, taal van de klant en link naar `/admin`; reply-to = de klant) en een **bevestiging aan de klant** in PL of EN (samenvatting, wstępna oferta, vervolgstappen; reply-to = `MAIL_NOTIFY`). Bij registratie gaat een welkomstmail. Zonder `RESEND_API_KEY` draait alles in symulacja (alleen gelogd, formulier werkt gewoon). Code: `src/mailer.js`.
+
+Instellen:
+1. **Resend → Domains → Add domain** `sprzedamfakture.pl` (regio EU). Zet de getoonde DNS-records bij dns.pl: DKIM (`resend._domainkey` TXT), SPF/MX voor het `send.`-subdomein en liefst een DMARC-record (`_dmarc` TXT, `v=DMARC1; p=none`). Wacht op "Verified" — zonder geverifieerd domein kun je alleen naar je eigen Resend-adres sturen vanaf `onboarding@resend.dev`.
+2. **Resend → API Keys → Create** (Sending access, domein sprzedamfakture.pl). Kopieer de key (`re_…`).
+3. **Railway → Variables**: `RESEND_API_KEY=re_…`, `MAIL_FROM=sprzedamfakture.pl <kontakt@sprzedamfakture.pl>` (moet op het geverifieerde domein zitten), `MAIL_NOTIFY=jouw@inbox` (waar leads binnenkomen; fallback `ADMIN_EMAIL`), optioneel `SITE_URL`. Redeploy.
+4. **Controleren**: `/admin` → blok *Integracje* → knop **Wyślij testowy e-mail** → status verschijnt bovenaan (`wysłano` of de foutmelding van Resend, bijv. domein niet geverifieerd). `/health` toont `mail`, `mailFrom`, `mailNotify`.
+5. **Let op**: Resend verzendt alleen. Antwoorden van klanten komen binnen op `MAIL_NOTIFY` (reply-to). Wil je post op `kontakt@sprzedamfakture.pl` ontvangen, regel dan een mailbox of forwarding bij je domeinprovider.
+
+Mails naar **dłużnicy** (agent-knop E-mail/SMS in het panel) gaan pas echt met `LIVE_COMMS=1` — anders symulacja, ook mét keys. De demo-zaken hebben fictieve adressen; zet dit pas aan met echte zaken.
+
 ## Sprzedaj fakturę (homepage)
 Instant wycena-widget (indicatieve oferta via `AiScore.estimateOffer`, definitief na KRZ/KRS/biała lista-check), 4-stappenflow, FAQ (incl. zakaz cesji, rekompensata blijft bij verkoper, art. 512-notificatie, doorverwijzing naar windykacja) en een leadformulier → tabel `leads` + event in het admin-dashboard en de Agent-tab.
 
@@ -70,11 +82,11 @@ De **monitor** draait als continue loop over alle dłużnicy in de database (`MO
 
 ## Communicatielaag (agent-acties)
 Vanuit het detailpaneel van elke zaak, in de gekozen toon (Uprzejmy/Stanowczy/Prawniczy):
-- **E-mail** — treść genereert de agent (Anthropic API indien `ANTHROPIC_API_KEY` gezet, anders professionele PL-templates, ondertekend *sprzedamfakture.pl — dział windykacji*), verzending via **Resend** (`RESEND_API_KEY`, afzender `FROM_EMAIL`, default `windykacja@sprzedamfakture.pl`). Zonder key: symulacja-modus, volledig gelogd.
+- **E-mail** — treść genereert de agent (Anthropic API indien `ANTHROPIC_API_KEY` gezet, anders professionele PL-templates, ondertekend *sprzedamfakture.pl — dział windykacji*), verzending via **Resend** (`RESEND_API_KEY`, afzender `FROM_EMAIL`, default `windykacja@sprzedamfakture.pl`) — alleen met `LIVE_COMMS=1`. Zonder key of zonder `LIVE_COMMS`: symulacja-modus, volledig gelogd.
 - **SMS** — via **SMSAPI.pl** (`SMSAPI_TOKEN`, afzendernaam `SMS_FROM`, default `SprzedamFV` — SMSAPI staat max. 11 alfanumerieke tekens toe, dus de volledige domeinnaam past niet; registreer de afzendernaam in het SMSAPI-panel). Zonder token: symulacja.
 - **Telefoon** — jij belt zelf: knop "Zadzwoń — skrypt" opent de belvoorbereiding met klikbaar nummer (tel:), AI-gespreksscript (cel, otwarcie, argumenten met actuele odsetki/rekompensata, reacties op 4 standaard-wymówki, zamknięcie) en na afloop een resultaatformulier (obietnica/raty/sporna/odmowa/brak + termin + notatka). Het resultaat stuurt de zaakfase bij (raty → "Harmonogram rat", odmowa → "Eskalacja").
 
-Alles wordt gelogd in `comm_log` (PostgreSQL/memory), verschijnt als "Historia komunikacji" in het detailpaneel en als event op de Agent AI-tab. Extra env vars: `RESEND_API_KEY`, `FROM_EMAIL`, `SMSAPI_TOKEN`, `SMS_FROM`, `ANTHROPIC_API_KEY`.
+Alles wordt gelogd in `comm_log` (PostgreSQL/memory), verschijnt als "Historia komunikacji" in het detailpaneel en als event op de Agent AI-tab. Extra env vars: `RESEND_API_KEY`, `FROM_EMAIL`, `MAIL_FROM`, `MAIL_NOTIFY`, `LIVE_COMMS`, `SMSAPI_TOKEN`, `SMS_FROM`, `ANTHROPIC_API_KEY`.
 
 ## Status / architectuur
 - **PostgreSQL-koppeling actief**: met `DATABASE_URL` (Railway Postgres-plugin) worden users, sessies (connect-pg-simple), zaakacties, AIScores en events persistent; schema wordt automatisch aangemaakt. Zonder `DATABASE_URL` draait alles in-memory (demo). In demo-modus wordt de KRZ-status bij herstart vers herberekend uit de bronnen (by design — events blijven wel staan).

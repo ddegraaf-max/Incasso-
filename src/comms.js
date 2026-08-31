@@ -1,12 +1,15 @@
 // sprzedamfakture.pl — communicatielaag van de agent
-// E-mail: Resend (RESEND_API_KEY). SMS: SMSAPI.pl (SMSAPI_TOKEN).
+// E-mail: Resend via mailer.js (RESEND_API_KEY). SMS: SMSAPI.pl (SMSAPI_TOKEN).
+// LIVE_COMMS=1 is vereist om écht naar dłużnicy te sturen — anders symulacja, ook mét keys
+// (de demo-zaken hebben fictieve adressen/nummers).
 // Teksten: Anthropic API (ANTHROPIC_API_KEY) of professionele PL-templates.
 // Zonder keys: alles werkt in symulacja-modus, volledig gelogd — de flow is
 // identiek, alleen de laatste verzendstap is dan een no-op.
 const db = require('./db');
 const D = require('./data');
 
-const RESEND_KEY = process.env.RESEND_API_KEY || '';
+const Mailer = require('./mailer');
+const LIVE_COMMS = process.env.LIVE_COMMS === '1';
 const SMSAPI_TOKEN = process.env.SMSAPI_TOKEN || '';
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || '';
 const FROM_EMAIL = process.env.FROM_EMAIL || 'windykacja@sprzedamfakture.pl';
@@ -103,16 +106,9 @@ async function composeEmail(c, tone) {
 async function sendEmail(c, tone) {
   const msg = await composeEmail(c, tone);
   let status = 'symulacja';
-  if (RESEND_KEY) {
-    try {
-      const r = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', authorization: `Bearer ${RESEND_KEY}` },
-        body: JSON.stringify({ from: FROM_EMAIL, to: c.email, subject: msg.subject, text: msg.body }),
-        signal: AbortSignal.timeout(8000),
-      });
-      status = r.ok ? 'wysłano' : `błąd ${r.status}`;
-    } catch (e) { status = 'błąd sieci'; }
+  if (LIVE_COMMS) {
+    const r = await Mailer.send({ from: FROM_EMAIL, to: c.email, subject: msg.subject, text: msg.body });
+    status = r.status;
   }
   await db.logComm({ case_id: c.id, channel: 'email', tone, subject: msg.subject, body: msg.body, status });
   await db.insertEvent({
@@ -126,7 +122,7 @@ async function sendSms(c, tone) {
   const f = baseFacts(c);
   const body = (TPL.sms[tone] || TPL.sms.Uprzejmy)(c, f);
   let status = 'symulacja';
-  if (SMSAPI_TOKEN) {
+  if (LIVE_COMMS && SMSAPI_TOKEN) {
     try {
       const params = new URLSearchParams({ to: c.tel.replace(/\s/g, ''), from: SMS_FROM, message: body, format: 'json' });
       const r = await fetch('https://api.smsapi.pl/sms.do', {
