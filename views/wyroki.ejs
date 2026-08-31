@@ -1,0 +1,139 @@
+<%
+// Skup starych wyroków — oude vonnissen/tytuły wykonawcze: uitleg + leadformulier.
+// Teksten in src/i18n.js onder t.wyroki (PL/EN); formulier-afhandeling in server.js (POST /skup-wyrokow).
+var w = t.wyroki, h = t.home, c = t.common;
+var errors = (typeof errors !== 'undefined' && errors) ? errors : {};
+var form = (typeof form !== 'undefined' && form) ? form : {};
+var hasErr = Object.keys(errors).length > 0;
+var ld = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: w.faqLd.map(function (i) {
+  return { '@type': 'Question', name: i[0], acceptedAnswer: { '@type': 'Answer', text: i[1] } };
+}) };
+%><%- include('partials/head', { title: w.metaTitle }) %>
+<%- include('partials/nav') %>
+<script type="application/ld+json"><%- JSON.stringify(ld).replace(/</g, '\\u003c') %></script>
+
+<div class="calc-wrap" style="flex:1">
+  <div class="kicker"><%= w.kicker %></div>
+  <h1 style="font-size:36px"><%= w.h1 %></h1>
+  <p class="helper" style="max-width:66ch"><%= w.lead %></p>
+
+  <h2 style="margin-top:34px"><%= w.why.h %></h2>
+  <p class="helper" style="max-width:70ch"><%- w.why.p1 %></p>
+  <p class="helper" style="max-width:70ch"><%- w.why.p2 %></p>
+  <p class="helper" style="max-width:70ch"><%- w.why.p3 %></p>
+
+  <div class="calc-result" style="margin-top:26px">
+    <% w.caveat.items.forEach(function (i) { %>
+    <div class="row"><span><strong><%= i[0] %></strong></span><span style="max-width:46ch;text-align:right"><%= i[1] %></span></div>
+    <% }) %>
+  </div>
+  <p class="legal-note"><%= w.caveat.note %></p>
+
+  <h2 style="margin-top:34px"><%= w.check.h %></h2>
+  <ul class="helper" style="max-width:70ch; padding-left:18px; line-height:1.7">
+    <% w.check.items.forEach(function (i) { %><li><%- i %></li><% }) %>
+  </ul>
+
+  <h2 style="margin-top:34px"><%= w.ksh.h %></h2>
+  <p class="helper" style="max-width:70ch"><%- w.ksh.p %></p>
+
+  <h2 style="margin-top:34px"><%= w.price.h %></h2>
+  <p class="helper" style="max-width:70ch"><%= w.price.p1 %></p>
+  <p class="helper" style="max-width:70ch"><%= w.price.p2 %></p>
+
+  <h2 style="margin-top:38px" id="formularz"><%= w.form.kicker %></h2>
+  <% if (leadOk) { %>
+  <div class="confirm" style="margin-top:14px"><span class="sq"></span><span><%= w.form.ok %></span></div>
+  <% } else { %>
+  <form class="calc-form" method="post" action="/skup-wyrokow" id="wyrok-form" style="margin-top:14px">
+    <% if (hasErr) { %><div class="form-error" role="alert"><%= h.form.errors.generic %></div><% } %>
+
+    <div class="fg<%= errors.company ? ' has-err' : '' %>">
+      <label for="wf-firma"><%= w.form.company %></label>
+      <input type="text" id="wf-firma" name="company" value="<%= form.company || '' %>" autocomplete="organization" required<%- errors.company ? ' aria-invalid="true"' : '' %>>
+      <% if (errors.company) { %><div class="field-err"><%= errors.company %></div><% } %>
+    </div>
+    <div class="fg<%= errors.email ? ' has-err' : '' %>">
+      <label for="wf-email"><%= w.form.email %></label>
+      <input type="email" id="wf-email" name="email" value="<%= form.email || '' %>" autocomplete="email" required<%- errors.email ? ' aria-invalid="true"' : '' %>>
+      <% if (errors.email) { %><div class="field-err"><%= errors.email %></div><% } %>
+    </div>
+    <div class="fg<%= errors.tel ? ' has-err' : '' %>">
+      <label for="wf-tel"><%= w.form.tel %></label>
+      <input type="tel" id="wf-tel" name="tel" class="tnum" value="<%= form.tel || '' %>" autocomplete="tel" required<%- errors.tel ? ' aria-invalid="true"' : '' %>>
+      <% if (errors.tel) { %><div class="field-err"><%= errors.tel %></div><% } %>
+    </div>
+
+    <div class="fg<%= errors.sygnatura ? ' has-err' : '' %>">
+      <label for="wf-syg"><%= w.form.sygnatura %></label>
+      <input type="text" id="wf-syg" name="sygnatura" value="<%= form.sygnatura || '' %>" placeholder="<%= w.form.sygnaturaPh %>" required<%- errors.sygnatura ? ' aria-invalid="true"' : '' %>>
+      <% if (errors.sygnatura) { %><div class="field-err"><%= errors.sygnatura %></div><% } %>
+    </div>
+    <div class="fg">
+      <label for="wf-sad"><%= w.form.sad %></label>
+      <input type="text" id="wf-sad" name="sad" value="<%= form.sad || '' %>" placeholder="<%= w.form.sadPh %>">
+    </div>
+    <div class="fg<%= errors.data_wyroku ? ' has-err' : '' %>">
+      <label for="wf-data"><%= w.form.dataWyroku %></label>
+      <input type="date" id="wf-data" name="data_wyroku" value="<%= form.data_wyroku || '' %>"<%- errors.data_wyroku ? ' aria-invalid="true"' : '' %>>
+      <% if (errors.data_wyroku) { %><div class="field-err"><%= errors.data_wyroku %></div><% } %>
+    </div>
+    <div class="fg<%= errors.kwota ? ' has-err' : '' %>">
+      <label for="wf-kwota"><%= w.form.amount %></label>
+      <input type="text" id="wf-kwota" name="kwota" class="tnum" inputmode="decimal" value="<%= form.kwota || '' %>" placeholder="np. 48200" required<%- errors.kwota ? ' aria-invalid="true"' : '' %>>
+      <% if (errors.kwota) { %><div class="field-err"><%= errors.kwota %></div><% } %>
+    </div>
+
+    <div class="fg<%= errors.dluznik ? ' has-err' : '' %>">
+      <label for="wf-dluznik"><%= w.form.dluznik %></label>
+      <input type="text" id="wf-dluznik" name="dluznik" value="<%= form.dluznik || '' %>" required<%- errors.dluznik ? ' aria-invalid="true"' : '' %>>
+      <% if (errors.dluznik) { %><div class="field-err"><%= errors.dluznik %></div><% } %>
+    </div>
+    <div class="fg<%= errors.nip ? ' has-err' : '' %>">
+      <label for="wf-nip"><%= w.form.nip %></label>
+      <input type="text" id="wf-nip" name="nip" class="tnum" inputmode="numeric" value="<%= form.nip || '' %>" placeholder="5210000000"<%- errors.nip ? ' aria-invalid="true"' : '' %>>
+      <% if (errors.nip) { %><div class="field-err"><%= errors.nip %></div><% } %>
+    </div>
+    <div class="fg<%= errors.forma ? ' has-err' : '' %>">
+      <label for="wf-forma"><%= h.form.forma %></label>
+      <select id="wf-forma" name="forma" required<%- errors.forma ? ' aria-invalid="true"' : '' %>>
+        <option value="" disabled <%= form.forma ? '' : 'selected' %>><%= h.form.formaPh %></option>
+        <% h.form.formaOptions.forEach(function (o) { %><option value="<%= o[0] %>" <%= form.forma === o[0] ? 'selected' : '' %>><%= o[1] %></option><% }) %>
+      </select>
+      <% if (errors.forma) { %><div class="field-err"><%= errors.forma %></div><% } else { %><p class="legal-note" style="margin-top:6px"><%= h.form.formaNote %></p><% } %>
+    </div>
+
+    <div class="fg<%= errors.egzekucja ? ' has-err' : '' %>">
+      <label for="wf-egz"><%= w.form.egzekucja %></label>
+      <select id="wf-egz" name="egzekucja" required<%- errors.egzekucja ? ' aria-invalid="true"' : '' %>>
+        <option value="" disabled <%= form.egzekucja ? '' : 'selected' %>><%= h.form.formaPh %></option>
+        <% w.form.egzekucjaOptions.forEach(function (o) { %><option value="<%= o[0] %>" <%= form.egzekucja === o[0] ? 'selected' : '' %>><%= o[1] %></option><% }) %>
+      </select>
+      <% if (errors.egzekucja) { %><div class="field-err"><%= errors.egzekucja %></div><% } else { %><p class="legal-note" style="margin-top:6px"><%= w.form.hint %></p><% } %>
+    </div>
+    <div class="fg<%= errors.egzekucja_rok ? ' has-err' : '' %>">
+      <label for="wf-rok"><%= w.form.rok %></label>
+      <input type="number" id="wf-rok" name="egzekucja_rok" class="tnum" min="1990" max="2100" value="<%= form.egzekucja_rok || '' %>" placeholder="<%= w.form.rokPh %>"<%- errors.egzekucja_rok ? ' aria-invalid="true"' : '' %>>
+      <% if (errors.egzekucja_rok) { %><div class="field-err"><%= errors.egzekucja_rok %></div><% } %>
+    </div>
+    <div class="fg">
+      <label for="wf-uwagi"><%= w.form.uwagi %></label>
+      <textarea id="wf-uwagi" name="uwagi" rows="4" maxlength="2000" placeholder="<%= w.form.uwagiPh %>"><%= form.uwagi || '' %></textarea>
+    </div>
+
+    <div class="hp" aria-hidden="true"><label for="wf-web">Website</label><input type="text" id="wf-web" name="website" tabindex="-1" autocomplete="off"></div>
+    <% if ((turnstile && turnstile.enabled) || errors.captcha) { %>
+    <div class="fg<%= errors.captcha ? ' has-err' : '' %>">
+      <%- include('partials/turnstile') %>
+      <% if (errors.captcha) { %><div class="field-err"><%= errors.captcha %></div><% } %>
+    </div>
+    <% } %>
+    <button class="btn btn-gold" type="submit"><%= w.form.btn %></button>
+    <p class="legal-note" style="margin-top:12px"><%= w.form.note %></p>
+  </form>
+  <% } %>
+
+  <p class="legal-note" style="margin-top:26px"><%= w.legal %></p>
+</div>
+
+<%- include('partials/footer') %>

@@ -106,6 +106,15 @@ const T = {
     notifySubject: (l, est) => `Nowy lead: ${l.company} · ${D.fmt(l.kwota)} · ${l.dni} dni · wstępnie ${est.pctLow}–${est.pct}%`,
     notifyIntro: 'Nowe zgłoszenie z formularza „Sprzedaj fakturę”:',
     notifyCta: 'Otwórz panel admina',
+    wyrok: {
+      confirmSubject: 'Dziękujemy — Twój wyrok jest w ocenie · sprzedamfakture.pl',
+      confirmIntro: 'dziękujemy za zgłoszenie tytułu wykonawczego do wykupu. Podsumowanie zgłoszenia:',
+      confirmNext: 'Co dalej? Sprawdzamy tytuł, bieg przedawnienia (w tym powód umorzenia poprzedniej egzekucji) i profil dłużnika. Ofertę — zazwyczaj 10–40% wartości nominalnej — wyślemy w ciągu kilku dni roboczych. Wycena nie stanowi oferty w rozumieniu art. 66 KC.',
+      notifySubject: (l) => 'Nowe zgłoszenie skupu wyroku: ' + l.sygnatura + ' · ' + D.fmt(l.kwota),
+      notifyIntro: 'Nowe zgłoszenie z formularza „Skup starych wyroków”:',
+      notifyWarn: 'Uwaga przy wycenie: powód umorzenia decyduje o biegu przedawnienia (bezskuteczność = termin biegnie od nowa; bezczynność wierzyciela = przerwanie upada). Odsetki przedawniają się po 3 latach.',
+      fields: { company: 'Zgłaszający', email: 'E-mail', tel: 'Telefon', sygnatura: 'Sygnatura akt', sad: 'Sąd', data: 'Data wyroku', amount: 'Kwota nominalna', dluznik: 'Dłużnik', nip: 'NIP dłużnika', forma: 'Forma prawna dłużnika', egzekucja: 'Wcześniejsza egzekucja', rok: 'Rok umorzenia', uwagi: 'Uwagi', lang: 'Język' },
+    },
     welcomeSubject: 'Witamy w sprzedamfakture.pl — konto utworzone',
     welcomeBody: (u) => `<p>Dzień dobry,</p><p>konto dla firmy <strong>${esc(u.company || u.email)}</strong> zostało utworzone. Logowanie: <strong>${esc(u.email)}</strong>.</p><p>Dla bezpieczeństwa Twoich należności logowanie wymaga weryfikacji dwuetapowej (aplikacja typu Google Authenticator) — skonfigurujesz ją przy pierwszym logowaniu.</p>`,
     welcomeCta: 'Przejdź do panelu',
@@ -123,6 +132,15 @@ const T = {
     notifySubject: (l, est) => `New lead: ${l.company} · ${D.fmt(l.kwota)} · ${l.dni} days · preliminary ${est.pctLow}–${est.pct}%`,
     notifyIntro: 'New request from the "Sell an invoice" form:',
     notifyCta: 'Open the admin panel',
+    wyrok: {
+      confirmSubject: 'Thank you — your judgment is being assessed · sprzedamfakture.pl',
+      confirmIntro: 'thank you for submitting an enforceable title for purchase. Here is a summary of your submission:',
+      confirmNext: 'What happens next? We check the title, the limitation status (including why the previous enforcement was discontinued) and the debtor profile. We will e-mail our offer — typically 10–40% of nominal value — within a few working days. The assessment does not constitute a binding offer (art. 66 Civil Code).',
+      notifySubject: (l) => 'New old-judgment lead: ' + l.sygnatura + ' · ' + D.fmt(l.kwota),
+      notifyIntro: 'New request from the "We buy old judgments" form:',
+      notifyWarn: 'Assessment note: the reason for discontinuation drives the limitation period (fruitless = restarts; creditor inactivity = interruption lapses). Interest is time-barred after 3 years.',
+      fields: { company: 'Submitted by', email: 'E-mail', tel: 'Phone', sygnatura: 'Case number', sad: 'Court', data: 'Judgment date', amount: 'Nominal amount', dluznik: 'Debtor', nip: "Debtor's NIP", forma: "Debtor's legal form", egzekucja: 'Previous enforcement', rok: 'Year discontinued', uwagi: 'Notes', lang: 'Language' },
+    },
     welcomeSubject: 'Welcome to sprzedamfakture.pl — account created',
     welcomeBody: (u) => `<p>Hello,</p><p>the account for <strong>${esc(u.company || u.email)}</strong> has been created. Login: <strong>${esc(u.email)}</strong>.</p><p>To protect your receivables, logging in requires two-factor verification (an app such as Google Authenticator) — you will set it up at your first login.</p>`,
     welcomeCta: 'Go to the panel',
@@ -143,6 +161,35 @@ function leadPairs(l, est, tx) {
   return pairs;
 }
 function textOf(pairs) { return pairs.map(([k, v]) => `${k}: ${v}`).join('\n'); }
+
+// ── Skup wyroków: paren, bevestiging en notificatie ──────────────────────
+const EGZ_LABELS = { none: 'nigdy nie prowadzona / never attempted', bezskutecznosc: 'umorzona — bezskuteczność', inna: 'umorzona — inny powód / other reason', nie_wiem: 'nie wiadomo / unknown' };
+function wyrokPairs(l, tx) {
+  const f = tx.wyrok.fields;
+  return [
+    [f.company, l.company], [f.sygnatura, l.sygnatura], [f.sad, l.sad || '—'], [f.data, l.data_wyroku || '—'],
+    [f.amount, D.fmt(l.kwota)], [f.dluznik, l.dluznik], [f.nip, l.nip || '—'], [f.forma, FORMA_LABELS[l.forma] || l.forma || '—'],
+    [f.egzekucja, EGZ_LABELS[l.egzekucja] || l.egzekucja || '—'], [f.rok, l.egzekucja_rok || '—'],
+    [f.email, l.email], [f.tel, l.tel || '—'],
+  ];
+}
+async function wyrokConfirm(lead, lang) {
+  const L = lang === 'en' ? 'en' : 'pl';
+  const tx = T[L];
+  const pairs = wyrokPairs(lead, tx);
+  const text = `${tx.confirmHi(lead)}\n\n${tx.wyrok.confirmIntro}\n\n${textOf(pairs)}\n\n${tx.wyrok.confirmNext}\n\n${tx.confirmReply}\n\n${tx.sign}`;
+  const html = layout(`<p>${esc(tx.confirmHi(lead))}</p><p>${esc(tx.wyrok.confirmIntro)}</p>${rows(pairs)}<p>${esc(tx.wyrok.confirmNext)}</p><p>${esc(tx.confirmReply)}</p><p>${esc(tx.sign)}</p>`, L);
+  return send({ to: lead.email, subject: tx.wyrok.confirmSubject, text, html, replyTo: MAIL_NOTIFY || undefined });
+}
+async function wyrokNotify(lead, lang) {
+  if (!MAIL_NOTIFY) return { ok: false, status: 'brak MAIL_NOTIFY' };
+  const tx = T.pl; // interne notificatie in het Pools, met de taal van de indiener erbij
+  const pairs = wyrokPairs(lead, tx).concat([[tx.wyrok.fields.lang, (lang || 'pl').toUpperCase()]]);
+  if (lead.uwagi) pairs.push([tx.wyrok.fields.uwagi, lead.uwagi.slice(0, 500)]);
+  const text = `${tx.wyrok.notifyIntro}\n\n${textOf(pairs)}\n\n${tx.wyrok.notifyWarn}\n\n${SITE}/admin`;
+  const html = layout(`<p>${esc(tx.wyrok.notifyIntro)}</p>${rows(pairs)}<p style="font-size:13px;color:#6b7280">${esc(tx.wyrok.notifyWarn)}</p><p>${button(SITE + '/admin', tx.notifyCta)}</p>`, 'pl');
+  return send({ to: MAIL_NOTIFY, subject: tx.wyrok.notifySubject(lead), text, html, replyTo: lead.email });
+}
 
 // ── Bevestiging aan de klant (PL/EN) ─────────────────────────────────────
 async function leadConfirm(lead, est, lang) {
@@ -184,4 +231,4 @@ async function testMail(lang, version) {
   return { ...r, to: MAIL_NOTIFY };
 }
 
-module.exports = { configured, status, send, leadConfirm, leadNotify, welcome, testMail, MAIL_FROM, MAIL_NOTIFY };
+module.exports = { configured, status, send, leadConfirm, leadNotify, wyrokConfirm, wyrokNotify, welcome, testMail, MAIL_FROM, MAIL_NOTIFY };

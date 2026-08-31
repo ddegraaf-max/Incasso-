@@ -41,6 +41,7 @@ var ld = [
     <a href="#wycena"><%= h.nav.quote %></a>
     <a href="#faq"><%= h.nav.faq %></a>
     <a href="/windykacja"><%= h.nav.collection %></a>
+    <a href="/skup-wyrokow"><%= t.common.navJudgments %></a>
     <a href="/login"><%= h.nav.panel %></a>
     <a href="#formularz" class="nav-cta"><%= h.nav.cta %></a>
     <span class="lang-switch">
@@ -198,7 +199,7 @@ var ld = [
   <div class="wrap">
     <div class="sf-footer">
       <%- include('partials/logo', { size: 'sm', tagline: true }) %>
-      <span class="sf-footer-links"><a href="/windykacja"><%= h.footer.collection %></a> · <a href="/kalkulator"><%= h.footer.calc %></a> · <a href="/login"><%= h.footer.panel %></a></span>
+      <span class="sf-footer-links"><a href="/windykacja"><%= h.footer.collection %></a> · <a href="/kalkulator"><%= h.footer.calc %></a> · <a href="/skup-wyrokow"><%= t.common.footJudgments %></a> · <a href="/login"><%= h.footer.panel %></a></span>
     </div>
     <div class="cr"><%= h.footer.legal %> · <span class="ver tnum" title="<%= c.versionTitle %>">v<%= version %><%= commit ? ' · ' + commit : '' %></span></div>
   </div>

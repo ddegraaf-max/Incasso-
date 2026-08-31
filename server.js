@@ -317,6 +317,81 @@ app.post('/sprzedaj', async (req, res) => {
 });
 
 // ── Health, robots, sitemap ──────────────────────────────────────────────
+
+// ── Skup starych wyroków ─────────────────────────────────────────────────
+// Oude vonnissen/tytuły wykonawcze: uitleg + leadformulier. De kern van de wycena:
+// waarom is de vorige egzekucja umorzona (bezskuteczność = verjaring loopt opnieuw;
+// bezczynność wierzyciela = stuiting vervalt) — zie i18n t.wyroki.
+function renderWyroki(req, res, extra = {}) {
+  res.render('wyroki', common({
+    page: 'wyroki',
+    leadOk: req.query.lead === 'ok',
+    form: {}, errors: {},
+    ...extra,
+  }));
+}
+app.get('/skup-wyrokow', (req, res) => renderWyroki(req, res));
+
+const WYROK_EGZEKUCJA = ['none', 'bezskutecznosc', 'inna', 'nie_wiem'];
+app.post('/skup-wyrokow', async (req, res) => {
+  const b = req.body || {};
+  if (b.website) return res.redirect('/skup-wyrokow?lead=ok#formularz'); // honeypot
+  const ts = await Turnstile.verify(b['cf-turnstile-response'], req.ip);
+  const form = {
+    company: String(b.company || '').trim().slice(0, 200),
+    email: String(b.email || '').trim().slice(0, 200),
+    tel: String(b.tel || '').trim().slice(0, 40),
+    sygnatura: String(b.sygnatura || '').trim().slice(0, 60),
+    sad: String(b.sad || '').trim().slice(0, 120),
+    data_wyroku: String(b.data_wyroku || '').trim().slice(0, 10),
+    kwota: String(b.kwota || '').trim().slice(0, 20),
+    dluznik: String(b.dluznik || '').trim().slice(0, 160),
+    nip: String(b.nip || '').trim().slice(0, 20),
+    forma: String(b.forma || '').trim().slice(0, 20),
+    egzekucja: String(b.egzekucja || '').trim().slice(0, 20),
+    egzekucja_rok: String(b.egzekucja_rok || '').trim().slice(0, 4),
+    uwagi: String(b.uwagi || '').trim().slice(0, 2000),
+  };
+  const kw = parseFloat(form.kwota.replace(/\s/g, '').replace(',', '.')) || 0;
+  const rok = parseInt(form.egzekucja_rok, 10) || 0;
+  const msg = res.locals.t.wyroki.form.errors;
+  const errors = {};
+  if (!form.company) errors.company = msg.company;
+  if (!EMAIL_RE.test(form.email)) errors.email = msg.email;
+  if (form.tel.replace(/\D/g, '').length < 7) errors.tel = msg.tel;
+  if (!form.sygnatura) errors.sygnatura = msg.sygnatura;
+  if (!(kw > 0) || kw > 1e9) errors.kwota = msg.amount;
+  if (!form.dluznik) errors.dluznik = msg.dluznik;
+  if (form.nip && !validNip(form.nip)) errors.nip = msg.nip; // NIP optioneel: buitenlandse wierzyciel kent hem niet altijd
+  if (!DEBTOR_LEGAL_FORMS.includes(form.forma)) errors.forma = res.locals.t.home.form.errors.forma;
+  if (!WYROK_EGZEKUCJA.includes(form.egzekucja)) errors.egzekucja = msg.egzekucja;
+  if (form.egzekucja_rok && !(rok >= 1990 && rok <= 2100)) errors.egzekucja_rok = msg.rok;
+  if (form.data_wyroku && !/^\d{4}-\d{2}-\d{2}$/.test(form.data_wyroku)) errors.data_wyroku = msg.data;
+  if (!ts.ok) errors.captcha = res.locals.t.home.form.errors.captcha;
+  if (Object.keys(errors).length) {
+    res.status(400);
+    return renderWyroki(req, res, { form, errors });
+  }
+  const lead = { ...form, nip: form.nip.replace(/\D/g, ''), kwota: kw };
+  await db.saveLead({
+    source: 'skup-wyrokow', company: form.company, nip: lead.nip, email: form.email, tel: form.tel,
+    kwota: kw, dni: 0, oferta_pct: null, forma: form.forma,
+    note: ['wyrok ' + form.sygnatura, form.sad, form.data_wyroku, 'dłużnik: ' + form.dluznik,
+      'egzekucja: ' + form.egzekucja + (form.egzekucja_rok ? ' (' + form.egzekucja_rok + ')' : ''), form.uwagi]
+      .filter(Boolean).join(' · ').slice(0, 900) + ' · lang=' + res.locals.lang,
+  }).catch(() => {});
+  const [notify, confirm] = await Promise.all([
+    Mailer.wyrokNotify(lead, res.locals.lang).catch((e) => ({ status: 'błąd: ' + e.message })),
+    Mailer.wyrokConfirm(lead, res.locals.lang).catch((e) => ({ status: 'błąd: ' + e.message })),
+  ]);
+  await db.insertEvent({
+    nip: lead.nip, debtor: form.dluznik, type: 'lead',
+    title: 'Nowe zgłoszenie skupu wyroku: ' + form.sygnatura + ' · ' + D.fmt(kw) + ' · mail: ' + notify.status + ' / ' + confirm.status,
+    source: 'skup-wyrokow',
+  }).catch(() => {});
+  res.redirect('/skup-wyrokow?lead=ok#formularz');
+});
+
 app.get('/health', async (req, res) => {
   res.set('Cache-Control', 'no-store');
   const m = Mailer.status();
@@ -333,6 +408,7 @@ app.get('/sitemap.xml', (req, res) => {
     { loc: SITE + '/', alt: true, prio: '1.0' },
     { loc: SITE + '/windykacja', alt: true, prio: '0.8' },
     { loc: SITE + '/kalkulator', prio: '0.7' },
+    { loc: SITE + '/skup-wyrokow', alt: true, prio: '0.8' },
   ];
   const alt = (loc) => '<xhtml:link rel="alternate" hreflang="pl" href="' + loc + '?lang=pl"/><xhtml:link rel="alternate" hreflang="en" href="' + loc + '?lang=en"/>';
   const xml = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">']

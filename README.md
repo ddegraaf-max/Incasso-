@@ -17,6 +17,7 @@ Node/Express/EJS-app achter **sprzedamfakture.pl**: wykup wierzytelności (insta
 | `/app/agent` | Agent-feed + negotiatiethread, toon-switcher (`?ton=Uprzejmy\|Stanowczy\|Prawniczy`) |
 | `/app/wykup` | Wykup wierzytelności (AI-offertes, cesja) |
 | `/kalkulator` | Publieke kalkulator odsetek (14%) + rekompensata 40/70/100 € — leadmagnet/SEO |
+| `/skup-wyrokow` | **Skup starych wyroków** (PL/EN) — oude vonnissen/tytuły wykonawcze: waarom een oude titel waarde houdt (verjaring 6 jaar, herstart na bezskuteczność, art. 299 KSH; valkuil bezczynność wierzyciela), typisch 10–40% van nominaal, leadformulier → mail + admin-leads |
 | `/wezwanie` | Printbaar wezwanie do zapłaty, gegenereerd vanuit de kalkulator |
 | `/api/wycena?kwota=&dni=` | JSON voor de live wycena-widget (indicatieve oferta) |
 | `/health` | JSON: versie, commit, uptime, db, mail/Resend- en Turnstile-status — voor deploy-checks |
