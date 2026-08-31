@@ -42,6 +42,9 @@
       <li><span class="tag <%= ig.anthropic ? 'tag-accent' : 'tag-neutral' %>"><%= ig.anthropic ? M.integrOn : M.integrOff %></span> &nbsp;<%= M.integr.ai %></li>
       <li><span class="tag <%= ig.db ? 'tag-accent' : 'tag-neutral' %>"><%= ig.db ? M.integrOn : M.integrOff %></span> &nbsp;<%= M.integr.db %></li>
     </ul>
+    <% (ig.problems || []).forEach(function(p) { %>
+    <p class="field-err" style="margin-top:10px">⚠ <%= p %></p>
+    <% }) %>
     <form method="post" action="/admin/test-mail" style="margin-top:14px; display:flex; gap:12px; align-items:center; flex-wrap:wrap">
       <button class="btn btn-secondary chan-btn" type="submit"><%= M.testMail %></button>
       <span class="helper" style="margin:0"><%= M.testMailHint %></span>

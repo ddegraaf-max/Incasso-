@@ -12,12 +12,23 @@ const SITE = (process.env.SITE_URL || 'https://sprzedamfakture.pl').replace(/\/$
 
 function configured() { return !!RESEND_KEY; }
 
+// Herkent half geplakte/placeholder-configuratie vóórdat er iets crasht.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+function configProblems() {
+  const p = [];
+  if (RESEND_KEY && !/^re_[A-Za-z0-9_-]{10,}$/.test(RESEND_KEY)) p.push('RESEND_API_KEY looks invalid (placeholder pasted?) — expected re_ followed by ~30+ characters');
+  if (MAIL_NOTIFY && !EMAIL_RE.test(MAIL_NOTIFY)) p.push('MAIL_NOTIFY is not a valid e-mail address: "' + MAIL_NOTIFY + '"');
+  if (!MAIL_FROM.includes('@')) p.push('MAIL_FROM has no e-mail address');
+  return p;
+}
+
 function status() {
   return {
     resend: !!RESEND_KEY,
     from: MAIL_FROM,
     notify: MAIL_NOTIFY || null,
     liveComms: process.env.LIVE_COMMS === '1',
+    problems: configProblems(),
     smsapi: !!process.env.SMSAPI_TOKEN,
     anthropic: !!process.env.ANTHROPIC_API_KEY,
   };
@@ -34,6 +45,11 @@ async function send({ to, subject, text, html, replyTo, from }) {
   if (!RESEND_KEY) {
     console.log(`[mail] symulacja → ${payload.to.join(', ')} | ${subject}`);
     return { ok: true, status: 'symulacja', simulated: true };
+  }
+  const problems = configProblems();
+  if (problems.length) {
+    console.error('[mail] configuratiefout:', problems.join(' | '));
+    return { ok: false, status: 'błąd konfiguracji: ' + problems[0] };
   }
   try {
     const r = await fetch('https://api.resend.com/emails', {
