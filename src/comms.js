@@ -120,9 +120,16 @@ async function sendEmail(c, tone) {
   return { ...msg, status };
 }
 
+// SMS'en GSM-7-veilig houden: Poolse diacritics, twarde spaties en typografische
+// tekens forceren anders Unicode-encoding (70 i.p.v. 160 tekens per segment = ~3x kosten).
+const GSM_MAP = { 'ą': 'a', 'ć': 'c', 'ę': 'e', 'ł': 'l', 'ń': 'n', 'ó': 'o', 'ś': 's', 'ż': 'z', 'ź': 'z', 'Ą': 'A', 'Ć': 'C', 'Ę': 'E', 'Ł': 'L', 'Ń': 'N', 'Ó': 'O', 'Ś': 'S', 'Ż': 'Z', 'Ź': 'Z', '—': '-', '–': '-', '„': '"', '”': '"', '’': "'", '\u00a0': ' ' };
+function gsmSafe(s) {
+  return String(s || '').replace(/[ąćęłńóśżźĄĆĘŁŃÓŚŻŹ—–„”’\u00a0]/g, (ch) => GSM_MAP[ch] || ch);
+}
+
 async function sendSms(c, tone) {
   const f = baseFacts(c);
-  const body = (TPL.sms[tone] || TPL.sms.Uprzejmy)(c, f);
+  const body = gsmSafe((TPL.sms[tone] || TPL.sms.Uprzejmy)(c, f));
   let status = 'symulacja';
   if (LIVE_COMMS && SMSAPI_TOKEN) {
     try {
