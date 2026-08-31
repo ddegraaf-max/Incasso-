@@ -95,8 +95,15 @@ Vanuit het detailpaneel van elke zaak, in de gekozen toon (Uprzejmy/Stanowczy/Pr
 
 Alles wordt gelogd in `comm_log` (PostgreSQL/memory), verschijnt als "Historia komunikacji" in het detailpaneel en als event op de Agent AI-tab. Extra env vars: `RESEND_API_KEY`, `FROM_EMAIL`, `MAIL_FROM`, `MAIL_NOTIFY`, `LIVE_COMMS`, `SMSAPI_TOKEN`, `SMS_FROM`, `ANTHROPIC_API_KEY`, `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`.
 
+## Database (Railway Postgres)
+- Project *Creditline Incasso Polen* heeft een service **Postgres**. Koppeling = op de app-service (*Incasso-*) de variabele `DATABASE_URL` zetten als **referentie**: `${{Postgres.DATABASE_URL}}` (interne host `postgres.railway.internal`, geen egress-kosten). Railway redeployt automatisch. Zet tegelijk een lange random `SESSION_SECRET` (sessies staan dan in de tabel `session`).
+- Schema (`users`, `case_actions`, `events`, `leads`, `comm_log`, `debtor_scores`, `session`) wordt bij start automatisch aangemaakt (`src/db.js`). SSL: automatisch aan voor Railway-URL's, met fallback zonder SSL; `PGSSLMODE=disable` / `PGSSL=1` forceren.
+- Controle: `/health` → `db: true` en `dbStats` (ping in ms + aantallen users/leads/events/comms); `/admin` → Integracje → PostgreSQL: Aktywne. Logregel bij start: `DB: verbonden (SSL)` + `DB: PostgreSQL verbonden, schema klaar`.
+- Lokaal tegen de Railway-DB testen: `railway variables -s Postgres --json` → `DATABASE_PUBLIC_URL` (publieke proxy) als `DATABASE_URL` meegeven.
+- Bij de eerste start met een lege DB worden demo- en admin-account weggeschreven; daarna is de DB leidend (wachtwoorden/2FA blijven bewaard). **Zet vóór livegang `ADMIN_EMAIL` + `ADMIN_PASSWORD`**, anders staat het default-adminwachtwoord in de DB.
+
 ## Status / architectuur
-- **PostgreSQL-koppeling actief**: met `DATABASE_URL` (Railway Postgres-plugin) worden users, sessies (connect-pg-simple), zaakacties, AIScores en events persistent; schema wordt automatisch aangemaakt. Zonder `DATABASE_URL` draait alles in-memory (demo). In demo-modus wordt de KRZ-status bij herstart vers herberekend uit de bronnen (by design — events blijven wel staan).
+- **PostgreSQL-koppeling actief**: met `DATABASE_URL` (Railway Postgres) worden users, sessies (connect-pg-simple), zaakacties, AIScores, events, leads en communicatielog persistent; schema wordt automatisch aangemaakt. Zonder `DATABASE_URL` draait alles in-memory (demo). In demo-modus wordt de KRZ-status bij herstart vers herberekend uit de bronnen (by design — events blijven wel staan).
 - Rentevoet 14% (NBP 4% + 10 p.p., I półrocze 2026) staat in `src/data.js` (`INTEREST_RATE`) — halfjaarlijks bijwerken.
 
 ## Roadmap-ideeën (nog niet gebouwd)

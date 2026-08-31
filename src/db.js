@@ -20,21 +20,25 @@ async function init() {
     console.log('DB: geen DATABASE_URL — in-memory modus (concept)');
     return false;
   }
-  const cfg = {
-    connectionString: process.env.DATABASE_URL,
-    ssl: process.env.DATABASE_URL.includes('railway') || process.env.PGSSL === '1'
-      ? { rejectUnauthorized: false } : false,
-  };
-  for (let attempt = 1; attempt <= 3; attempt++) {
+  // SSL: Railway-Postgres (intern *.railway.internal of publiek *.rlwy.net) accepteert TLS met een
+  // self-signed cert. PGSSLMODE=disable forceert uit; PGSSL=1 forceert aan. Bij 'server does not
+  // support SSL' proberen we automatisch zonder SSL.
+  const url = process.env.DATABASE_URL;
+  const wantSsl = process.env.PGSSLMODE === 'disable' ? false
+    : (process.env.PGSSL === '1' || /railway|rlwy\.net|sslmode=require/i.test(url));
+  let useSsl = wantSsl;
+  for (let attempt = 1; attempt <= 4; attempt++) {
     try {
-      pool = new Pool(cfg);
+      pool = new Pool({ connectionString: url, ssl: useSsl ? { rejectUnauthorized: false } : false, connectionTimeoutMillis: 8000 });
       await pool.query('SELECT 1');
+      console.log(`DB: verbonden (${useSsl ? 'SSL' : 'zonder SSL'})`);
       break;
     } catch (e) {
-      console.error(`DB: poging ${attempt}/3 mislukt — ${e.message}`);
+      console.error(`DB: poging ${attempt}/4 mislukt — ${e.message}`);
       try { await pool.end(); } catch {}
       pool = null;
-      if (attempt < 3) await new Promise((r) => setTimeout(r, 2000));
+      if (/SSL/i.test(e.message)) useSsl = !useSsl; // wissel SSL aan/uit en probeer opnieuw
+      if (attempt < 4) await new Promise((r) => setTimeout(r, 1500));
     }
   }
   if (!pool) {
@@ -107,6 +111,20 @@ async function init() {
 
 function hasDb() { return !!pool; }
 function getPool() { return pool; }
+
+// Ping + tellingen voor /health en het admin-panel
+async function stats() {
+  if (!pool) return { connected: false };
+  const t0 = Date.now();
+  try {
+    const r = await pool.query(
+      "SELECT (SELECT count(*)::int FROM users) AS users, (SELECT count(*)::int FROM leads) AS leads, (SELECT count(*)::int FROM events) AS events, (SELECT count(*)::int FROM comm_log) AS comms"
+    );
+    return { connected: true, pingMs: Date.now() - t0, ...r.rows[0] };
+  } catch (e) {
+    return { connected: false, error: e.message };
+  }
+}
 
 // ── Users ────────────────────────────────────────────────────────────────
 async function loadUsers() {
@@ -235,7 +253,7 @@ async function loadScores() {
 }
 
 module.exports = {
-  init, hasDb, getPool,
+  init, hasDb, getPool, stats,
   loadUsers, saveUser, updateUserTotp,
   loadActions, saveAction,
   insertEvent, listEvents,

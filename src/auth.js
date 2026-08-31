@@ -29,18 +29,17 @@ let persistNew = false;
 
 async function initFromDb() {
   const rows = await db.loadUsers().catch(() => []);
-  if (rows.length) {
-    // DB is leidend: rijen behouden hun id; seeds die nog niet in de DB staan krijgen een vrij id
-    // (voorkomt id-botsingen tussen oude DB-accounts en nieuwe seed-accounts na een rename)
-    const seeds = Array.from(users.values());
-    users.clear();
-    rows.forEach((u) => { users.set(u.email, u); if (u.id >= nextId) nextId = u.id + 1; });
-    for (const s of seeds) {
-      if (users.has(s.email)) continue;
-      s.id = nextId++;
-      users.set(s.email, s);
-      await db.saveUser(s).catch(() => {});
-    }
+  // DB is leidend: rijen behouden hun id; seeds (demo/admin) die nog niet in de DB staan krijgen
+  // een vrij id en worden weggeschreven — ook bij een lege DB, anders raakt o.a. de 2FA-koppeling
+  // van de admin bij elke herstart kwijt. (Voorkomt ook id-botsingen na een rename.)
+  const seeds = Array.from(users.values());
+  users.clear();
+  rows.forEach((u) => { users.set(u.email, u); if (u.id >= nextId) nextId = u.id + 1; });
+  for (const s of seeds) {
+    if (users.has(s.email)) continue;
+    s.id = nextId++;
+    users.set(s.email, s);
+    await db.saveUser(s).catch((e) => console.error('DB: seed-user opslaan mislukt —', e.message));
   }
   persistNew = true;
 }
