@@ -80,12 +80,14 @@ async function aiGenerate(prompt, fallback) {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6', max_tokens: 700,
+        model: 'claude-opus-5', max_tokens: 4000,
+        output_config: { effort: 'low' },
         messages: [{ role: 'user', content: prompt }],
       }),
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(45000),
     });
     const j = await r.json();
+    if (!r.ok) { console.error('[ai] Anthropic', r.status, (j.error && j.error.message) || ''); return fallback; }
     const txt = (j.content || []).map((b) => b.text || '').join('').trim();
     return txt || fallback;
   } catch { return fallback; }
