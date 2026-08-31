@@ -41,6 +41,24 @@ async function initFromDb() {
     users.set(s.email, s);
     await db.saveUser(s).catch((e) => console.error('DB: seed-user opslaan mislukt —', e.message));
   }
+  // Railway-vars zijn leidend voor het admin-account — anders zou een oude DB-rij
+  // (bv. met het default-wachtwoord) altijd blijven winnen van ADMIN_PASSWORD.
+  const envAdminPass = process.env.ADMIN_PASSWORD || '';
+  const envAdminEmail = String(process.env.ADMIN_EMAIL || '').toLowerCase().trim();
+  const adminEmail = envAdminEmail || 'admin@sprzedamfakture.pl';
+  if (envAdminPass) {
+    const admin = users.get(adminEmail);
+    if (admin && !bcrypt.compareSync(envAdminPass, admin.passHash)) {
+      admin.passHash = bcrypt.hashSync(envAdminPass, 12);
+      await db.updateUserPassword(admin).catch((e) => console.error('Auth: admin-wachtwoord opslaan mislukt —', e.message));
+      console.log('Auth: admin-wachtwoord bijgewerkt vanuit ADMIN_PASSWORD (' + adminEmail + ')');
+    }
+  }
+  if (envAdminEmail && envAdminEmail !== 'admin@sprzedamfakture.pl' && users.has('admin@sprzedamfakture.pl')) {
+    users.delete('admin@sprzedamfakture.pl');
+    await db.deleteUser('admin@sprzedamfakture.pl').catch((e) => console.error('Auth: default-admin verwijderen mislukt —', e.message));
+    console.log('Auth: default-admin verwijderd (eigen ADMIN_EMAIL actief)');
+  }
   persistNew = true;
 }
 

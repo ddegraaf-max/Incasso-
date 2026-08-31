@@ -52,6 +52,7 @@ Env vars: `PORT` (Railway zet die zelf), `SESSION_SECRET` (VERPLICHT in producti
 - **2FA (TOTP)**: via `speakeasy` (CommonJS — draait ook op Node 18, zoals Railway standaard gebruikt); verplicht bij registratie en voor admin (eerste login forceert QR-setup). Issuer in de authenticator-app: `sprzedamfakture.pl`.
 - **Rate limiting**: 5 mislukte pogingen (per IP+e-mail) → 15 min blokkade, ook op de 2FA-stap.
 - **Sessies**: httpOnly, sameSite=lax, secure achter Railway-proxy, 8 uur geldig, sessie-regeneratie bij login (anti session fixation).
+- **Admin-login**: `/login` met `ADMIN_EMAIL` + `ADMIN_PASSWORD` uit Railway (defaults: `admin@sprzedamfakture.pl` / `Admin-Zmien-Mnie-1!`). De env-vars zijn leidend: een gewijzigd `ADMIN_PASSWORD` wordt bij start in de DB afgedwongen, en zodra `ADMIN_EMAIL` op een eigen adres staat wordt het default-adminaccount verwijderd. Eerste login vraagt QR-scan (TOTP, verplicht); de 2FA-koppeling blijft in de DB bewaard.
 - **Demo-account**: `demo@sprzedamfakture.pl` / `Demo1234!` (zonder 2FA, alleen om te klikken; het oude `demo@creditline.pl` werkt als alias). Staat als hint op de loginpagina — **uitzetten vóór livegang** met env `DEMO_ACCOUNT=0`. Admin-default: `admin@sprzedamfakture.pl` (overschrijf met `ADMIN_EMAIL`). Bij een DB zijn DB-accounts leidend; seed-accounts die nog ontbreken krijgen een vrij id (geen botsing met oude Creditline-accounts).
 - Gebruikers, sessies, acties, scores en events staan in PostgreSQL zodra `DATABASE_URL` gezet is.
 

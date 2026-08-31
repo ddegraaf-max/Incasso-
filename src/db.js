@@ -152,6 +152,17 @@ async function saveUser(u) {
   return u;
 }
 
+async function updateUserPassword(u) {
+  if (!pool) return;
+  await pool.query('UPDATE users SET pass_hash=$1 WHERE email=$2', [u.passHash, u.email]);
+}
+
+async function deleteUser(email) {
+  const key = String(email || '').toLowerCase().trim();
+  if (!pool) { mem.users = mem.users.filter((u) => u.email !== key); return; }
+  await pool.query('DELETE FROM users WHERE email=$1', [key]);
+}
+
 async function updateUserTotp(u) {
   if (!pool) return;
   await pool.query('UPDATE users SET totp_secret=$1, totp_confirmed=$2 WHERE email=$3',
@@ -256,7 +267,7 @@ async function loadScores() {
 
 module.exports = {
   init, hasDb, getPool, stats,
-  loadUsers, saveUser, updateUserTotp,
+  loadUsers, saveUser, updateUserTotp, updateUserPassword, deleteUser,
   loadActions, saveAction,
   insertEvent, listEvents,
   saveScore, loadScores,
