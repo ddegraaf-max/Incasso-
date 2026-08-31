@@ -113,6 +113,7 @@ module.exports = {
         kicker: 'FAQ', h: 'Najczęstsze pytania',
         items: [
           ['Ile dostanę za fakturę?', 'Zależnie od AIScore dłużnika: zwykle 55–90% wartości. Im krótsze opóźnienie i czystszy dłużnik w rejestrach, tym wyższa oferta. Odsetki za opóźnienie przechodzą na nas razem z wierzytelnością.'],
+          ['Na kogo musi być wystawiona faktura?', 'Dłużnikiem musi być osoba prawna — najczęściej sp. z o.o. lub S.A. Faktur wystawionych na jednoosobowe działalności (JDG), spółki cywilne, spółki osobowe lub konsumentów obecnie nie skupujemy. Twoja firma (sprzedający) może mieć dowolną formę prawną.'],
           ['Czy każda faktura się kwalifikuje?', 'Kupujemy bezsporne faktury B2B. Sprawdzamy, czy umowa z dłużnikiem nie zawiera zakazu cesji (art. 509 § 1 KC) i czy dłużnik nie jest w upadłości — wtedy oferta nie jest możliwa.'],
           ['Co z rekompensatą 40/70/100 €?', 'Ta pozostaje przy Tobie — z mocy ustawy (art. 10 ust. 4) nie podlega cesji. Możesz jej dochodzić samodzielnie, oferta dotyczy należności głównej z odsetkami.'],
           ['Czy dłużnik się dowie?', 'Tak — po cesji zawiadamiamy dłużnika na piśmie (art. 512 KC). Od tego momentu płaci wyłącznie nam.'],
@@ -121,12 +122,16 @@ module.exports = {
       },
       form: {
         kicker: 'Sprzedaj fakturę', company: 'Twoja firma', nip: 'NIP dłużnika', amount: 'Kwota faktury (zł)', days: 'Dni po terminie', email: 'E-mail', tel: 'Telefon',
+        forma: 'Forma prawna dłużnika', formaPh: '— wybierz —',
+        formaNote: 'Skupujemy wierzytelności wobec spółek posiadających osobowość prawną (np. sp. z o.o., S.A.). Twoja firma może mieć dowolną formę.',
+        formaOptions: [['spzoo', 'Spółka z o.o.'], ['sa', 'Spółka akcyjna (S.A.)'], ['psa', 'Prosta spółka akcyjna (P.S.A.)'], ['inna-op', 'Inna osoba prawna (spółdzielnia, fundacja…)'], ['jdg', 'Jednoosobowa działalność (JDG)'], ['sc', 'Spółka cywilna'], ['osobowa', 'Spółka jawna / partnerska / komandytowa']],
         btn: 'Wyślij do wyceny',
         note: 'Wysłanie formularza nie zobowiązuje do sprzedaży. Ofertę możesz odrzucić bez kosztów.',
         ok: 'Dziękujemy! Analizujemy dłużnika — ofertę wyślemy w ciągu kilku godzin roboczych na podany e-mail.',
         errors: {
           generic: 'Popraw zaznaczone pola.', company: 'Podaj nazwę firmy.', nip: 'Podaj poprawny 10-cyfrowy NIP (błędna suma kontrolna).',
           amount: 'Podaj kwotę faktury większą od 0.', days: 'Podaj liczbę dni po terminie (co najmniej 1).', email: 'Podaj poprawny adres e-mail.', tel: 'Podaj numer telefonu.', captcha: 'Weryfikacja antybotowa nie powiodła się — spróbuj ponownie.',
+          forma: 'Obecnie skupujemy wyłącznie wierzytelności wobec osób prawnych (np. sp. z o.o., S.A.). Faktury wystawione na JDG, spółki cywilne, spółki osobowe lub konsumentów nie kwalifikują się.',
         },
       },
       footer: {
@@ -250,6 +255,7 @@ module.exports = {
         kicker: 'FAQ', h: 'Frequently asked questions',
         items: [
           ['How much will I get for my invoice?', 'Depending on the debtor\'s AIScore: usually 55–90% of face value. The shorter the delay and the cleaner the debtor\'s record in the registers, the higher the offer. Late-payment interest transfers to us together with the claim.'],
+          ['Who must the invoice be issued to?', 'The debtor must be a legal entity — typically a sp. z o.o. or S.A. We currently do not buy invoices issued to sole traders (JDG), civil-law or general partnerships, or consumers. Your own company (the seller) can have any legal form.'],
           ['Does every invoice qualify?', 'We buy undisputed B2B invoices. We check that your contract with the debtor does not prohibit assignment (art. 509 § 1 Civil Code) and that the debtor is not in bankruptcy — in that case no offer is possible.'],
           ['What about the €40/70/100 recovery fee?', 'It stays with you — by law (art. 10(4)) it cannot be assigned. You can claim it yourself; our offer covers the principal plus interest.'],
           ['Will the debtor find out?', 'Yes — after assignment we notify the debtor in writing (art. 512 Civil Code). From then on they pay only us.'],
@@ -258,12 +264,16 @@ module.exports = {
       },
       form: {
         kicker: 'Sell an invoice', company: 'Your company', nip: 'Debtor\'s NIP', amount: 'Invoice amount (PLN)', days: 'Days overdue', email: 'E-mail', tel: 'Phone',
+        forma: 'Debtor\'s legal form', formaPh: '— select —',
+        formaNote: 'We buy claims against companies with legal personality (e.g. sp. z o.o., S.A.). Your own company can have any form.',
+        formaOptions: [['spzoo', 'Sp. z o.o. (limited company)'], ['sa', 'S.A. (joint-stock company)'], ['psa', 'P.S.A. (simple joint-stock)'], ['inna-op', 'Other legal entity (co-op, foundation…)'], ['jdg', 'Sole trader (JDG)'], ['sc', 'Civil-law partnership'], ['osobowa', 'General / limited partnership']],
         btn: 'Send for a quote',
         note: 'Sending the form does not oblige you to sell. You can decline the offer at no cost.',
         ok: 'Thank you! We are analysing the debtor — we\'ll e-mail the offer within a few business hours.',
         errors: {
           generic: 'Please correct the highlighted fields.', company: 'Enter your company name.', nip: 'Enter a valid 10-digit NIP (checksum failed).',
           amount: 'Enter an invoice amount greater than 0.', days: 'Enter the number of days overdue (at least 1).', email: 'Enter a valid e-mail address.', tel: 'Enter a phone number.', captcha: 'Bot check failed — please try again.',
+          forma: 'We currently buy only claims against legal entities (e.g. sp. z o.o., S.A.). Invoices issued to sole traders (JDG), civil-law or general partnerships, or consumers do not qualify.',
         },
       },
       footer: {

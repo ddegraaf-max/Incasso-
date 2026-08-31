@@ -73,7 +73,7 @@
       <span class="time tnum"><%= new Date(l.created_at).toLocaleDateString(t.locale, {day:'numeric', month:'short'}) %></span>
       <span class="dot"></span>
       <span>
-        <div class="fx"><%= l.company %> · <span class="tnum"><%= fill(M.leadLine, { kwota: D.fmt(Number(l.kwota)), dni: l.dni, pct: l.oferta_pct }) %></span></div>
+        <div class="fx"><%= l.company %><% if (l.forma) { %> → <%= t.app.formaLabels[l.forma] || l.forma %><% } %> · <span class="tnum"><%= fill(M.leadLine, { kwota: D.fmt(Number(l.kwota)), dni: l.dni, pct: l.oferta_pct }) %></span></div>
         <div class="fr2 tnum"><%= l.email %> · <%= l.tel || '' %> · <%= fill(M.leadNip, { nip: l.nip }) %></div>
       </span>
     </div>

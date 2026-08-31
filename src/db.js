@@ -105,6 +105,8 @@ async function init() {
       checked_at TIMESTAMPTZ DEFAULT now()
     );
   `);
+  // idempotente migraties voor bestaande databases
+  await pool.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS forma TEXT');
   console.log('DB: PostgreSQL verbonden, schema klaar');
   return true;
 }
@@ -196,8 +198,8 @@ async function saveLead(l) {
   const row = { ...l, created_at: new Date() };
   if (!pool) { mem.leads.unshift(row); return row; }
   await pool.query(
-    'INSERT INTO leads (source, company, nip, email, tel, kwota, dni, oferta_pct, note) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
-    [l.source || 'sprzedamfakture', l.company, l.nip, l.email, l.tel, l.kwota, l.dni, l.oferta_pct, l.note || null]
+    'INSERT INTO leads (source, company, nip, email, tel, kwota, dni, oferta_pct, note, forma) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)',
+    [l.source || 'sprzedamfakture', l.company, l.nip, l.email, l.tel, l.kwota, l.dni, l.oferta_pct, l.note || null, l.forma || null]
   );
   return row;
 }

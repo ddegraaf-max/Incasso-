@@ -115,4 +115,6 @@ Alles wordt gelogd in `comm_log` (PostgreSQL/memory), verschijnt als "Historia k
 6. Cesja-flow met e-handtekening (Autenti/mObywatel) rechtstreeks vanuit het leadformulier.
 
 ## Let op (juridisch, even verifiëren)
+**Incassobeleid (advies jurist, 31-08-2026): zolang er via de Nederlandse entiteit wordt geïncasseerd, alleen incasseren op rechtspersonen — de dłużnik moet een osoba prawna zijn (sp. z o.o., S.A., P.S.A., spółdzielnia/fundacja).** Afgedwongen op het leadformulier met het verplichte veld „forma prawna dłużnika” + servervalidatie (`DEBTOR_LEGAL_FORMS` in `server.js`); faktury op JDG, spółka cywilna, spółki osobowe of consumenten krijgen een nette weigering (PL/EN, ook als FAQ-item). De rechtsvorm van de dłużnik staat in de leadmail, in `/admin` en in de DB (kolom `leads.forma`, idempotente migratie). De klant (verkoper) mag elke rechtsvorm hebben.
+
 B2B windykacja polubowna vereist in Polen op dit moment geen vergunning, maar er ligt al langer een wetsvoorstel (ustawa o działalności windykacyjnej) dat licenties voor windykacja-bedrijven zou invoeren. Wykup wierzytelności (cesja) is vrij. Check de actuele status vóór livegang, en of je dit onder Budomatch DANIËL DE GRAAF (NIP 7010869430) of een nieuwe sp. z o.o. wilt draaien — voor incasso-geloofwaardigheid richting dłużnicy is een Poolse sp. z o.o. sterker.

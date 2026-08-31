@@ -74,6 +74,8 @@ let sessionMiddleware = null;
 app.use((req, res, next) => sessionMiddleware(req, res, next));
 
 const TONES = ['Uprzejmy', 'Stanowczy', 'Prawniczy'];
+// Advies jurist: incasseren alleen op rechtspersonen — de dłużnik moet een osoba prawna zijn
+const DEBTOR_LEGAL_FORMS = ['spzoo', 'sa', 'psa', 'inna-op'];
 
 function common(extra = {}) {
   return { D, SERVICE_FEE: D.SERVICE_FEE, user: null, ...extra };
@@ -279,6 +281,7 @@ app.post('/sprzedaj', async (req, res) => {
     dni: String(b.dni || '').trim().slice(0, 6),
     email: String(b.email || '').trim().slice(0, 200),
     tel: String(b.tel || '').trim().slice(0, 40),
+    forma: String(b.forma || '').trim().slice(0, 20),
   };
   const kw = parseFloat(form.kwota.replace(/\s/g, '').replace(',', '.')) || 0;
   const dn = parseInt(form.dni, 10) || 0;
@@ -286,6 +289,7 @@ app.post('/sprzedaj', async (req, res) => {
   const errors = {};
   if (!form.company) errors.company = msg.company;
   if (!validNip(form.nip)) errors.nip = msg.nip;
+  if (!DEBTOR_LEGAL_FORMS.includes(form.forma)) errors.forma = msg.forma;
   if (!(kw > 0) || kw > 1e9) errors.kwota = msg.amount;
   if (!(dn > 0) || dn > 3650) errors.dni = msg.days;
   if (!EMAIL_RE.test(form.email)) errors.email = msg.email;
@@ -297,7 +301,7 @@ app.post('/sprzedaj', async (req, res) => {
   }
   const est = AiScore.estimateOffer(kw, dn);
   const nip = form.nip.replace(/\D/g, '');
-  const lead = { company: form.company, nip, email: form.email, tel: form.tel, kwota: kw, dni: dn };
+  const lead = { company: form.company, nip, forma: form.forma, email: form.email, tel: form.tel, kwota: kw, dni: dn };
   await db.saveLead({ ...lead, oferta_pct: est.pct, note: 'lang=' + res.locals.lang }).catch(() => {});
   // e-mails: notificatie naar MAIL_NOTIFY + bevestiging aan de klant (PL/EN); fouten blokkeren het formulier niet
   const [notify, confirm] = await Promise.all([

@@ -151,6 +151,14 @@ var ld = [
           <input type="text" id="f-nip" name="nip" class="tnum" inputmode="numeric" value="<%= form.nip || '' %>" placeholder="5210000000" required<%- errors.nip ? ' aria-invalid="true"' : '' %>>
           <% if (errors.nip) { %><div class="field-err"><%= errors.nip %></div><% } %>
         </div>
+        <div class="fg<%= errors.forma ? ' has-err' : '' %>">
+          <label for="f-forma"><%= h.form.forma %></label>
+          <select id="f-forma" name="forma" required<%- errors.forma ? ' aria-invalid="true"' : '' %>>
+            <option value="" disabled <%= form.forma ? '' : 'selected' %>><%= h.form.formaPh %></option>
+            <% h.form.formaOptions.forEach(function (o) { %><option value="<%= o[0] %>" <%= form.forma === o[0] ? 'selected' : '' %>><%= o[1] %></option><% }) %>
+          </select>
+          <% if (errors.forma) { %><div class="field-err"><%= errors.forma %></div><% } else { %><p class="legal-note" style="margin-top:6px"><%= h.form.formaNote %></p><% } %>
+        </div>
         <div class="fg<%= errors.kwota ? ' has-err' : '' %>">
           <label for="f-kwota"><%= h.form.amount %></label>
           <input type="text" id="f-kwota" name="kwota" class="tnum" inputmode="decimal" value="<%= form.kwota || '' %>" required<%- errors.kwota ? ' aria-invalid="true"' : '' %>>

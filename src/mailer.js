@@ -9,6 +9,7 @@ const RESEND_KEY = process.env.RESEND_API_KEY || '';
 const MAIL_FROM = process.env.MAIL_FROM || 'sprzedamfakture.pl <kontakt@sprzedamfakture.pl>';
 const MAIL_NOTIFY = process.env.MAIL_NOTIFY || process.env.ADMIN_EMAIL || '';
 const SITE = (process.env.SITE_URL || 'https://sprzedamfakture.pl').replace(/\/$/, '');
+const FORMA_LABELS = { spzoo: 'Sp. z o.o.', sa: 'S.A.', psa: 'P.S.A.', 'inna-op': 'inna osoba prawna / other legal entity' };
 
 function configured() { return !!RESEND_KEY; }
 
@@ -98,7 +99,7 @@ const T = {
     confirmSubject: 'Dziękujemy — Twoja faktura jest w wycenie · sprzedamfakture.pl',
     confirmHi: (l) => `Dzień dobry,`,
     confirmIntro: 'dziękujemy za przesłanie faktury do wyceny. Oto podsumowanie zgłoszenia:',
-    fields: { company: 'Twoja firma', nip: 'NIP dłużnika', amount: 'Kwota faktury', days: 'Dni po terminie', email: 'E-mail', tel: 'Telefon', offer: 'Wstępna oferta', lang: 'Język' },
+    fields: { company: 'Twoja firma', nip: 'NIP dłużnika', forma: 'Forma prawna dłużnika', amount: 'Kwota faktury', days: 'Dni po terminie', email: 'E-mail', tel: 'Telefon', offer: 'Wstępna oferta', lang: 'Język' },
     confirmNext: 'Co dalej? Agent AI sprawdza dłużnika w KRZ, KRS i na białej liście MF. Ostateczną ofertę wyślemy w ciągu kilku godzin roboczych na ten adres. Wstępna wycena ma charakter orientacyjny i nie stanowi oferty w rozumieniu art. 66 KC.',
     confirmReply: 'Masz pytania? Wystarczy odpowiedzieć na tę wiadomość.',
     sign: 'Zespół sprzedamfakture.pl',
@@ -115,7 +116,7 @@ const T = {
     confirmSubject: 'Thank you — your invoice is being valued · sprzedamfakture.pl',
     confirmHi: () => 'Hello,',
     confirmIntro: 'thank you for sending your invoice for a quote. Here is a summary of your request:',
-    fields: { company: 'Your company', nip: "Debtor's NIP", amount: 'Invoice amount', days: 'Days overdue', email: 'E-mail', tel: 'Phone', offer: 'Preliminary offer', lang: 'Language' },
+    fields: { company: 'Your company', nip: "Debtor's NIP", forma: "Debtor's legal form", amount: 'Invoice amount', days: 'Days overdue', email: 'E-mail', tel: 'Phone', offer: 'Preliminary offer', lang: 'Language' },
     confirmNext: 'What happens next? The AI agent checks the debtor in KRZ, KRS and the MF VAT white list. We will e-mail the final offer to this address within a few business hours. The preliminary quote is indicative and does not constitute a binding offer (art. 66 Civil Code).',
     confirmReply: 'Questions? Just reply to this e-mail.',
     sign: 'The sprzedamfakture.pl team',
@@ -134,10 +135,12 @@ function offerTxt(est) {
   return `${D.fmt(est.amountLow)} – ${D.fmt(est.amount)} (${est.pctLow}–${est.pct}%)`;
 }
 function leadPairs(l, est, tx) {
-  return [
+  const pairs = [
     [tx.fields.company, l.company], [tx.fields.nip, l.nip], [tx.fields.amount, D.fmt(l.kwota)], [tx.fields.days, String(l.dni)],
     [tx.fields.email, l.email], [tx.fields.tel, l.tel || '—'], [tx.fields.offer, offerTxt(est)],
   ];
+  if (l.forma) pairs.splice(2, 0, [tx.fields.forma, FORMA_LABELS[l.forma] || l.forma]);
+  return pairs;
 }
 function textOf(pairs) { return pairs.map(([k, v]) => `${k}: ${v}`).join('\n'); }
 

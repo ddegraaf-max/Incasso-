@@ -10,6 +10,7 @@ const pl = {
   nav: { admin: 'Admin', panel: 'Panel', logout: 'Wyloguj', tabs: { sprawy: 'Sprawy', nowa: 'Nowa sprawa', agent: 'Agent AI', wykup: 'Wykup' } },
   titles: { login: 'Logowanie', register: 'Rejestracja', twofa: 'Weryfikacja', twofaSetup: 'Konfiguracja 2FA', sprawy: 'Sprawy', nowa: 'Nowa sprawa', agent: 'Agent AI', wykup: 'Wykup wierzytelności', rozmowa: 'Rozmowa', admin: 'Admin' },
   tones: { Uprzejmy: 'Uprzejmy', Stanowczy: 'Stanowczy', Prawniczy: 'Prawniczy' },
+  formaLabels: { spzoo: 'Sp. z o.o.', sa: 'S.A.', psa: 'P.S.A.', 'inna-op': 'inna osoba prawna', jdg: 'JDG', sc: 'spółka cywilna', osobowa: 'spółka osobowa' },
   outcomes: { obietnica: 'Obietnica zapłaty', raty: 'Uzgodniono raty', sporna: 'Faktura sporna', odmowa: 'Odmowa zapłaty', brak: 'Brak kontaktu' },
   msg: {
     tooMany: 'Zbyt wiele nieudanych prób. Spróbuj ponownie za 15 minut.', badCreds: 'Nieprawidłowy e-mail lub hasło.', sessionErr: 'Błąd sesji — spróbuj ponownie.',
@@ -200,6 +201,7 @@ const en = {
   nav: { admin: 'Admin', panel: 'Panel', logout: 'Log out', tabs: { sprawy: 'Cases', nowa: 'New case', agent: 'AI agent', wykup: 'Buy-out' } },
   titles: { login: 'Log in', register: 'Register', twofa: 'Verification', twofaSetup: '2FA setup', sprawy: 'Cases', nowa: 'New case', agent: 'AI agent', wykup: 'Claim buy-out', rozmowa: 'Call', admin: 'Admin' },
   tones: { Uprzejmy: 'Polite', Stanowczy: 'Firm', Prawniczy: 'Legal' },
+  formaLabels: { spzoo: 'Sp. z o.o.', sa: 'S.A.', psa: 'P.S.A.', 'inna-op': 'other legal entity', jdg: 'sole trader (JDG)', sc: 'civil-law partnership', osobowa: 'partnership' },
   outcomes: { obietnica: 'Promise to pay', raty: 'Instalments agreed', sporna: 'Invoice disputed', odmowa: 'Refusal to pay', brak: 'No contact' },
   msg: {
     tooMany: 'Too many failed attempts. Try again in 15 minutes.', badCreds: 'Invalid e-mail or password.', sessionErr: 'Session error — please try again.',
