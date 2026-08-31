@@ -101,6 +101,17 @@ module.exports = {
         resultCta: 'Przyjmuję — wyślij fakturę',
         hint: 'Oferta liczy się na bieżąco podczas wpisywania. Wycena ma charakter orientacyjny i nie stanowi oferty w rozumieniu art. 66 KC.',
       },
+      hourglass: {
+        kicker: 'Przedawnienie', h: 'Klepsydra przedawnienia',
+        sub: 'Roszczenia z faktur B2B przedawniają się szybciej, niż myślisz — przy sprzedaży towarów i usług już po 2 latach (art. 554 KC), z końcem roku kalendarzowego. Po tym terminie dłużnik może zgodnie z prawem odmówić zapłaty.',
+        typeLabel: 'Rodzaj roszczenia',
+        types: [['2', 'Sprzedaż towarów / usług — 2 lata (art. 554 KC)'], ['3', 'Inne roszczenia B2B — 3 lata (art. 118 KC)'], ['1', 'Przewóz — 1 rok (art. 792 KC)']],
+        result: 'Przedawnienie: {date}', left: 'zostało ok. {days} dni', usedTpl: 'upłynęło {pct}% terminu',
+        example: 'Przykład dla faktury {days} dni po terminie — wpisz wyżej własne dane, klepsydra liczy na żywo.',
+        expired: 'Ten termin mógł już upłynąć — roszczenie może być przedawnione. Odezwij się, zanim cokolwiek odpiszesz: sprawdzimy dokładne daty.',
+        note: 'Bieg przedawnienia przerywają m.in. pozew, uznanie długu i mediacja (art. 123 KC). Wyliczenie poglądowe: od terminu płatności, dla terminów co najmniej 2-letnich z zaokrągleniem do końca roku kalendarzowego (art. 118 KC).',
+        cta: 'Sprzedaj, zanim piasek się przesypie',
+      },
       why: {
         kicker: 'Dlaczego warto sprzedać',
         items: [
@@ -312,6 +323,17 @@ module.exports = {
         resultSub: 'preliminary offer ({low}–{high}% of face value) — final after we verify the debtor in KRZ, KRS and the VAT white list. Late-payment interest transfers to us together with the claim (art. 509 § 2 Civil Code).',
         resultCta: 'Accept — send the invoice',
         hint: 'The offer updates as you type. The quote is indicative and does not constitute a binding offer (art. 66 Civil Code).',
+      },
+      hourglass: {
+        kicker: 'Limitation period', h: 'The limitation hourglass',
+        sub: 'B2B invoice claims become time-barred faster than you think — for sales of goods and services after just 2 years (art. 554 Civil Code), rounded to the end of the calendar year. After that the debtor can lawfully refuse to pay.',
+        typeLabel: 'Type of claim',
+        types: [['2', 'Sale of goods / services — 2 years (art. 554 CC)'], ['3', 'Other B2B claims — 3 years (art. 118 CC)'], ['1', 'Carriage — 1 year (art. 792 CC)']],
+        result: 'Time-barred on: {date}', left: 'about {days} days left', usedTpl: '{pct}% of the period has passed',
+        example: 'Example for an invoice {days} days overdue — enter your own numbers above, the hourglass updates live.',
+        expired: 'This period may already have passed — the claim may be time-barred. Contact us before you write anything off: we will check the exact dates.',
+        note: 'The limitation period is interrupted by e.g. a lawsuit, acknowledgement of the debt or mediation (art. 123 Civil Code). Indicative calculation: from the due date; periods of 2+ years run to the end of the calendar year (art. 118 CC).',
+        cta: 'Sell before the sand runs out',
       },
       why: {
         kicker: 'Why sell',

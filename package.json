@@ -1,6 +1,6 @@
 {
   "name": "sprzedamfakture-pl",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "sprzedamfakture.pl — sprzedaz faktur B2B i windykacja AI (koncept)",
   "main": "server.js",
   "scripts": {

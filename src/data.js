@@ -84,6 +84,24 @@ const rekomp = (amount) => amount < 5000 ? 40 : (amount < 50000 ? 70 : 100);
 const rekompZl = (amount) => Math.round(rekomp(amount) * EUR_PLN / 10) * 10;
 const daysFmt = (d) => d + (d === 1 ? ' dzień' : ' dni');
 
+// Przedawnienie (verjaring): termijn vanaf termin płatności (wymagalność);
+// terminy >= 2 jaar eindigen op 31 december van dat jaar (art. 118 KC, na de reforma 2018).
+function przedawnienie(dniPoTerminie, years = 2) {
+  const MS = 86400000;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const due = new Date(today.getTime() - (dniPoTerminie || 0) * MS);
+  let end = new Date(due); end.setFullYear(end.getFullYear() + years);
+  if (years >= 2) end = new Date(end.getFullYear(), 11, 31);
+  const total = Math.max(1, Math.round((end - due) / MS));
+  const left = Math.floor((end - today) / MS);
+  const pad = (n) => String(n).padStart(2, '0');
+  return {
+    end, endFmt: pad(end.getDate()) + '.' + pad(end.getMonth() + 1) + '.' + end.getFullYear(),
+    daysLeft: Math.max(0, left), totalDays: total,
+    fraction: Math.max(0, Math.min(1, left / total)), expired: left < 0,
+  };
+}
+
 // actiestatus: write-through naar PostgreSQL indien aanwezig
 const db = require('./db');
 let done = {};   // { caseId: 'collect' | 'sell' | 'close' }
@@ -92,7 +110,7 @@ async function initActions() { done = await db.loadActions().catch(() => ({})); 
 
 module.exports = {
   INTEREST_RATE, SERVICE_FEE, EUR_PLN, claims, toneOpeners, thread, feed,
-  fmt, fmtN, interest, interestExact, rekomp, rekompZl, daysFmt,
+  fmt, fmtN, interest, interestExact, rekomp, rekompZl, daysFmt, przedawnienie,
   getDone: () => done,
   setDone: (id, action) => { done[id] = action; db.saveAction(id, action).catch(() => {}); },
   initActions,

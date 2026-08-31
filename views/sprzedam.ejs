@@ -114,6 +114,38 @@ var ld = [
   </div>
 </section>
 
+<% var HG = h.hourglass; var hgDni = parseInt(q.dni, 10) > 0 ? parseInt(q.dni, 10) : null; var hg = D.przedawnienie(hgDni || 45, 2); var hgExample = !hgDni; var hgH = 93; %>
+<section class="hg-wrap" id="przedawnienie">
+  <div class="hg-grid">
+    <div class="hg-copy">
+      <div class="kicker"><%= HG.kicker %></div>
+      <h2><%= HG.h %></h2>
+      <p><%= HG.sub %></p>
+      <p class="hg-note"><%= HG.note %></p>
+      <a class="btn" href="#formularz"><%= HG.cta %></a>
+    </div>
+    <div class="hg-panel<%= hg.expired || hg.fraction < 0.2 ? ' hg-danger' : '' %>">
+      <svg class="hg-svg" viewBox="0 0 160 220" aria-hidden="true">
+        <clipPath id="hg-top-clip"><path d="M42 18c0 38 21 59 33 75 3 4 7 4 10 0 12-16 33-37 33-75z"/></clipPath>
+        <clipPath id="hg-bot-clip"><path d="M42 206c0-38 21-59 33-75 3-4 7-4 10 0 12 16 33 37 33 75z"/></clipPath>
+        <rect id="hg-sand-top" class="hg-sand" x="40" width="80" clip-path="url(#hg-top-clip)" y="<%= (111 - hg.fraction * hgH).toFixed(1) %>" height="<%= (hg.fraction * hgH).toFixed(1) %>"/>
+        <rect id="hg-sand-bottom" class="hg-sand" x="40" width="80" clip-path="url(#hg-bot-clip)" y="<%= (206 - (1 - hg.fraction) * hgH).toFixed(1) %>" height="<%= ((1 - hg.fraction) * hgH).toFixed(1) %>"/>
+        <line id="hg-stream" class="hg-stream" x1="80" y1="110" x2="80" y2="200"<%- hg.expired || hg.fraction <= 0 || hg.fraction >= 1 ? ' style="display:none"' : '' %>/>
+        <path class="hg-frame" d="M30 12h100M30 208h100M40 16c0 40 22 62 34 78 4 5 4 9 0 14-12 16-34 38-34 76M120 16c0 40-22 62-34 78-4 5-4 9 0 14 12 16 34 38 34 76" fill="none"/>
+      </svg>
+      <label class="hg-type-label" for="hg-type"><%= HG.typeLabel %></label>
+      <select id="hg-type" class="chan-tone">
+        <% HG.types.forEach(function (o) { %><option value="<%= o[0] %>" <%= o[0] === '2' ? 'selected' : '' %>><%= o[1] %></option><% }) %>
+      </select>
+      <div class="hg-read" id="hg-read" data-result="<%= HG.result %>" data-left="<%= HG.left %>" data-used="<%= HG.usedTpl %>" data-expired="<%= HG.expired %>" data-example="<%= HG.example %>" aria-live="polite">
+        <div class="hg-date tnum" id="hg-date"><%= HG.result.replace('{date}', hg.endFmt) %></div>
+        <div class="hg-left tnum" id="hg-left"><%= hg.expired ? '' : HG.left.replace('{days}', hg.daysLeft) + ' · ' + HG.usedTpl.replace('{pct}', Math.round((1 - hg.fraction) * 100)) %></div>
+        <div class="hg-msg" id="hg-msg"><%= hg.expired ? HG.expired : (hgExample ? HG.example.replace('{days}', hgDni || 45) : '') %></div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <section class="model">
   <div class="kicker"><%= h.why.kicker %></div>
   <div class="model-grid">
