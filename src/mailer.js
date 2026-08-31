@@ -72,22 +72,36 @@ async function send({ to, subject, text, html, replyTo, from }) {
 
 // ── HTML-layout (eenvoudig, inline styles — werkt in elke mailclient) ────
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
-function layout(bodyHtml, lang) {
-  const foot = lang === 'en'
-    ? 'sprzedamfakture.pl · kontakt@sprzedamfakture.pl · Legal basis: arts. 509–512 of the Polish Civil Code.'
-    : 'sprzedamfakture.pl · kontakt@sprzedamfakture.pl · Podstawa: art. 509–512 KC.';
-  return `<!doctype html><html lang="${lang}"><body style="margin:0;background:#f6f4ef;font-family:Manrope,Segoe UI,Arial,sans-serif;color:#17233a">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f4ef"><tr><td align="center" style="padding:28px 12px">
-<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#fff;border:1px solid #e5e0d3;border-radius:14px">
-<tr><td style="padding:22px 28px;border-bottom:1px solid #e5e0d3"><span style="font-family:Georgia,serif;font-size:22px;font-weight:600;color:#17233a">sprzedam<b>fakture</b><span style="color:#a3781f">.pl</span></span>
-<div style="font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:#8a6415;margin-top:4px">${lang === 'en' ? 'Cash for your invoice in 24 h' : 'Gotówka za fakturę w 24 h'}</div></td></tr>
-<tr><td style="padding:26px 28px;font-size:15px;line-height:1.6">${bodyHtml}</td></tr>
-<tr><td style="padding:16px 28px;border-top:1px solid #e5e0d3;font-size:12px;color:#6b7280">${foot}</td></tr>
-</table></td></tr></table></body></html>`;
+function layout(bodyHtml, lang, preheader) {
+  const en = lang === 'en';
+  const mailto = '<a href="mailto:kontakt@sprzedamfakture.pl" style="color:#8a6415;text-decoration:none">kontakt@sprzedamfakture.pl</a>';
+  const foot = en
+    ? `sprzedamfakture.pl · ${mailto} · Legal basis: arts. 509–512 of the Polish Civil Code.`
+    : `sprzedamfakture.pl · ${mailto} · Podstawa: art. 509–512 KC.`;
+  const tagline = en ? 'Cash for your invoice in 24 h' : 'Gotówka za fakturę w 24 h';
+  // preheader: onzichtbare previewtekst die mailclients naast het onderwerp tonen
+  const pre = preheader ? `<div style="display:none;max-height:0;overflow:hidden;mso-hide:all">${esc(preheader)}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>` : '';
+  return `<!doctype html><html lang="${lang}"><body style="margin:0;padding:0;background:#f6f4ef">
+${pre}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#f6f4ef" style="background:#f6f4ef"><tr><td align="center" style="padding:32px 12px 10px">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border:1px solid #e5e0d3;border-radius:14px;overflow:hidden">
+<tr><td bgcolor="#17233a" style="background:#17233a;padding:24px 32px 20px;border-radius:14px 14px 0 0">
+<div style="font-family:Georgia,'Times New Roman',serif;font-size:24px;color:#fdfcf8;letter-spacing:-.2px">sprzedam<b>fakture</b><span style="color:#d9b45e">.pl</span></div>
+<div style="font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:bold;letter-spacing:2px;text-transform:uppercase;color:#d9b45e;margin-top:6px">${tagline}</div>
+</td></tr>
+<tr><td height="4" bgcolor="#b8892d" style="height:4px;background:linear-gradient(90deg,#b8892d,#e6c56f);font-size:0;line-height:0"> </td></tr>
+<tr><td style="padding:30px 32px 26px;font-family:'Segoe UI',Arial,Helvetica,sans-serif;font-size:15px;line-height:1.65;color:#17233a">${bodyHtml}</td></tr>
+<tr><td style="padding:16px 32px 20px;border-top:1px solid #eee9db;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#8a8577;line-height:1.6">${foot}</td></tr>
+</table>
+<div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#b5ae9d;padding:14px 0 6px">© 2026 sprzedamfakture.pl</div>
+</td></tr></table></body></html>`;
 }
 function rows(pairs) {
-  return '<table role="presentation" cellpadding="0" cellspacing="0" style="font-size:14px;margin:12px 0 18px">' +
-    pairs.map(([k, v]) => `<tr><td style="padding:5px 18px 5px 0;color:#6b7280;white-space:nowrap">${esc(k)}</td><td style="padding:5px 0;font-weight:600">${esc(v)}</td></tr>`).join('') + '</table>';
+  // [label, waarde] of [label, waarde, true] voor een goud gemarkeerde rij (bv. de oferta)
+  const cells = pairs.map(([k, v, hl]) => hl
+    ? `<tr bgcolor="#f7efdd"><td style="padding:11px 14px;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#8a6415;font-weight:bold;white-space:nowrap">${esc(k)}</td><td align="right" style="padding:11px 14px;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#17233a;font-weight:bold">${esc(v)}</td></tr>`
+    : `<tr><td style="padding:9px 14px 9px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#6b7280;white-space:nowrap;border-bottom:1px solid #f0ece0">${esc(k)}</td><td align="right" style="padding:9px 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#17233a;font-weight:600;border-bottom:1px solid #f0ece0">${esc(v)}</td></tr>`
+  ).join('');
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0 20px">${cells}</table>`;
 }
 function button(href, label) {
   return `<a href="${esc(href)}" style="display:inline-block;background:#17233a;color:#fff;text-decoration:none;font-weight:700;padding:11px 20px;border-radius:999px;font-size:14px">${esc(label)}</a>`;
@@ -97,6 +111,7 @@ function button(href, label) {
 const T = {
   pl: {
     confirmSubject: 'Dziękujemy — Twoja faktura jest w wycenie · sprzedamfakture.pl',
+    confirmPre: 'Podsumowanie zgłoszenia i wstępna oferta — ostateczną ofertę wyślemy w ciągu kilku godzin roboczych.',
     confirmHi: (l) => `Dzień dobry,`,
     confirmIntro: 'dziękujemy za przesłanie faktury do wyceny. Oto podsumowanie zgłoszenia:',
     fields: { company: 'Twoja firma', nip: 'NIP dłużnika', forma: 'Forma prawna dłużnika', amount: 'Kwota faktury', days: 'Dni po terminie', email: 'E-mail', tel: 'Telefon', offer: 'Wstępna oferta', lang: 'Język' },
@@ -123,6 +138,7 @@ const T = {
   },
   en: {
     confirmSubject: 'Thank you — your invoice is being valued · sprzedamfakture.pl',
+    confirmPre: 'Your request summary and preliminary offer — the final offer follows within a few business hours.',
     confirmHi: () => 'Hello,',
     confirmIntro: 'thank you for sending your invoice for a quote. Here is a summary of your request:',
     fields: { company: 'Your company', nip: "Debtor's NIP", forma: "Debtor's legal form", amount: 'Invoice amount', days: 'Days overdue', email: 'E-mail', tel: 'Phone', offer: 'Preliminary offer', lang: 'Language' },
@@ -155,7 +171,7 @@ function offerTxt(est) {
 function leadPairs(l, est, tx) {
   const pairs = [
     [tx.fields.company, l.company], [tx.fields.nip, l.nip], [tx.fields.amount, D.fmt(l.kwota)], [tx.fields.days, String(l.dni)],
-    [tx.fields.email, l.email], [tx.fields.tel, l.tel || '—'], [tx.fields.offer, offerTxt(est)],
+    [tx.fields.email, l.email], [tx.fields.tel, l.tel || '—'], [tx.fields.offer, offerTxt(est), true],
   ];
   if (l.forma) pairs.splice(2, 0, [tx.fields.forma, FORMA_LABELS[l.forma] || l.forma]);
   return pairs;
@@ -178,7 +194,7 @@ async function wyrokConfirm(lead, lang) {
   const tx = T[L];
   const pairs = wyrokPairs(lead, tx);
   const text = `${tx.confirmHi(lead)}\n\n${tx.wyrok.confirmIntro}\n\n${textOf(pairs)}\n\n${tx.wyrok.confirmNext}\n\n${tx.confirmReply}\n\n${tx.sign}`;
-  const html = layout(`<p>${esc(tx.confirmHi(lead))}</p><p>${esc(tx.wyrok.confirmIntro)}</p>${rows(pairs)}<p>${esc(tx.wyrok.confirmNext)}</p><p>${esc(tx.confirmReply)}</p><p>${esc(tx.sign)}</p>`, L);
+  const html = layout(`<p>${esc(tx.confirmHi(lead))}</p><p>${esc(tx.wyrok.confirmIntro)}</p>${rows(pairs)}<p>${esc(tx.wyrok.confirmNext)}</p><p>${esc(tx.confirmReply)}</p><p>${esc(tx.sign)}</p>`, L, tx.wyrok.confirmIntro);
   return send({ to: lead.email, subject: tx.wyrok.confirmSubject, text, html, replyTo: MAIL_NOTIFY || undefined });
 }
 async function wyrokNotify(lead, lang) {
@@ -187,7 +203,7 @@ async function wyrokNotify(lead, lang) {
   const pairs = wyrokPairs(lead, tx).concat([[tx.wyrok.fields.lang, (lang || 'pl').toUpperCase()]]);
   if (lead.uwagi) pairs.push([tx.wyrok.fields.uwagi, lead.uwagi.slice(0, 500)]);
   const text = `${tx.wyrok.notifyIntro}\n\n${textOf(pairs)}\n\n${tx.wyrok.notifyWarn}\n\n${SITE}/admin`;
-  const html = layout(`<p>${esc(tx.wyrok.notifyIntro)}</p>${rows(pairs)}<p style="font-size:13px;color:#6b7280">${esc(tx.wyrok.notifyWarn)}</p><p>${button(SITE + '/admin', tx.notifyCta)}</p>`, 'pl');
+  const html = layout(`<p>${esc(tx.wyrok.notifyIntro)}</p>${rows(pairs)}<p style="font-size:13px;color:#6b7280">${esc(tx.wyrok.notifyWarn)}</p><p>${button(SITE + '/admin', tx.notifyCta)}</p>`, 'pl', tx.wyrok.notifyIntro);
   return send({ to: MAIL_NOTIFY, subject: tx.wyrok.notifySubject(lead), text, html, replyTo: lead.email });
 }
 
@@ -197,7 +213,7 @@ async function leadConfirm(lead, est, lang) {
   const tx = T[L];
   const pairs = leadPairs(lead, est, tx);
   const text = `${tx.confirmHi(lead)}\n\n${tx.confirmIntro}\n\n${textOf(pairs)}\n\n${tx.confirmNext}\n\n${tx.confirmReply}\n\n${tx.sign}`;
-  const html = layout(`<p>${esc(tx.confirmHi(lead))}</p><p>${esc(tx.confirmIntro)}</p>${rows(pairs)}<p>${esc(tx.confirmNext)}</p><p>${esc(tx.confirmReply)}</p><p>${esc(tx.sign)}</p>`, L);
+  const html = layout(`<p>${esc(tx.confirmHi(lead))}</p><p>${esc(tx.confirmIntro)}</p>${rows(pairs)}<p>${esc(tx.confirmNext)}</p><p>${esc(tx.confirmReply)}</p><p>${esc(tx.sign)}</p>`, L, tx.confirmPre);
   return send({ to: lead.email, subject: tx.confirmSubject, text, html, replyTo: MAIL_NOTIFY || undefined });
 }
 
@@ -208,7 +224,7 @@ async function leadNotify(lead, est, lang) {
   const pairs = leadPairs(lead, est, tx).concat([[tx.fields.lang, (lang || 'pl').toUpperCase()]]);
   const subject = tx.notifySubject(lead, est);
   const text = `${tx.notifyIntro}\n\n${textOf(pairs)}\n\n${SITE}/admin`;
-  const html = layout(`<p>${esc(tx.notifyIntro)}</p>${rows(pairs)}<p>${button(SITE + '/admin', tx.notifyCta)}</p>`, 'pl');
+  const html = layout(`<p>${esc(tx.notifyIntro)}</p>${rows(pairs)}<p>${button(SITE + '/admin', tx.notifyCta)}</p>`, 'pl', tx.notifyIntro);
   return send({ to: MAIL_NOTIFY, subject, text, html, replyTo: lead.email });
 }
 
