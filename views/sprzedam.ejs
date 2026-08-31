@@ -172,6 +172,12 @@ var ld = [
           <% if (errors.tel) { %><div class="field-err"><%= errors.tel %></div><% } %>
         </div>
         <div class="hp" aria-hidden="true"><label for="f-web">Website</label><input type="text" id="f-web" name="website" tabindex="-1" autocomplete="off"></div>
+        <% if ((turnstile && turnstile.enabled) || errors.captcha) { %>
+        <div class="fg<%= errors.captcha ? ' has-err' : '' %>">
+          <%- include('partials/turnstile') %>
+          <% if (errors.captcha) { %><div class="field-err"><%= errors.captcha %></div><% } %>
+        </div>
+        <% } %>
         <button class="btn btn-gold" type="submit"><%= h.form.btn %></button>
         <p class="legal-note" style="margin-top:12px"><%= h.form.note %></p>
       </form>

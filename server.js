@@ -8,6 +8,7 @@ const db = require('./src/db');
 const AiScore = require('./src/aiscore');
 const Comms = require('./src/comms');
 const Mailer = require('./src/mailer');
+const Turnstile = require('./src/turnstile');
 const pgSession = require('connect-pg-simple')(session);
 const compression = require('compression');
 const VER = require('./src/version');
@@ -54,6 +55,7 @@ app.use((req, res, next) => {
   };
   res.locals.version = VER.version;
   res.locals.commit = VER.commit;
+  res.locals.turnstile = { enabled: Turnstile.enabled(), siteKey: Turnstile.SITE_KEY };
   next();
 });
 app.use(express.urlencoded({ extended: true }));
@@ -125,10 +127,13 @@ app.get('/rejestracja', (req, res) => {
   res.render('rejestracja', common({ page: 'auth', error: null, form: { company: '', nip: '', email: '' } }));
 });
 
-app.post('/rejestracja', (req, res) => {
+app.post('/rejestracja', async (req, res) => {
   const { company, nip, email, password, password2 } = req.body;
   const form = { company: company || '', nip: nip || '', email: email || '' };
   const fail = (msg) => res.status(400).render('rejestracja', common({ page: 'auth', error: msg, form }));
+
+  const ts = await Turnstile.verify(req.body['cf-turnstile-response'], req.ip);
+  if (!ts.ok) return fail(res.locals.t.app.msg.captcha);
 
   if (!company || !email) return fail(res.locals.t.app.msg.fillCompanyEmail);
   if (Auth.findUser(email)) return fail(res.locals.t.app.msg.exists);
@@ -202,7 +207,7 @@ app.get('/logout', (req, res) => {
 app.get('/admin', Auth.requireAdmin, async (req, res) => {
   const events = await db.listEvents(15).catch(() => []);
   const leads = await db.listLeads(15).catch(() => []);
-  res.render('admin', common({ page: 'admin', user: req.user, usersList: Auth.allUsers(), done: D.getDone(), events, leads, flash: req.query.msg || null, integr: { ...Mailer.status(), db: db.hasDb() } }));
+  res.render('admin', common({ page: 'admin', user: req.user, usersList: Auth.allUsers(), done: D.getDone(), events, leads, flash: req.query.msg || null, integr: { ...Mailer.status(), db: db.hasDb(), turnstile: Turnstile.enabled() } }));
 });
 
 // Testmail naar MAIL_NOTIFY — om de Resend-koppeling na deploy te controleren
@@ -266,6 +271,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 app.post('/sprzedaj', async (req, res) => {
   const b = req.body || {};
   if (b.website) return res.redirect('/?lead=ok#formularz'); // honeypot: bot → doen alsof het gelukt is
+  const ts = await Turnstile.verify(b['cf-turnstile-response'], req.ip);
   const form = {
     company: String(b.company || '').trim().slice(0, 200),
     nip: String(b.nip || '').trim().slice(0, 20),
@@ -284,6 +290,7 @@ app.post('/sprzedaj', async (req, res) => {
   if (!(dn > 0) || dn > 3650) errors.dni = msg.days;
   if (!EMAIL_RE.test(form.email)) errors.email = msg.email;
   if (form.tel.replace(/\D/g, '').length < 7) errors.tel = msg.tel;
+  if (!ts.ok) errors.captcha = msg.captcha;
   if (Object.keys(errors).length) {
     res.status(400);
     return renderHome(req, res, { form, errors });
@@ -309,7 +316,7 @@ app.post('/sprzedaj', async (req, res) => {
 app.get('/health', (req, res) => {
   res.set('Cache-Control', 'no-store');
   const m = Mailer.status();
-  res.json({ ok: true, name: 'sprzedamfakture.pl', version: VER.version, commit: VER.commit, startedAt: VER.startedAt, uptimeSec: Math.round(process.uptime()), db: db.hasDb(), mail: m.resend ? 'resend' : 'simulation', mailFrom: m.from, mailNotify: !!m.notify, liveComms: m.liveComms, smsapi: m.smsapi, anthropic: m.anthropic });
+  res.json({ ok: true, name: 'sprzedamfakture.pl', version: VER.version, commit: VER.commit, startedAt: VER.startedAt, uptimeSec: Math.round(process.uptime()), db: db.hasDb(), mail: m.resend ? 'resend' : 'simulation', mailFrom: m.from, mailNotify: !!m.notify, liveComms: m.liveComms, smsapi: m.smsapi, anthropic: m.anthropic, turnstile: Turnstile.enabled() });
 });
 
 const SITE = 'https://sprzedamfakture.pl';

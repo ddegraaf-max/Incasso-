@@ -29,6 +29,7 @@
       <label for="password2"><%= R.password2 %></label>
       <input type="password" id="password2" name="password2" autocomplete="new-password" required>
     </div>
+    <% if (turnstile && turnstile.enabled) { %><div class="fg"><%- include('partials/turnstile') %></div><% } %>
     <button class="btn" type="submit"><%= R.btn %></button>
   </form>
 

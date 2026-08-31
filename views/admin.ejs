@@ -35,6 +35,7 @@
     <div class="kicker"><%= M.integrLabel %></div>
     <ul class="rules-list">
       <li><span class="tag <%= ig.resend ? 'tag-accent' : 'tag-neutral' %>"><%= ig.resend ? M.integrOn : M.integrOff %></span> &nbsp;<%= M.integr.resend %> · <%= M.integr.from %>: <span class="tnum"><%= ig.from || '—' %></span></li>
+      <li><span class="tag <%= ig.turnstile ? 'tag-accent' : 'tag-neutral' %>"><%= ig.turnstile ? M.integrOn : M.integrOff %></span> &nbsp;<%= M.integr.turnstile %></li>
       <li><span class="tag <%= ig.notify ? 'tag-accent' : 'tag-neutral' %>"><%= ig.notify ? M.integrOn : M.integrOff %></span> &nbsp;<%= M.integr.notify %> <span class="tnum"><%= ig.notify || M.notSet %></span></li>
       <li><span class="tag <%= ig.liveComms ? 'tag-accent' : 'tag-neutral' %>"><%= ig.liveComms ? M.integrOn : M.integrOff %></span> &nbsp;<%= M.integr.live %></li>
       <li><span class="tag <%= ig.smsapi ? 'tag-accent' : 'tag-neutral' %>"><%= ig.smsapi ? M.integrOn : M.integrOff %></span> &nbsp;<%= M.integr.sms %></li>

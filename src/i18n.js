@@ -126,7 +126,7 @@ module.exports = {
         ok: 'Dziękujemy! Analizujemy dłużnika — ofertę wyślemy w ciągu kilku godzin roboczych na podany e-mail.',
         errors: {
           generic: 'Popraw zaznaczone pola.', company: 'Podaj nazwę firmy.', nip: 'Podaj poprawny 10-cyfrowy NIP (błędna suma kontrolna).',
-          amount: 'Podaj kwotę faktury większą od 0.', days: 'Podaj liczbę dni po terminie (co najmniej 1).', email: 'Podaj poprawny adres e-mail.', tel: 'Podaj numer telefonu.',
+          amount: 'Podaj kwotę faktury większą od 0.', days: 'Podaj liczbę dni po terminie (co najmniej 1).', email: 'Podaj poprawny adres e-mail.', tel: 'Podaj numer telefonu.', captcha: 'Weryfikacja antybotowa nie powiodła się — spróbuj ponownie.',
         },
       },
       footer: {
@@ -263,7 +263,7 @@ module.exports = {
         ok: 'Thank you! We are analysing the debtor — we\'ll e-mail the offer within a few business hours.',
         errors: {
           generic: 'Please correct the highlighted fields.', company: 'Enter your company name.', nip: 'Enter a valid 10-digit NIP (checksum failed).',
-          amount: 'Enter an invoice amount greater than 0.', days: 'Enter the number of days overdue (at least 1).', email: 'Enter a valid e-mail address.', tel: 'Enter a phone number.',
+          amount: 'Enter an invoice amount greater than 0.', days: 'Enter the number of days overdue (at least 1).', email: 'Enter a valid e-mail address.', tel: 'Enter a phone number.', captcha: 'Bot check failed — please try again.',
         },
       },
       footer: {

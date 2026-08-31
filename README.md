@@ -19,7 +19,7 @@ Node/Express/EJS-app achter **sprzedamfakture.pl**: wykup wierzytelności (insta
 | `/kalkulator` | Publieke kalkulator odsetek (14%) + rekompensata 40/70/100 € — leadmagnet/SEO |
 | `/wezwanie` | Printbaar wezwanie do zapłaty, gegenereerd vanuit de kalkulator |
 | `/api/wycena?kwota=&dni=` | JSON voor de live wycena-widget (indicatieve oferta) |
-| `/health` | JSON: versie, commit, uptime, db, mail/Resend-status — voor deploy-checks |
+| `/health` | JSON: versie, commit, uptime, db, mail/Resend- en Turnstile-status — voor deploy-checks |
 | `/robots.txt` · `/sitemap.xml` | SEO (hreflang PL/EN in de sitemap) |
 
 ## Branding & logo
@@ -66,6 +66,13 @@ Instellen:
 
 Mails naar **dłużnicy** (agent-knop E-mail/SMS in het panel) gaan pas echt met `LIVE_COMMS=1` — anders symulacja, ook mét keys. De demo-zaken hebben fictieve adressen; zet dit pas aan met echte zaken.
 
+## Anti-bot (Cloudflare Turnstile)
+Het leadformulier en de registratie hebben een Turnstile-widget (naast de honeypot). Staat automatisch aan zodra beide variabelen in Railway staan; zonder keys geen widget en geen verificatie.
+1. **Cloudflare dashboard → Turnstile → Add widget**: hostnames `sprzedamfakture.pl` en `www.sprzedamfakture.pl` (voeg ook je Railway-domein toe als je daar test), widget mode *Managed*.
+2. **Railway → Variables**: `TURNSTILE_SITE_KEY=0x…` (site key) en `TURNSTILE_SECRET_KEY=0x…` (secret). Redeploy.
+3. Controle: widget zichtbaar boven de verzendknop op `/` en `/rejestracja`; `/admin` → Integracje → *Cloudflare Turnstile*: Aktywne; `/health` → `turnstile: true`.
+Server-side verificatie via `siteverify` in `src/turnstile.js`; bij weigering krijgt de gebruiker de melding „Weryfikacja antybotowa nie powiodła się” (EN: „Bot check failed”) en blijven de ingevulde velden staan. Testen zonder echte keys: Cloudflare-testkeys `1x00000000000000000000AA` / `1x0000000000000000000000000000000AA` (altijd ok) of secret `2x0000000000000000000000000000000AA` (altijd geweigerd).
+
 ## Sprzedaj fakturę (homepage)
 Instant wycena-widget (indicatieve oferta via `AiScore.estimateOffer`, definitief na KRZ/KRS/biała lista-check), 4-stappenflow, FAQ (incl. zakaz cesji, rekompensata blijft bij verkoper, art. 512-notificatie, doorverwijzing naar windykacja) en een leadformulier → tabel `leads` + event in het admin-dashboard en de Agent-tab.
 
@@ -86,7 +93,7 @@ Vanuit het detailpaneel van elke zaak, in de gekozen toon (Uprzejmy/Stanowczy/Pr
 - **SMS** — via **SMSAPI.pl** (`SMSAPI_TOKEN`, afzendernaam `SMS_FROM`, default `SprzedamFV` — SMSAPI staat max. 11 alfanumerieke tekens toe, dus de volledige domeinnaam past niet; registreer de afzendernaam in het SMSAPI-panel). Zonder token: symulacja.
 - **Telefoon** — jij belt zelf: knop "Zadzwoń — skrypt" opent de belvoorbereiding met klikbaar nummer (tel:), AI-gespreksscript (cel, otwarcie, argumenten met actuele odsetki/rekompensata, reacties op 4 standaard-wymówki, zamknięcie) en na afloop een resultaatformulier (obietnica/raty/sporna/odmowa/brak + termin + notatka). Het resultaat stuurt de zaakfase bij (raty → "Harmonogram rat", odmowa → "Eskalacja").
 
-Alles wordt gelogd in `comm_log` (PostgreSQL/memory), verschijnt als "Historia komunikacji" in het detailpaneel en als event op de Agent AI-tab. Extra env vars: `RESEND_API_KEY`, `FROM_EMAIL`, `MAIL_FROM`, `MAIL_NOTIFY`, `LIVE_COMMS`, `SMSAPI_TOKEN`, `SMS_FROM`, `ANTHROPIC_API_KEY`.
+Alles wordt gelogd in `comm_log` (PostgreSQL/memory), verschijnt als "Historia komunikacji" in het detailpaneel en als event op de Agent AI-tab. Extra env vars: `RESEND_API_KEY`, `FROM_EMAIL`, `MAIL_FROM`, `MAIL_NOTIFY`, `LIVE_COMMS`, `SMSAPI_TOKEN`, `SMS_FROM`, `ANTHROPIC_API_KEY`, `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`.
 
 ## Status / architectuur
 - **PostgreSQL-koppeling actief**: met `DATABASE_URL` (Railway Postgres-plugin) worden users, sessies (connect-pg-simple), zaakacties, AIScores en events persistent; schema wordt automatisch aangemaakt. Zonder `DATABASE_URL` draait alles in-memory (demo). In demo-modus wordt de KRZ-status bij herstart vers herberekend uit de bronnen (by design — events blijven wel staan).

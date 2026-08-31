@@ -17,6 +17,7 @@ const pl = {
     pwLen: 'Hasło musi mieć co najmniej 10 znaków.', pwChars: 'Hasło musi zawierać małą literę, wielką literę i cyfrę.', pwMismatch: 'Hasła nie są identyczne.',
     badCodeRetry: 'Nieprawidłowy kod — spróbuj ponownie.', tooManyCodes: 'Zbyt wiele prób. Spróbuj za 15 minut.', badCode: 'Nieprawidłowy kod.',
     flashEmail: 'E-mail', flashSms: 'SMS', flashCall: 'Rozmowa',
+    captcha: 'Weryfikacja antybotowa nie powiodła się — spróbuj ponownie.',
   },
   login: {
     kicker: 'Panel klienta', h: 'Zaloguj się', helper: 'Dostęp do spraw, agenta AI i ofert wykupu.', email: 'E-mail', password: 'Hasło', btn: 'Zaloguj się',
@@ -99,7 +100,7 @@ const pl = {
     eventsLabel: 'Zdarzenia monitoringu', system: 'system', secLabel: 'Bezpieczeństwo',
     sec: ['Hasła: bcrypt (koszt 12)', '2FA: TOTP, obowiązkowe dla admina i nowych kont', 'Blokada: 5 nieudanych prób → 15 minut', 'Sesje: httpOnly, sameSite=lax'],
     integrLabel: 'Integracje', integrOn: 'Aktywne', integrOff: 'Brak', notSet: 'nie ustawiono',
-    integr: { resend: 'Resend — e-mail z formularzy', from: 'Nadawca', notify: 'Powiadomienia o leadach →', live: 'Wysyłka do dłużników (LIVE_COMMS)', sms: 'SMSAPI — SMS', ai: 'Anthropic — teksty AI', db: 'PostgreSQL' },
+    integr: { resend: 'Resend — e-mail z formularzy', from: 'Nadawca', notify: 'Powiadomienia o leadach →', live: 'Wysyłka do dłużników (LIVE_COMMS)', sms: 'SMSAPI — SMS', ai: 'Anthropic — teksty AI', db: 'PostgreSQL', turnstile: 'Cloudflare Turnstile — antybot na formularzach' },
     testMail: 'Wyślij testowy e-mail', testMailResult: 'Test e-mail', testMailHint: 'Wysyła wiadomość na adres MAIL_NOTIFY przez Resend.',
   },
 };
@@ -206,6 +207,7 @@ const en = {
     pwLen: 'The password must be at least 10 characters long.', pwChars: 'The password must contain a lower-case letter, an upper-case letter and a digit.', pwMismatch: 'The passwords do not match.',
     badCodeRetry: 'Invalid code — try again.', tooManyCodes: 'Too many attempts. Try again in 15 minutes.', badCode: 'Invalid code.',
     flashEmail: 'E-mail', flashSms: 'SMS', flashCall: 'Call',
+    captcha: 'Bot check failed — please try again.',
   },
   login: {
     kicker: 'Client panel', h: 'Log in', helper: 'Access to your cases, the AI agent and buy-out offers.', email: 'E-mail', password: 'Password', btn: 'Log in',
@@ -289,7 +291,7 @@ const en = {
     eventsLabel: 'Monitoring events', system: 'system', secLabel: 'Security',
     sec: ['Passwords: bcrypt (cost 12)', '2FA: TOTP, mandatory for admin and new accounts', 'Lockout: 5 failed attempts → 15 minutes', 'Sessions: httpOnly, sameSite=lax'],
     integrLabel: 'Integrations', integrOn: 'Active', integrOff: 'None', notSet: 'not set',
-    integr: { resend: 'Resend — form e-mails', from: 'Sender', notify: 'Lead notifications →', live: 'Sending to debtors (LIVE_COMMS)', sms: 'SMSAPI — SMS', ai: 'Anthropic — AI texts', db: 'PostgreSQL' },
+    integr: { resend: 'Resend — form e-mails', from: 'Sender', notify: 'Lead notifications →', live: 'Sending to debtors (LIVE_COMMS)', sms: 'SMSAPI — SMS', ai: 'Anthropic — AI texts', db: 'PostgreSQL', turnstile: 'Cloudflare Turnstile — bot protection on forms' },
     testMail: 'Send a test e-mail', testMailResult: 'Test e-mail', testMailHint: 'Sends a message to the MAIL_NOTIFY address via Resend.',
   },
 };
