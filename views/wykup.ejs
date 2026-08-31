@@ -24,10 +24,20 @@
         <td>
           <% if (sold) { %>
             <span class="tag tag-accent"><%= W.sold %></span>
-          <% } else { %>
+          <% } else if (done[c.id] === 'decline') { %>
+            <span class="tag tag-outline"><%= W.declined %></span>
             <form class="inline" method="post" action="/app/wykup/<%= c.id %>/sprzedaj">
-              <button class="btn btn-secondary" type="submit"><%= W.accept %></button>
+              <button class="btn btn-ghost chan-btn" type="submit"><%= W.acceptAnyway %></button>
             </form>
+          <% } else { %>
+            <span class="wykup-actions">
+            <form class="inline" method="post" action="/app/wykup/<%= c.id %>/sprzedaj">
+              <button class="btn btn-secondary chan-btn" type="submit"><%= W.accept %></button>
+            </form>
+            <form class="inline" method="post" action="/app/wykup/<%= c.id %>/odrzuc">
+              <button class="btn btn-ghost chan-btn" type="submit"><%= W.decline %></button>
+            </form>
+            </span>
           <% } %>
         </td>
       </tr>

@@ -60,7 +60,7 @@
         <tr>
           <td class="tnum"><%= c.nr %></td>
           <td class="num tnum"><%= D.fmt(c.amount) %></td>
-          <td><span class="tag <%= st ? 'tag-accent' : 'tag-neutral' %>"><%= st === 'collect' ? M.stCollect : st === 'sell' ? M.stSold : t.tr(c.phase) %></span></td>
+          <td><span class="tag <%= st && st !== 'decline' ? 'tag-accent' : st === 'decline' ? 'tag-outline' : 'tag-neutral' %>"><%= st === 'collect' ? M.stCollect : st === 'sell' ? M.stSold : st === 'close' ? M.stClosed : st === 'decline' ? M.stDeclined : t.tr(c.phase) %></span></td>
         </tr>
         <% }) %>
       </tbody>

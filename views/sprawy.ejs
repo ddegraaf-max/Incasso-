@@ -88,7 +88,7 @@
     </ul>
 
     <hr class="rule">
-    <% if (!done[sel.id]) { %>
+    <% if (!done[sel.id] || done[sel.id] === 'decline') { %>
       <% if (sel.ai.reco === 'zamknij') { %>
       <div class="action-block">
         <h3><%= S.close.h %></h3>

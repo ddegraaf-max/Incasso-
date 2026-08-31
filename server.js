@@ -496,6 +496,17 @@ app.post('/app/wykup/:id/sprzedaj', Auth.requireAuth, (req, res) => {
   res.redirect('/app/wykup');
 });
 
+// Oferta afwijzen: alleen als er nog geen definitieve actie is; windykacja loopt gewoon door
+app.post('/app/wykup/:id/odrzuc', Auth.requireAuth, async (req, res) => {
+  const c = D.claims.find((x) => x.id === req.params.id);
+  const st = D.getDone()[req.params.id];
+  if (c && (!st || st === 'decline')) {
+    D.setDone(c.id, 'decline');
+    await db.insertEvent({ nip: c.nip, debtor: c.debtor, type: 'wykup', title: 'Oferta wykupu odrzucona przez klienta — ' + c.nr, source: 'panel klienta' }).catch(() => {});
+  }
+  res.redirect('/app/wykup');
+});
+
 // ── Extra: publiczny kalkulator odsetek + rekompensaty ───────────────────
 app.get('/kalkulator', (req, res) => {
   const amount = parseFloat(String(req.query.kwota || '').replace(',', '.')) || null;
