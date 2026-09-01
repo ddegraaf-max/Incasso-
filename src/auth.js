@@ -54,6 +54,12 @@ async function initFromDb() {
       console.log('Auth: admin-wachtwoord bijgewerkt vanuit ADMIN_PASSWORD (' + adminEmail + ')');
     }
   }
+  // DEMO_ACCOUNT=0: ook een eerder geseede demo-rij uit DB en geheugen halen
+  if (!DEMO && users.has('demo@sprzedamfakture.pl')) {
+    users.delete('demo@sprzedamfakture.pl');
+    await db.deleteUser('demo@sprzedamfakture.pl').catch((e) => console.error('Auth: demo-account verwijderen mislukt —', e.message));
+    console.log('Auth: demo-account verwijderd (DEMO_ACCOUNT=0)');
+  }
   if (envAdminEmail && envAdminEmail !== 'admin@sprzedamfakture.pl' && users.has('admin@sprzedamfakture.pl')) {
     users.delete('admin@sprzedamfakture.pl');
     await db.deleteUser('admin@sprzedamfakture.pl').catch((e) => console.error('Auth: default-admin verwijderen mislukt —', e.message));
