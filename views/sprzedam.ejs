@@ -5,7 +5,7 @@ var form = (typeof form !== 'undefined' && form) ? form : {};
 var hasErr = Object.keys(errors).length > 0;
 var ld = [
   { '@context': 'https://schema.org', '@type': 'Organization', name: 'sprzedamfakture.pl', url: 'https://sprzedamfakture.pl/', logo: 'https://sprzedamfakture.pl/img/logo.svg', email: 'kontakt@sprzedamfakture.pl' },
-  { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: h.faq.items.map(function (i) {
+  { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: h.faq.items.filter(function (i) { return !(windykacjaOff && i[1].indexOf('/windykacja') !== -1); }).map(function (i) {
       return { '@type': 'Question', name: i[0], acceptedAnswer: { '@type': 'Answer', text: i[1].replace(/<[^>]+>/g, '').replace('{fee}', SERVICE_FEE) } };
     }) },
 ];
