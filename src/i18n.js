@@ -74,6 +74,11 @@ module.exports = {
       footerModel: 'Nasz model: Ty płacisz {fee} zł za sprawę — odsetki, rekompensatę i koszty pokrywa dłużnik. Albo sprzedajesz fakturę i masz gotówkę w 24 godziny.',
       footCollection: 'windykacja', footCalc: 'kalkulator odsetek', footConcept: 'koncept produktu',
       versionTitle: 'Wersja serwisu · commit', skip: 'Przejdź do treści', tagline: 'Gotówka za fakturę w 24 h',
+      footerModelOff: 'Sprzedajesz fakturę — gotówka w 24 godziny. Skup faktur i starych wyroków działa bez zmian.',
+      holdKicker: 'Chwilowa przerwa', holdH: 'Windykacja robi sobie krótką przerwę.',
+      holdP: 'Dopracowujemy kilka szczegółów — także tych prawnych — żeby ściągać należności jeszcze skuteczniej. Klepsydra już leci: wrócimy szybciej, niż dłużnik wymyśli nową wymówkę.',
+      holdCta: 'Sprzedaj fakturę — to działa normalnie', holdCta2: 'Skup starych wyroków',
+      holdNote: 'Pilna sprawa windykacyjna? Napisz: kontakt@sprzedamfakture.pl — odezwiemy się.',
     },
 
     home: {
@@ -297,6 +302,11 @@ module.exports = {
       footerModel: 'Our model: you pay {fee} zł per case — interest, the recovery fee and costs are borne by the debtor. Or sell the invoice and have cash within 24 hours.',
       footCollection: 'debt collection', footCalc: 'interest calculator', footConcept: 'product concept',
       versionTitle: 'Site version · commit', skip: 'Skip to content', tagline: 'Cash for your invoice in 24 h',
+      footerModelOff: 'Sell your invoice — cash within 24 hours. Invoice and judgment purchase run as usual.',
+      holdKicker: 'Short break', holdH: 'Debt collection is taking a short break.',
+      holdP: 'We are polishing a few details — the legal ones included — to collect receivables even better. The hourglass is already running: we will be back before a debtor comes up with a new excuse.',
+      holdCta: 'Sell an invoice — working as usual', holdCta2: 'We buy old judgments',
+      holdNote: 'Urgent collection matter? Write to kontakt@sprzedamfakture.pl — we will get back to you.',
     },
 
     home: {

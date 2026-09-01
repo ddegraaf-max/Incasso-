@@ -474,3 +474,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 @media (prefers-reduced-motion: reduce) { .hg-stream { animation: none; } .hg-sand { transition: none; } }
 
 .wykup-actions { display: inline-flex; gap: 8px; align-items: center; white-space: nowrap; }
+
+/* -- Pauzepagina windykacja -- */
+.hold-wrap { max-width: 1000px; }
+.hold-grid { display: flex; gap: 44px; align-items: center; flex-wrap: wrap; padding: 26px 0; }
+.hold-hg { flex: 0 0 auto; }
+.hold-grid > div:last-child { flex: 1; min-width: 300px; }

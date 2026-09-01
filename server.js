@@ -53,6 +53,8 @@ app.use((req, res, next) => {
     q.set('lang', l);
     return (isGet ? req.path : '/') + '?' + q.toString();
   };
+  // WINDYKACJA_OFF=1: incasso-gedeelte tijdelijk dicht (pauzepagina, links verborgen, registratie dicht)
+  res.locals.windykacjaOff = process.env.WINDYKACJA_OFF === '1';
   // "Umów rozmowę": BOOKING_URL (bv. Calendly/Cal.com) of anders gewoon mailen
   res.locals.bookingUrl = process.env.BOOKING_URL || 'mailto:kontakt@sprzedamfakture.pl';
   res.locals.version = VER.version;
@@ -128,10 +130,12 @@ app.post('/login', (req, res) => {
 });
 
 app.get('/rejestracja', (req, res) => {
+  if (res.locals.windykacjaOff) return res.render('przerwa', common({ page: 'przerwa' }));
   res.render('rejestracja', common({ page: 'auth', error: null, form: { company: '', nip: '', email: '' } }));
 });
 
 app.post('/rejestracja', async (req, res) => {
+  if (res.locals.windykacjaOff) return res.render('przerwa', common({ page: 'przerwa' }));
   const { company, nip, email, password, password2 } = req.body;
   const form = { company: company || '', nip: nip || '', email: email || '' };
   const fail = (msg) => res.status(400).render('rejestracja', common({ page: 'auth', error: msg, form }));
@@ -247,6 +251,7 @@ app.get('/sprzedam', (req, res) => {
 
 // Windykacja, faktoring, panel AI — aanvullende landing (PL/EN via taalcookie)
 app.get('/windykacja', (req, res) => {
+  if (res.locals.windykacjaOff) return res.render('przerwa', common({ page: 'przerwa' }));
   res.render('landing', common({ page: 'landing', lang: res.locals.lang, t: res.locals.t }));
 });
 

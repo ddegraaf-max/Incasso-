@@ -1,0 +1,30 @@
+<% var C = t.common; %>
+<%- include('partials/head', { title: C.holdH + ' — sprzedamfakture.pl' }) %>
+<%- include('partials/nav') %>
+
+<div class="calc-wrap hold-wrap" style="flex:1">
+  <div class="hold-grid">
+    <div class="hg-panel hold-hg" aria-hidden="true">
+      <svg class="hg-svg" viewBox="0 0 160 220">
+        <clipPath id="hold-top"><path d="M42 18c0 38 21 59 33 75 3 4 7 4 10 0 12-16 33-37 33-75z"/></clipPath>
+        <clipPath id="hold-bot"><path d="M42 206c0-38 21-59 33-75 3-4 7-4 10 0 12 16 33 37 33 75z"/></clipPath>
+        <rect class="hg-sand" x="40" width="80" clip-path="url(#hold-top)" y="64.5" height="46.5"/>
+        <rect class="hg-sand" x="40" width="80" clip-path="url(#hold-bot)" y="159.5" height="46.5"/>
+        <line class="hg-stream" x1="80" y1="110" x2="80" y2="200"/>
+        <path class="hg-frame" d="M30 12h100M30 208h100M40 16c0 40 22 62 34 78 4 5 4 9 0 14-12 16-34 38-34 76M120 16c0 40-22 62-34 78-4 5-4 9 0 14 12 16 34 38 34 76" fill="none"/>
+      </svg>
+    </div>
+    <div>
+      <div class="kicker"><%= C.holdKicker %></div>
+      <h1 style="font-size:clamp(30px, 4.2vw, 42px); max-width:20ch"><%= C.holdH %></h1>
+      <p class="helper" style="font-size:15px; max-width:56ch"><%= C.holdP %></p>
+      <div style="display:flex; gap:14px; flex-wrap:wrap; margin-top:22px">
+        <a class="btn" href="/#wycena"><%= C.holdCta %></a>
+        <a class="btn btn-secondary" href="/skup-wyrokow"><%= C.holdCta2 %></a>
+      </div>
+      <p class="legal-note" style="margin-top:22px"><%= C.holdNote %></p>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

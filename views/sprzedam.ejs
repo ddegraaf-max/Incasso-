@@ -40,7 +40,7 @@ var ld = [
     <a href="#jak"><%= h.nav.how %></a>
     <a href="#wycena"><%= h.nav.quote %></a>
     <a href="#faq"><%= h.nav.faq %></a>
-    <a href="/windykacja"><%= h.nav.collection %></a>
+    <% if (!windykacjaOff) { %><a href="/windykacja"><%= h.nav.collection %></a><% } %>
     <a href="/skup-wyrokow"><%= t.common.navJudgments %></a>
     <a href="/login"><%= h.nav.panel %></a>
     <a href="#formularz" class="nav-cta"><%= h.nav.cta %></a>
@@ -161,7 +161,7 @@ var ld = [
       <div class="kicker"><%= h.faq.kicker %></div>
       <h2><%= h.faq.h %></h2>
       <div class="sf-faq">
-        <% h.faq.items.forEach(function (f) { %>
+        <% h.faq.items.filter(function (f) { return !(windykacjaOff && f[1].indexOf('/windykacja') !== -1); }).forEach(function (f) { %>
         <div class="sf-q"><%= f[0] %></div>
         <div class="sf-a"><%- f[1].replace('{fee}', SERVICE_FEE) %></div>
         <% }) %>
@@ -231,7 +231,7 @@ var ld = [
   <div class="wrap">
     <div class="sf-footer">
       <%- include('partials/logo', { size: 'sm', tagline: true }) %>
-      <span class="sf-footer-links"><a href="/windykacja"><%= h.footer.collection %></a> · <a href="/kalkulator"><%= h.footer.calc %></a> · <a href="/skup-wyrokow"><%= t.common.footJudgments %></a> · <a href="/login"><%= h.footer.panel %></a></span>
+      <span class="sf-footer-links"><% if (!windykacjaOff) { %><a href="/windykacja"><%= h.footer.collection %></a> · <% } %><a href="/kalkulator"><%= h.footer.calc %></a> · <a href="/skup-wyrokow"><%= t.common.footJudgments %></a> · <a href="/login"><%= h.footer.panel %></a></span>
     </div>
     <div class="cr"><%= h.footer.legal %> · <span class="ver tnum" title="<%= c.versionTitle %>">v<%= version %><%= commit ? ' · ' + commit : '' %></span></div>
   </div>
