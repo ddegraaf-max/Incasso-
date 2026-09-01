@@ -209,7 +209,7 @@ app.get('/logout', (req, res) => {
 app.get('/admin', Auth.requireAdmin, async (req, res) => {
   const events = await db.listEvents(15).catch(() => []);
   const leads = await db.listLeads(15).catch(() => []);
-  res.render('admin', common({ page: 'admin', user: req.user, usersList: Auth.allUsers(), done: D.getDone(), events, leads, flash: req.query.msg || null, integr: { ...Mailer.status(), db: db.hasDb(), turnstile: Turnstile.enabled() } }));
+  res.render('admin', common({ page: 'admin', user: req.user, usersList: Auth.allUsers(), done: D.getDone(), events, leads, flash: req.query.msg || null, integr: { ...Mailer.status(), db: db.hasDb(), turnstile: Turnstile.enabled(), problems: [...Mailer.status().problems, ...Turnstile.problems()] } }));
 });
 
 // Testmail naar MAIL_NOTIFY — om de Resend-koppeling na deploy te controleren
@@ -396,7 +396,7 @@ app.get('/health', async (req, res) => {
   res.set('Cache-Control', 'no-store');
   const m = Mailer.status();
   const dbs = await db.stats().catch((e) => ({ connected: false, error: e.message }));
-  res.json({ ok: true, name: 'sprzedamfakture.pl', version: VER.version, commit: VER.commit, startedAt: VER.startedAt, uptimeSec: Math.round(process.uptime()), db: db.hasDb(), dbStats: dbs, mail: m.resend ? 'resend' : 'simulation', mailFrom: m.from, mailNotify: !!m.notify, mailProblems: m.problems, liveComms: m.liveComms, smsapi: m.smsapi, anthropic: m.anthropic, turnstile: Turnstile.enabled() });
+  res.json({ ok: true, name: 'sprzedamfakture.pl', version: VER.version, commit: VER.commit, startedAt: VER.startedAt, uptimeSec: Math.round(process.uptime()), db: db.hasDb(), dbStats: dbs, mail: m.resend ? 'resend' : 'simulation', mailFrom: m.from, mailNotify: !!m.notify, mailProblems: m.problems, liveComms: m.liveComms, smsapi: m.smsapi, anthropic: m.anthropic, turnstile: Turnstile.enabled(), turnstileProblems: Turnstile.problems() });
 });
 
 const SITE = 'https://sprzedamfakture.pl';
