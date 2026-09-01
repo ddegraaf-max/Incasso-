@@ -144,7 +144,7 @@
 <section class="closing" id="kontakt">
   <h2><%= t.closingH %></h2>
   <div class="cta" style="display:flex; gap:14px; margin-top:20px; flex-wrap:wrap">
-    <a class="btn" href="mailto:kontakt@sprzedamfakture.pl"><%= t.ctaCall %></a>
+    <a class="btn" href="<%= bookingUrl %>"<%- bookingUrl.indexOf('http') === 0 ? ' target="_blank" rel="noopener"' : '' %>><%= t.ctaCall %></a>
     <a class="btn btn-ghost" href="/#wycena"><%= t.ctaSell %></a>
   </div>
 </section>

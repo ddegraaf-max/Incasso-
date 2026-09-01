@@ -45,7 +45,7 @@ npm start        # poort 3000, of PORT env var
 
 ## Deploy (Railway)
 Standaard flow: repo → GitHub Desktop → Railway auto-deploy. Geen database nodig voor het concept. Custom domain `sprzedamfakture.pl` + `www` aan de service hangen en DNS bij dns.pl naar Railway wijzen.
-Env vars: `PORT` (Railway zet die zelf), `SESSION_SECRET` (VERPLICHT in productie — lange random string), `ADMIN_EMAIL` + `ADMIN_PASSWORD` (admin-account), optioneel `SERVICE_FEE` (default 99), `EUR_PLN` (default 4.30), `DATABASE_URL` (Railway Postgres — activeert persistentie), `MONITOR_INTERVAL_MS` (default 60000) en `DEMO_EVENTS` (default 1; op 0 voor echte bronnen). `DEMO_ACCOUNT=0` verwijdert het demo-account en de hint op de loginpagina. Zet `NODE_ENV=production` voor secure cookies.
+Env vars: `PORT` (Railway zet die zelf), `SESSION_SECRET` (VERPLICHT in productie — lange random string), `ADMIN_EMAIL` + `ADMIN_PASSWORD` (admin-account), optioneel `SERVICE_FEE` (default 99), `EUR_PLN` (default 4.30), `DATABASE_URL` (Railway Postgres — activeert persistentie), `MONITOR_INTERVAL_MS` (default 60000) en `DEMO_EVENTS` (default 1; op 0 voor echte bronnen). `DEMO_ACCOUNT=0` verwijdert het demo-account en de hint op de loginpagina. `BOOKING_URL` (bv. een Calendly/Cal.com-link) maakt van "Umów rozmowę" op `/windykacja` een agenda-knop; zonder die variabele opent hij een e-mail naar kontakt@. Zet `NODE_ENV=production` voor secure cookies.
 
 ## Beveiliging
 - **Wachtwoorden**: bcrypt, kosten 12; policy min. 10 tekens met kleine/hoofdletter + cijfer.

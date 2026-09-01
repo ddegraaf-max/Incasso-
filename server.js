@@ -53,6 +53,8 @@ app.use((req, res, next) => {
     q.set('lang', l);
     return (isGet ? req.path : '/') + '?' + q.toString();
   };
+  // "Umów rozmowę": BOOKING_URL (bv. Calendly/Cal.com) of anders gewoon mailen
+  res.locals.bookingUrl = process.env.BOOKING_URL || 'mailto:kontakt@sprzedamfakture.pl';
   res.locals.version = VER.version;
   res.locals.commit = VER.commit;
   res.locals.turnstile = { enabled: Turnstile.enabled(), siteKey: Turnstile.SITE_KEY };
