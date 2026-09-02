@@ -491,3 +491,17 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .wyrok-teaser .kicker { color: #d9b45e; }
 .wyrok-teaser h2 { color: #fdfcf8; font-size: clamp(22px, 3vw, 30px); max-width: 26ch; margin-bottom: 8px; }
 .wyrok-teaser p { color: rgba(237,234,225,0.75); font-size: 14px; max-width: 64ch; margin: 0; }
+.calc-form input[type=file]::file-selector-button {
+  font-family: var(--font); font-size: 13px; font-weight: 700;
+  color: var(--navy); background: var(--color-surface);
+  border: 1.5px solid var(--navy); border-radius: 999px;
+  padding: 7px 16px; margin-right: 12px; cursor: pointer;
+  transition: background 140ms;
+}
+.calc-form input[type=file]::file-selector-button:hover { background: var(--color-accent-100); }
+.calc-form input[type=file]::-webkit-file-upload-button {
+  font-family: var(--font); font-size: 13px; font-weight: 700;
+  color: var(--navy); background: var(--color-surface);
+  border: 1.5px solid var(--navy); border-radius: 999px;
+  padding: 7px 16px; margin-right: 12px; cursor: pointer;
+}
