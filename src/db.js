@@ -191,6 +191,8 @@ async function saveAction(caseId, action) {
 async function insertEvent(e) {
   const ev = { ...e, created_at: new Date() };
   if (!pool) { mem.events.unshift(ev); mem.events = mem.events.slice(0, 200); return ev; }
+  // demo-/monitor-events komen bij elke herstart terug: oude identieke titel eerst weg
+  if (e.dedupe) await pool.query('DELETE FROM events WHERE title=$1', [e.title]).catch(() => {});
   await pool.query(
     'INSERT INTO events (nip, debtor, type, title, source) VALUES ($1,$2,$3,$4,$5)',
     [e.nip, e.debtor, e.type, e.title, e.source]

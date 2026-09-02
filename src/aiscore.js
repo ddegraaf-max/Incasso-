@@ -142,7 +142,7 @@ async function monitorTick() {
       const before = c.ai ? c.ai.score : null;
       await scoreClaim(c);
       await db.insertEvent({
-        nip: c.nip, debtor: c.debtor, type: step.type,
+        nip: c.nip, debtor: c.debtor, type: step.type, dedupe: true,
         title: `${step.title} — AIScore ${before !== null ? before + ' → ' : ''}${c.ai.score}`,
         source: step.type === 'KRZ' ? 'krz.ms.gov.pl' : 'MSiG',
       }).catch(() => {});
@@ -155,7 +155,7 @@ async function monitorTick() {
       await scoreClaim(c);
       if (prev !== null && c.ai.score !== prev) {
         await db.insertEvent({
-          nip: c.nip, debtor: c.debtor, type: 'AIScore',
+          nip: c.nip, debtor: c.debtor, type: 'AIScore', dedupe: true,
           title: `Zmiana AIScore: ${prev} → ${c.ai.score}`, source: 'monitor',
         }).catch(() => {});
       }
@@ -172,7 +172,7 @@ async function init(claims) {
     await scoreClaim(c);
   }
   await db.insertEvent({
-    nip: null, debtor: null, type: 'system',
+    nip: null, debtor: null, type: 'system', dedupe: true,
     title: `Agent AI: monitoring uruchomiony (${claims.length} dłużników, interwał ${Math.round(MONITOR_INTERVAL_MS / 1000)}s)`,
     source: 'monitor',
   }).catch(() => {});

@@ -190,8 +190,8 @@ function trEn(s) {
   for (const [re, rep] of RULES) if (re.test(out)) { out = out.replace(re, rep); break; }
   for (const [a, b] of FRAGMENTS) out = out.split(a).join(b);
   // datums: "13 lip", "maj–cze", "dziś 12:14"
-  out = out.replace(/(sty|lut|mar|kwi|maj|cze|lip|sie|wrz|paź|lis|gru)/g, (m) => MONTHS[m] || m);
-  out = out.replace(/za (d+) dni/g, 'in $1 days').replace(/(d+) dni/g, '$1 days');
+  out = out.replace(/\b(sty|lut|mar|kwi|maj|cze|lip|sie|wrz|paź|lis|gru)\b/g, (m) => MONTHS[m] || m);
+  out = out.replace(/\bza (\d+) dni\b/g, 'in $1 days').replace(/\b(\d+) dni\b/g, '$1 days');
   return out;
 }
 
