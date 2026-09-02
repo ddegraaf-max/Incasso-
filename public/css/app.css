@@ -505,3 +505,12 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   border: 1.5px solid var(--navy); border-radius: 999px;
   padding: 7px 16px; margin-right: 12px; cursor: pointer;
 }
+/* -- Mobiel: kleine correcties (chip, kaartkop, brede secties) -- */
+.hc-top { gap: 10px; }
+@media (max-width: 980px) {
+  .hero-chip.hc-b { bottom: -14px; }
+  .hg-wrap, .wyrok-teaser-wrap, .hold-wrap { padding-left: 16px; padding-right: 16px; }
+  .hg-grid, .hold-grid { gap: 28px; flex-direction: column; }
+  .hg-copy, .hold-grid > div:last-child { min-width: 0; width: 100%; }
+  .hg-panel { min-width: 0; width: 100%; max-width: 440px; margin: 0 auto; }
+}
