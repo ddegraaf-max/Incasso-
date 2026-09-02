@@ -117,6 +117,11 @@ module.exports = {
         note: 'Bieg przedawnienia przerywają m.in. pozew, uznanie długu i mediacja (art. 123 KC). Wyliczenie poglądowe: od terminu płatności, dla terminów co najmniej 2-letnich z zaokrągleniem do końca roku kalendarzowego (art. 118 KC).',
         cta: 'Sprzedaj, zanim piasek się przesypie',
       },
+      wyrokTeaser: {
+        kicker: 'Skup starych wyroków', h: 'Masz prawomocny wyrok albo nakaz zapłaty?',
+        p: 'Tytuły wykonawcze — także po umorzonej egzekucji — skupujemy osobno, zwykle za 10–40% wartości nominalnej. Wyrok przedawnia się dopiero po 6 latach, więc nowa egzekucja wciąż może się opłacić.',
+        cta: 'Sprawdź skup wyroków',
+      },
       why: {
         kicker: 'Dlaczego warto sprzedać',
         items: [
@@ -129,7 +134,7 @@ module.exports = {
         kicker: 'FAQ', h: 'Najczęstsze pytania',
         items: [
           ['Ile dostanę za fakturę?', 'Zależnie od AIScore dłużnika: zwykle 55–90% wartości. Im krótsze opóźnienie i czystszy dłużnik w rejestrach, tym wyższa oferta. Odsetki za opóźnienie przechodzą na nas razem z wierzytelnością.'],
-          ['Na kogo musi być wystawiona faktura?', 'Dłużnikiem musi być osoba prawna — najczęściej sp. z o.o. lub S.A. Faktur wystawionych na jednoosobowe działalności (JDG), spółki cywilne, spółki osobowe lub konsumentów obecnie nie skupujemy. Twoja firma (sprzedający) może mieć dowolną formę prawną.'],
+          ['Na kogo musi być wystawiona faktura?', 'Dłużnikiem może być firma o dowolnej formie prawnej — od JDG, przez spółki cywilne i osobowe, po sp. z o.o. i S.A. Kupujemy wyłącznie wierzytelności B2B; roszczeń wobec konsumentów nie skupujemy. Twoja firma (sprzedający) również może mieć dowolną formę.'],
           ['Czy każda faktura się kwalifikuje?', 'Kupujemy bezsporne faktury B2B. Sprawdzamy, czy umowa z dłużnikiem nie zawiera zakazu cesji (art. 509 § 1 KC) i czy dłużnik nie jest w upadłości — wtedy oferta nie jest możliwa.'],
           ['Co z rekompensatą 40/70/100 €?', 'Ta pozostaje przy Tobie — z mocy ustawy (art. 10 ust. 4) nie podlega cesji. Możesz jej dochodzić samodzielnie, oferta dotyczy należności głównej z odsetkami.'],
           ['Czy dłużnik się dowie?', 'Tak — po cesji zawiadamiamy dłużnika na piśmie (art. 512 KC). Od tego momentu płaci wyłącznie nam.'],
@@ -140,14 +145,15 @@ module.exports = {
       form: {
         kicker: 'Sprzedaj fakturę', company: 'Twoja firma', nip: 'NIP dłużnika', amount: 'Kwota faktury (zł)', days: 'Dni po terminie', email: 'E-mail', tel: 'Telefon',
         forma: 'Forma prawna dłużnika', formaPh: '— wybierz —',
-        formaNote: 'Skupujemy wierzytelności wobec spółek posiadających osobowość prawną (np. sp. z o.o., S.A.). Twoja firma może mieć dowolną formę.',
+        formaNote: 'Kupujemy wierzytelności wobec firm o dowolnej formie prawnej — od JDG po S.A.',
+        zalacznik: 'Załącznik — faktura (opcjonalnie)', zalacznikNote: 'PDF, JPG, PNG lub XML, maks. 8 MB. Trafia bezpośrednio do naszego zespołu.',
         formaOptions: [['spzoo', 'Spółka z o.o.'], ['sa', 'Spółka akcyjna (S.A.)'], ['psa', 'Prosta spółka akcyjna (P.S.A.)'], ['inna-op', 'Inna osoba prawna (spółdzielnia, fundacja…)'], ['jdg', 'Jednoosobowa działalność (JDG)'], ['sc', 'Spółka cywilna'], ['osobowa', 'Spółka jawna / partnerska / komandytowa']],
         btn: 'Wyślij do wyceny',
         note: 'Wysłanie formularza nie zobowiązuje do sprzedaży. Ofertę możesz odrzucić bez kosztów.',
         ok: 'Dziękujemy! Analizujemy dłużnika — ofertę wyślemy w ciągu kilku godzin roboczych na podany e-mail.',
         errors: {
           generic: 'Popraw zaznaczone pola.', company: 'Podaj nazwę firmy.', nip: 'Podaj poprawny 10-cyfrowy NIP (błędna suma kontrolna).',
-          amount: 'Podaj kwotę faktury większą od 0.', days: 'Podaj liczbę dni po terminie (co najmniej 1).', email: 'Podaj poprawny adres e-mail.', tel: 'Podaj numer telefonu.', captcha: 'Weryfikacja antybotowa nie powiodła się — spróbuj ponownie.',
+          amount: 'Podaj kwotę faktury większą od 0.', days: 'Podaj liczbę dni po terminie (co najmniej 1).', email: 'Podaj poprawny adres e-mail.', tel: 'Podaj numer telefonu.', zalacznik: 'Załącznik: dozwolone PDF/JPG/PNG/XML do 8 MB.', captcha: 'Weryfikacja antybotowa nie powiodła się — spróbuj ponownie.',
           forma: 'Obecnie skupujemy wyłącznie wierzytelności wobec osób prawnych (np. sp. z o.o., S.A.). Faktury wystawione na JDG, spółki cywilne, spółki osobowe lub konsumentów nie kwalifikują się.',
         },
       },
@@ -345,6 +351,11 @@ module.exports = {
         note: 'The limitation period is interrupted by e.g. a lawsuit, acknowledgement of the debt or mediation (art. 123 Civil Code). Indicative calculation: from the due date; periods of 2+ years run to the end of the calendar year (art. 118 CC).',
         cta: 'Sell before the sand runs out',
       },
+      wyrokTeaser: {
+        kicker: 'We buy old judgments', h: 'Holding a final judgment or payment order?',
+        p: 'Enforceable titles — including after discontinued enforcement — are priced separately, typically at 10–40% of nominal value. A judgment only becomes time-barred after 6 years, so a fresh enforcement attempt can still pay off.',
+        cta: 'Explore judgment purchase',
+      },
       why: {
         kicker: 'Why sell',
         items: [
@@ -357,7 +368,7 @@ module.exports = {
         kicker: 'FAQ', h: 'Frequently asked questions',
         items: [
           ['How much will I get for my invoice?', 'Depending on the debtor\'s AIScore: usually 55–90% of face value. The shorter the delay and the cleaner the debtor\'s record in the registers, the higher the offer. Late-payment interest transfers to us together with the claim.'],
-          ['Who must the invoice be issued to?', 'The debtor must be a legal entity — typically a sp. z o.o. or S.A. We currently do not buy invoices issued to sole traders (JDG), civil-law or general partnerships, or consumers. Your own company (the seller) can have any legal form.'],
+          ['Who must the invoice be issued to?', 'The debtor can be a business of any legal form — from sole traders (JDG) and partnerships to sp. z o.o. and S.A. We buy B2B claims only; no consumer claims. Your own company (the seller) can also have any form.'],
           ['Does every invoice qualify?', 'We buy undisputed B2B invoices. We check that your contract with the debtor does not prohibit assignment (art. 509 § 1 Civil Code) and that the debtor is not in bankruptcy — in that case no offer is possible.'],
           ['What about the €40/70/100 recovery fee?', 'It stays with you — by law (art. 10(4)) it cannot be assigned. You can claim it yourself; our offer covers the principal plus interest.'],
           ['Will the debtor find out?', 'Yes — after assignment we notify the debtor in writing (art. 512 Civil Code). From then on they pay only us.'],
@@ -368,14 +379,15 @@ module.exports = {
       form: {
         kicker: 'Sell an invoice', company: 'Your company', nip: 'Debtor\'s NIP', amount: 'Invoice amount (PLN)', days: 'Days overdue', email: 'E-mail', tel: 'Phone',
         forma: 'Debtor\'s legal form', formaPh: '— select —',
-        formaNote: 'We buy claims against companies with legal personality (e.g. sp. z o.o., S.A.). Your own company can have any form.',
+        formaNote: 'We buy claims against businesses of any legal form — from sole traders to joint-stock companies.',
+        zalacznik: 'Attachment — the invoice (optional)', zalacznikNote: 'PDF, JPG, PNG or XML, max 8 MB. Goes straight to our team.',
         formaOptions: [['spzoo', 'Sp. z o.o. (limited company)'], ['sa', 'S.A. (joint-stock company)'], ['psa', 'P.S.A. (simple joint-stock)'], ['inna-op', 'Other legal entity (co-op, foundation…)'], ['jdg', 'Sole trader (JDG)'], ['sc', 'Civil-law partnership'], ['osobowa', 'General / limited partnership']],
         btn: 'Send for a quote',
         note: 'Sending the form does not oblige you to sell. You can decline the offer at no cost.',
         ok: 'Thank you! We are analysing the debtor — we\'ll e-mail the offer within a few business hours.',
         errors: {
           generic: 'Please correct the highlighted fields.', company: 'Enter your company name.', nip: 'Enter a valid 10-digit NIP (checksum failed).',
-          amount: 'Enter an invoice amount greater than 0.', days: 'Enter the number of days overdue (at least 1).', email: 'Enter a valid e-mail address.', tel: 'Enter a phone number.', captcha: 'Bot check failed — please try again.',
+          amount: 'Enter an invoice amount greater than 0.', days: 'Enter the number of days overdue (at least 1).', email: 'Enter a valid e-mail address.', tel: 'Enter a phone number.', zalacznik: 'Attachment: PDF/JPG/PNG/XML up to 8 MB allowed.', captcha: 'Bot check failed — please try again.',
           forma: 'We currently buy only claims against legal entities (e.g. sp. z o.o., S.A.). Invoices issued to sole traders (JDG), civil-law or general partnerships, or consumers do not qualify.',
         },
       },

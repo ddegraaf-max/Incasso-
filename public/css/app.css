@@ -480,3 +480,14 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .hold-grid { display: flex; gap: 44px; align-items: center; flex-wrap: wrap; padding: 26px 0; }
 .hold-hg { flex: 0 0 auto; }
 .hold-grid > div:last-child { flex: 1; min-width: 300px; }
+
+/* -- NIP-registercheck + bijlage + wyroki-teaser -- */
+.nip-check { font-size: 12.5px; margin: 5px 0 0; color: var(--ink-55); }
+.nip-check.nip-ok { color: var(--color-accent-700); font-weight: 600; }
+.nip-check.nip-miss { color: var(--danger); }
+.calc-form input[type=file] { border: 1.5px dashed var(--color-divider); background: #fbfaf6; padding: 10px 13px; border-radius: 10px; width: 100%; max-width: 340px; font-size: 13px; }
+.wyrok-teaser-wrap { padding: 0 32px 40px; max-width: 1424px; margin: 0 auto; }
+.wyrok-teaser { display: flex; align-items: center; justify-content: space-between; gap: 28px; flex-wrap: wrap; background: var(--navy); color: #edeae1; border-radius: var(--radius); padding: 30px 34px; box-shadow: var(--shadow); }
+.wyrok-teaser .kicker { color: #d9b45e; }
+.wyrok-teaser h2 { color: #fdfcf8; font-size: clamp(22px, 3vw, 30px); max-width: 26ch; margin-bottom: 8px; }
+.wyrok-teaser p { color: rgba(237,234,225,0.75); font-size: 14px; max-width: 64ch; margin: 0; }

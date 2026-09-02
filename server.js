@@ -77,9 +77,39 @@ const sessionOpts = {
 let sessionMiddleware = null;
 app.use((req, res, next) => sessionMiddleware(req, res, next));
 
+// ── Bijlagen bij formulieren (factuur/vonnis): in-memory, gaat alleen mee per mail ──
+const multer = require('multer');
+const ALLOWED_UPLOAD = ['application/pdf', 'image/jpeg', 'image/png', 'text/xml', 'application/xml'];
+const uploadZalacznik = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024, files: 1 } }).single('zalacznik');
+function zalacznikMw(req, res, next) {
+  uploadZalacznik(req, res, (err) => {
+    if (err) req.zalacznikError = true; // te groot/kapot → nette veldfout
+    next();
+  });
+}
+
+// ── MF biała lista: bedrijfsnaam + VAT-status bij een NIP (open API, gecachet) ──
+const NIP_CACHE = new Map();
+async function nipRegisterLookup(nip) {
+  const clean = String(nip || '').replace(/\D/g, '');
+  if (clean.length !== 10) return null;
+  const hit = NIP_CACHE.get(clean);
+  if (hit && Date.now() - hit.t < 6 * 3600 * 1000) return hit.data;
+  const date = new Date().toISOString().slice(0, 10);
+  const r = await fetch('https://wl-api.mf.gov.pl/api/search/nip/' + clean + '?date=' + date, { signal: AbortSignal.timeout(4000) });
+  if (!r.ok) return null;
+  const j = await r.json().catch(() => null);
+  const s = j && j.result && j.result.subject;
+  const data = s ? { name: s.name, statusVat: s.statusVat, line: s.name + (s.statusVat ? ' · VAT: ' + s.statusVat : '') } : null;
+  NIP_CACHE.set(clean, { t: Date.now(), data });
+  if (NIP_CACHE.size > 500) NIP_CACHE.delete(NIP_CACHE.keys().next().value);
+  return data;
+}
+
 const TONES = ['Uprzejmy', 'Stanowczy', 'Prawniczy'];
 // Advies jurist: incasseren alleen op rechtspersonen — de dłużnik moet een osoba prawna zijn
-const DEBTOR_LEGAL_FORMS = ['spzoo', 'sa', 'psa', 'inna-op'];
+// Alle rechtsvormen toegestaan (besluit 2026-09: ook JDG, spółka cywilna en osobowe)
+const DEBTOR_LEGAL_FORMS = ['spzoo', 'sa', 'psa', 'inna-op', 'jdg', 'sc', 'osobowa'];
 
 function common(extra = {}) {
   return { D, SERVICE_FEE: D.SERVICE_FEE, user: null, ...extra };
@@ -267,6 +297,16 @@ app.get('/api/wycena', (req, res) => {
   res.json({ ok: true, ...est, amountFmt: D.fmt(est.amount), amountLowFmt: D.fmt(est.amountLow) });
 });
 
+// Live NIP-check voor de formulieren (biała lista via onze proxy — CORS)
+app.get('/api/nip', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const clean = String(req.query.nip || '').replace(/\D/g, '');
+  if (!validNip(clean)) return res.json({ ok: false, error: 'invalid_nip' });
+  const data = await nipRegisterLookup(clean).catch(() => null);
+  if (!data) return res.json({ ok: false, error: 'not_found' });
+  res.json({ ok: true, name: data.name, statusVat: data.statusVat });
+});
+
 // Poolse NIP: 10 cijfers + modulo-11-controlecijfer
 function validNip(raw) {
   const d = String(raw || '').replace(/\D/g, '');
@@ -277,7 +317,7 @@ function validNip(raw) {
 }
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-app.post('/sprzedaj', async (req, res) => {
+app.post('/sprzedaj', zalacznikMw, async (req, res) => {
   const b = req.body || {};
   if (b.website) return res.redirect('/?lead=ok#formularz'); // honeypot: bot → doen alsof het gelukt is
   const ts = await Turnstile.verify(b['cf-turnstile-response'], req.ip);
@@ -301,6 +341,7 @@ app.post('/sprzedaj', async (req, res) => {
   if (!(dn > 0) || dn > 3650) errors.dni = msg.days;
   if (!EMAIL_RE.test(form.email)) errors.email = msg.email;
   if (form.tel.replace(/\D/g, '').length < 7) errors.tel = msg.tel;
+  if (req.zalacznikError || (req.file && !ALLOWED_UPLOAD.includes(req.file.mimetype))) errors.zalacznik = msg.zalacznik;
   if (!ts.ok) errors.captcha = msg.captcha;
   if (Object.keys(errors).length) {
     res.status(400);
@@ -309,10 +350,12 @@ app.post('/sprzedaj', async (req, res) => {
   const est = AiScore.estimateOffer(kw, dn);
   const nip = form.nip.replace(/\D/g, '');
   const lead = { company: form.company, nip, forma: form.forma, email: form.email, tel: form.tel, kwota: kw, dni: dn };
+  const reg = await nipRegisterLookup(nip).catch(() => null);
+  if (reg) lead.rejestr = reg.line;
   await db.saveLead({ ...lead, oferta_pct: est.pct, note: 'lang=' + res.locals.lang }).catch(() => {});
   // e-mails: notificatie naar MAIL_NOTIFY + bevestiging aan de klant (PL/EN); fouten blokkeren het formulier niet
   const [notify, confirm] = await Promise.all([
-    Mailer.leadNotify(lead, est, res.locals.lang).catch((e) => ({ status: 'błąd: ' + e.message })),
+    Mailer.leadNotify(lead, est, res.locals.lang, errors.zalacznik ? null : req.file).catch((e) => ({ status: 'błąd: ' + e.message })),
     Mailer.leadConfirm(lead, est, res.locals.lang).catch((e) => ({ status: 'błąd: ' + e.message })),
   ]);
   await db.insertEvent({
@@ -340,7 +383,7 @@ function renderWyroki(req, res, extra = {}) {
 app.get('/skup-wyrokow', (req, res) => renderWyroki(req, res));
 
 const WYROK_EGZEKUCJA = ['none', 'bezskutecznosc', 'inna', 'nie_wiem'];
-app.post('/skup-wyrokow', async (req, res) => {
+app.post('/skup-wyrokow', zalacznikMw, async (req, res) => {
   const b = req.body || {};
   if (b.website) return res.redirect('/skup-wyrokow?lead=ok#formularz'); // honeypot
   const ts = await Turnstile.verify(b['cf-turnstile-response'], req.ip);
@@ -366,6 +409,7 @@ app.post('/skup-wyrokow', async (req, res) => {
   if (!form.company) errors.company = msg.company;
   if (!EMAIL_RE.test(form.email)) errors.email = msg.email;
   if (form.tel.replace(/\D/g, '').length < 7) errors.tel = msg.tel;
+  if (req.zalacznikError || (req.file && !ALLOWED_UPLOAD.includes(req.file.mimetype))) errors.zalacznik = msg.zalacznik;
   if (!form.sygnatura) errors.sygnatura = msg.sygnatura;
   if (!(kw > 0) || kw > 1e9) errors.kwota = msg.amount;
   if (!form.dluznik) errors.dluznik = msg.dluznik;
@@ -388,7 +432,7 @@ app.post('/skup-wyrokow', async (req, res) => {
       .filter(Boolean).join(' · ').slice(0, 900) + ' · lang=' + res.locals.lang,
   }).catch(() => {});
   const [notify, confirm] = await Promise.all([
-    Mailer.wyrokNotify(lead, res.locals.lang).catch((e) => ({ status: 'błąd: ' + e.message })),
+    Mailer.wyrokNotify(lead, res.locals.lang, req.zalacznikError ? null : req.file).catch((e) => ({ status: 'błąd: ' + e.message })),
     Mailer.wyrokConfirm(lead, res.locals.lang).catch((e) => ({ status: 'błąd: ' + e.message })),
   ]);
   await db.insertEvent({

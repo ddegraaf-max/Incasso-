@@ -9,7 +9,7 @@ const RESEND_KEY = process.env.RESEND_API_KEY || '';
 const MAIL_FROM = process.env.MAIL_FROM || 'sprzedamfakture.pl <kontakt@sprzedamfakture.pl>';
 const MAIL_NOTIFY = process.env.MAIL_NOTIFY || process.env.ADMIN_EMAIL || '';
 const SITE = (process.env.SITE_URL || 'https://sprzedamfakture.pl').replace(/\/$/, '');
-const FORMA_LABELS = { spzoo: 'Sp. z o.o.', sa: 'S.A.', psa: 'P.S.A.', 'inna-op': 'inna osoba prawna / other legal entity' };
+const FORMA_LABELS = { spzoo: 'Sp. z o.o.', sa: 'S.A.', psa: 'P.S.A.', 'inna-op': 'inna osoba prawna / other legal entity', jdg: 'JDG (jednoosobowa działalność)', sc: 'spółka cywilna', osobowa: 'spółka jawna / partnerska / komandytowa' };
 
 function configured() { return !!RESEND_KEY; }
 
@@ -38,11 +38,12 @@ function status() {
 // ── Verzenden ────────────────────────────────────────────────────────────
 // Resultaat: { ok, status, id?, simulated? } — status is een korte PL-tekst voor logs/UI
 // ('wysłano', 'symulacja', 'błąd 403: …', 'błąd sieci', 'brak adresata').
-async function send({ to, subject, text, html, replyTo, from }) {
+async function send({ to, subject, text, html, replyTo, from, attachments }) {
   if (!to) return { ok: false, status: 'brak adresata' };
   const payload = { from: from || MAIL_FROM, to: Array.isArray(to) ? to : [to], subject, text };
   if (html) payload.html = html;
   if (replyTo) payload.reply_to = replyTo;
+  if (attachments && attachments.length) payload.attachments = attachments;
   if (!RESEND_KEY) {
     console.log(`[mail] symulacja → ${payload.to.join(', ')} | ${subject}`);
     return { ok: true, status: 'symulacja', simulated: true };
@@ -174,6 +175,7 @@ function leadPairs(l, est, tx) {
     [tx.fields.email, l.email], [tx.fields.tel, l.tel || '—'], [tx.fields.offer, offerTxt(est), true],
   ];
   if (l.forma) pairs.splice(2, 0, [tx.fields.forma, FORMA_LABELS[l.forma] || l.forma]);
+  if (l.rejestr) pairs.splice(2, 0, [tx.fields.rejestr || 'Rejestr MF (biała lista)', l.rejestr]);
   return pairs;
 }
 function textOf(pairs) { return pairs.map(([k, v]) => `${k}: ${v}`).join('\n'); }
@@ -197,7 +199,7 @@ async function wyrokConfirm(lead, lang) {
   const html = layout(`<p>${esc(tx.confirmHi(lead))}</p><p>${esc(tx.wyrok.confirmIntro)}</p>${rows(pairs)}<p>${esc(tx.wyrok.confirmNext)}</p><p>${esc(tx.confirmReply)}</p><p>${esc(tx.sign)}</p>`, L, tx.wyrok.confirmIntro);
   return send({ to: lead.email, subject: tx.wyrok.confirmSubject, text, html, replyTo: MAIL_NOTIFY || undefined });
 }
-async function wyrokNotify(lead, lang) {
+async function wyrokNotify(lead, lang, file) {
   if (!MAIL_NOTIFY) return { ok: false, status: 'brak MAIL_NOTIFY' };
   const tx = T.pl; // interne notificatie in het Pools, met de taal van de indiener erbij
   const pairs = wyrokPairs(lead, tx).concat([[tx.wyrok.fields.lang, (lang || 'pl').toUpperCase()]]);
@@ -218,14 +220,19 @@ async function leadConfirm(lead, est, lang) {
 }
 
 // ── Notificatie naar de eigenaar ─────────────────────────────────────────
-async function leadNotify(lead, est, lang) {
+function fileAttachment(file) {
+  if (!file || !file.buffer) return undefined;
+  return [{ filename: file.originalname || 'zalacznik', content: file.buffer.toString('base64') }];
+}
+
+async function leadNotify(lead, est, lang, file) {
   if (!MAIL_NOTIFY) return { ok: false, status: 'brak MAIL_NOTIFY' };
   const tx = T.pl; // interne notificatie: PL (taal van het product), met taal van de klant erbij
   const pairs = leadPairs(lead, est, tx).concat([[tx.fields.lang, (lang || 'pl').toUpperCase()]]);
   const subject = tx.notifySubject(lead, est);
   const text = `${tx.notifyIntro}\n\n${textOf(pairs)}\n\n${SITE}/admin`;
   const html = layout(`<p>${esc(tx.notifyIntro)}</p>${rows(pairs)}<p>${button(SITE + '/admin', tx.notifyCta)}</p>`, 'pl', tx.notifyIntro);
-  return send({ to: MAIL_NOTIFY, subject, text, html, replyTo: lead.email });
+  return send({ to: MAIL_NOTIFY, subject, text, html, replyTo: lead.email, attachments: fileAttachment(file) });
 }
 
 // ── Welkomstmail bij registratie ─────────────────────────────────────────

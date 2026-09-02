@@ -155,6 +155,19 @@ var ld = [
   </div>
 </section>
 
+<% if (h.wyrokTeaser) { %>
+<section class="wyrok-teaser-wrap">
+  <div class="wyrok-teaser">
+    <div>
+      <div class="kicker"><%= h.wyrokTeaser.kicker %></div>
+      <h2><%= h.wyrokTeaser.h %></h2>
+      <p><%= h.wyrokTeaser.p %></p>
+    </div>
+    <a class="btn btn-gold" href="/skup-wyrokow"><%= h.wyrokTeaser.cta %></a>
+  </div>
+</section>
+<% } %>
+
 <section class="why" id="faq">
   <div class="why-grid">
     <div class="cell">
@@ -172,7 +185,7 @@ var ld = [
       <% if (leadOk) { %>
       <div class="confirm"><span class="sq"></span><span><%= h.form.ok %></span></div>
       <% } else { %>
-      <form class="calc-form" method="post" action="/sprzedaj" id="lead-form">
+      <form class="calc-form" method="post" action="/sprzedaj" id="lead-form" enctype="multipart/form-data">
         <% if (hasErr) { %><div class="form-error" role="alert"><%= h.form.errors.generic %></div><% } %>
         <div class="fg<%= errors.company ? ' has-err' : '' %>">
           <label for="f-firma"><%= h.form.company %></label>
@@ -212,6 +225,11 @@ var ld = [
           <input type="tel" id="f-tel" name="tel" class="tnum" value="<%= form.tel || '' %>" autocomplete="tel" required<%- errors.tel ? ' aria-invalid="true"' : '' %>>
           <% if (errors.tel) { %><div class="field-err"><%= errors.tel %></div><% } %>
         </div>
+        <div class="fg<%= errors.zalacznik ? ' has-err' : '' %>">
+          <label for="f-zal"><%= h.form.zalacznik %></label>
+          <input type="file" id="f-zal" name="zalacznik" accept=".pdf,.jpg,.jpeg,.png,.xml">
+          <% if (errors.zalacznik) { %><div class="field-err"><%= errors.zalacznik %></div><% } else { %><p class="legal-note" style="margin-top:6px"><%= h.form.zalacznikNote %></p><% } %>
+        </div>
         <div class="hp" aria-hidden="true"><label for="f-web">Website</label><input type="text" id="f-web" name="website" tabindex="-1" autocomplete="off"></div>
         <% if ((turnstile && turnstile.enabled) || errors.captcha) { %>
         <div class="fg<%= errors.captcha ? ' has-err' : '' %>">
@@ -240,5 +258,6 @@ var ld = [
 </div>
 <script src="/js/motion.js?v=<%= version %>" defer></script>
 <script src="/js/wycena.js?v=<%= version %>" defer></script>
+<script src="/js/nip.js?v=<%= version %>" defer></script>
 </body>
 </html>

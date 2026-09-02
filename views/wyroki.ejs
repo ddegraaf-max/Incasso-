@@ -45,7 +45,7 @@ var ld = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: w.f
   <% if (leadOk) { %>
   <div class="confirm" style="margin-top:14px"><span class="sq"></span><span><%= w.form.ok %></span></div>
   <% } else { %>
-  <form class="calc-form" method="post" action="/skup-wyrokow" id="wyrok-form" style="margin-top:14px">
+  <form class="calc-form" method="post" action="/skup-wyrokow" id="wyrok-form" style="margin-top:14px" enctype="multipart/form-data">
     <% if (hasErr) { %><div class="form-error" role="alert"><%= h.form.errors.generic %></div><% } %>
 
     <div class="fg<%= errors.company ? ' has-err' : '' %>">
@@ -128,6 +128,11 @@ var ld = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: w.f
       <% if (errors.captcha) { %><div class="field-err"><%= errors.captcha %></div><% } %>
     </div>
     <% } %>
+    <div class="fg<%= errors.zalacznik ? ' has-err' : '' %>">
+      <label for="wf-zal"><%= t.home.form.zalacznik %></label>
+      <input type="file" id="wf-zal" name="zalacznik" accept=".pdf,.jpg,.jpeg,.png,.xml">
+      <% if (errors.zalacznik) { %><div class="field-err"><%= errors.zalacznik %></div><% } else { %><p class="legal-note" style="margin-top:6px"><%= t.home.form.zalacznikNote %></p><% } %>
+    </div>
     <button class="btn btn-gold" type="submit"><%= w.form.btn %></button>
     <p class="legal-note" style="margin-top:12px"><%= w.form.note %></p>
   </form>
