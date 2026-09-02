@@ -352,7 +352,7 @@ app.post('/sprzedaj', zalacznikMw, async (req, res) => {
   const lead = { company: form.company, nip, forma: form.forma, email: form.email, tel: form.tel, kwota: kw, dni: dn };
   const reg = await nipRegisterLookup(nip).catch(() => null);
   if (reg) lead.rejestr = reg.line;
-  await db.saveLead({ ...lead, oferta_pct: est.pct, note: 'lang=' + res.locals.lang }).catch(() => {});
+  await db.saveLead({ ...lead, oferta_pct: est.pct, note: 'lang=' + res.locals.lang + (lead.rejestr ? ' · ' + lead.rejestr : '') }).catch(() => {});
   // e-mails: notificatie naar MAIL_NOTIFY + bevestiging aan de klant (PL/EN); fouten blokkeren het formulier niet
   const [notify, confirm] = await Promise.all([
     Mailer.leadNotify(lead, est, res.locals.lang, errors.zalacznik ? null : req.file).catch((e) => ({ status: 'błąd: ' + e.message })),
