@@ -129,10 +129,9 @@ function factsSummary(facts) {
   return parts.join(' · ');
 }
 
-async function mailDebtor(d, c, file) {
-  if (!d.debtor_email) return { ok: false, status: 'brak adresata' };
-  const attachments = file && file.data ? [{ filename: file.filename || 'faktura.pdf', content: Buffer.from(file.data).toString('base64') }] : undefined;
-  const text = `Szanowni Państwo,
+// Tekst van de mail aan de dłużnik (ook gebruikt door de voorbeeldpagina)
+function debtorMailText(d, c, file) {
+  return `Szanowni Państwo,
 
 działając w imieniu wierzyciela ${d.creditor_company}, wzywamy do zapłaty należności z faktury ${d.invoice_nr}, której termin płatności (${d.due_date}) minął ${c.days} dni temu.
 
@@ -148,13 +147,19 @@ Brak zapłaty w terminie może skutkować skierowaniem sprawy do windykacji, zg�
 
 sprzedamfakture.pl — wezwanie wygenerowane na zlecenie wierzyciela
 Odpowiedzi prosimy kierować bezpośrednio do wierzyciela (odpowiedz na tę wiadomość) lub przez stronę wezwania.`;
-  return Mailer.sendPlain({ from: 'sprzedamfakture.pl <' + FROM_EMAIL + '>', to: d.debtor_email, replyTo: d.creditor_email, subject: `Wezwanie do zapłaty — faktura ${d.invoice_nr} (${d.creditor_company})`, text, lang: 'pl', attachments });
+}
+function debtorMailSubject(d) { return `Wezwanie do zapłaty — faktura ${d.invoice_nr} (${d.creditor_company})`; }
+
+async function mailDebtor(d, c, file) {
+  if (!d.debtor_email) return { ok: false, status: 'brak adresata' };
+  const attachments = file && file.data ? [{ filename: file.filename || 'faktura.pdf', content: Buffer.from(file.data).toString('base64') }] : undefined;
+  return Mailer.sendPlain({ from: 'sprzedamfakture.pl <' + FROM_EMAIL + '>', to: d.debtor_email, replyTo: d.creditor_email, subject: debtorMailSubject(d), text: debtorMailText(d, c, file), lang: 'pl', attachments });
 }
 
-async function mailCreditor(d, c, facts) {
+function creditorMailText(d, c, facts) {
   const en = d.lang === 'en';
   const fs = factsSummary(facts);
-  const text = en
+  return en
     ? `Your free online demand for payment is ready.
 
 Invoice ${d.invoice_nr} · debtor ${d.debtor_company} · ${D.fmtN(c.amount)} zł (+ interest ${D.fmtN(c.odsetki)} zł and recovery fee ${D.fmtN(c.rekomp)} zł as of today)
@@ -179,7 +184,27 @@ Kwota aktualizuje się codziennie. Gdy dłużnik potwierdzi zapłatę, zadeklaru
 Brak zapłaty w 7 dni? Sprzedaj fakturę i miej gotówkę w 24 godziny: ${SITE}/#wycena
 
 sprzedamfakture.pl — ${Company.C.name}`;
-  return Mailer.sendPlain({ to: d.creditor_email, subject: en ? `Your online demand for invoice ${d.invoice_nr} is ready` : `Twoje wezwanie online — faktura ${d.invoice_nr}`, text, lang: d.lang });
+}
+function creditorMailSubject(d) { return d.lang === 'en' ? `Your online demand for invoice ${d.invoice_nr} is ready` : `Twoje wezwanie online — faktura ${d.invoice_nr}`; }
+
+async function mailCreditor(d, c, facts) {
+  return Mailer.sendPlain({ to: d.creditor_email, subject: creditorMailSubject(d), text: creditorMailText(d, c, facts), lang: d.lang });
+}
+
+// Voorbeeld voor /wezwanie-online/przyklad: fictieve partijen, realistische bedragen, 44 dagen te laat
+function sample(lang) {
+  const created = new Date();
+  const due = new Date(created.getTime() - 44 * DAY_MS);
+  const d = {
+    id: 0, token: 'PRZYKLAD', lang: lang === 'en' ? 'en' : 'pl',
+    creditor_company: 'Twoja Firma Sp. z o.o.', creditor_nip: '5213456789', creditor_email: 'faktury@twojafirma.pl',
+    debtor_company: 'Przykładowy Dłużnik Sp. z o.o.', debtor_nip: '7740001454', debtor_email: 'ksiegowosc@dluznik.pl',
+    invoice_nr: 'FV 2026/06/089', amount: 12400, due_date: isoDate(due), iban: 'PL61109010140000071219812874',
+    status: 'otwarte', opened_at: created, created_at: created, file_id: null,
+  };
+  const facts = { mf: { found: true, nip: '7740001454', name: 'PRZYKŁADOWY DŁUŻNIK SPÓŁKA Z OGRANICZONĄ ODPOWIEDZIALNOŚCIĄ', statusVat: 'Czynny', krs: '0000012345' }, krs: { found: true, krs: '0000012345', form: 'SPÓŁKA Z OGRANICZONĄ ODPOWIEDZIALNOŚCIĄ', flags: [] } };
+  const file = { filename: 'faktura-FV-2026-06-089.pdf', size: 184320 };
+  return { d, k: compute(d), facts, file };
 }
 
 async function mailResponse(d, c) {
@@ -207,4 +232,4 @@ async function toLead(d, c, lang) {
   return lead;
 }
 
-module.exports = { STATUSES, create, byToken, compute, markOpened, respond, mailDebtor, mailCreditor, mailResponse, toLead, factsSummary, daysOverdue };
+module.exports = { STATUSES, create, byToken, compute, markOpened, respond, mailDebtor, mailCreditor, mailResponse, toLead, factsSummary, daysOverdue, debtorMailText, debtorMailSubject, creditorMailText, creditorMailSubject, sample, FROM_EMAIL };

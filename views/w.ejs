@@ -5,7 +5,12 @@ var w = t.wz, L = w.letter;
 var st = d.status || 'wyslane';
 var answered = ['obietnica', 'zaplacone', 'spor'].indexOf(st) !== -1;
 var thanks = typeof thanksMsg !== 'undefined' && thanksMsg;
-%><%- include('partials/head', { title: 'Wezwanie do zapłaty — ' + d.invoice_nr, desc: L.metaDesc, noindex: true, altLang: false }) %>
+var isDemo = typeof demo !== 'undefined' && demo;
+var X = w.example;
+%><%- include('partials/head', isDemo ? { title: X.metaTitle, desc: X.metaDesc, noindex: false, altLang: true } : { title: 'Wezwanie do zapłaty — ' + d.invoice_nr, desc: L.metaDesc, noindex: true, altLang: false }) %>
+<% if (isDemo) { %><%- include('partials/nav') %>
+<div class="wz-demo-bar"><span class="tag tag-accent"><%= X.badge %></span> <span><%= X.bar %></span> <a class="btn btn-gold chan-btn" href="/wezwanie-online"><%= X.cta %></a></div>
+<% } %>
 <div class="wz-doc">
   <div class="wz-head">
     <%- include('partials/logo', { asLink: true, href: '/', tagline: false }) %>
@@ -46,7 +51,7 @@ var thanks = typeof thanksMsg !== 'undefined' && thanksMsg;
     <div class="label"><%= L.respondH %></div>
     <p class="helper" style="margin:0 0 12px"><%= answered ? L.respondDone : L.respondP %></p>
     <% if (!answered) { %>
-    <form method="post" action="/w/<%= d.token %>/odpowiedz" class="calc-form flat wz-form">
+    <form method="post" action="<%= isDemo ? '#' : '/w/' + d.token + '/odpowiedz' %>" class="calc-form flat wz-form" <% if (isDemo) { %>onsubmit="return false"<% } %>>
       <input type="text" name="website" tabindex="-1" autocomplete="off" style="position:absolute; left:-9999px" aria-hidden="true">
       <div class="wz-choices">
         <label class="wz-choice"><input type="radio" name="action" value="paid" required> <span><strong><%= L.paid %></strong><br><small><%= L.paidHint %></small></span></label>
@@ -58,8 +63,8 @@ var thanks = typeof thanksMsg !== 'undefined' && thanksMsg;
         <div class="fg"><label for="wz-note"><%= L.note %></label><textarea id="wz-note" name="note" rows="3" placeholder="<%= L.notePh %>"></textarea></div>
       </div>
       <% if (typeof respondError !== 'undefined' && respondError) { %><p class="field-err"><%= respondError %></p><% } %>
-      <button class="btn" type="submit"><%= L.send %></button>
-      <p class="helper" style="margin:10px 0 0"><%= L.sendNote %></p>
+      <button class="btn" type="submit" <%= isDemo ? 'disabled' : '' %>><%= L.send %></button>
+      <p class="helper" style="margin:10px 0 0"><%= isDemo ? X.disabled : L.sendNote %></p>
     </form>
     <% } %>
   </div>
@@ -77,4 +82,25 @@ var thanks = typeof thanksMsg !== 'undefined' && thanksMsg;
   </div>
 </div>
 
+<% if (isDemo) { %>
+<div class="wz-doc" style="padding-top:0">
+  <h2 style="font-size:24px"><%= X.mailsH %></h2>
+  <p class="helper" style="max-width:70ch"><%= X.mailsP %></p>
+  <div class="label" style="margin-top:18px"><%= X.debtorMailH %></div>
+  <div class="field-row"><span class="fk"><%= X.from %></span><span><%= mails.debtorFrom %></span></div>
+  <div class="field-row"><span class="fk"><%= X.to %></span><span><%= d.debtor_email %></span></div>
+  <div class="field-row"><span class="fk"><%= X.replyTo %></span><span><%= d.creditor_email %></span></div>
+  <div class="field-row"><span class="fk"><%= X.subject %></span><span><%= mails.debtorSubject %></span></div>
+  <div class="field-row"><span class="fk"><%= X.attachment %></span><span><%= file.filename %></span></div>
+  <pre class="mail-body" style="margin-top:10px"><%= mails.debtorText %></pre>
+  <div class="label" style="margin-top:26px"><%= X.creditorMailH %></div>
+  <div class="field-row"><span class="fk"><%= X.to %></span><span><%= d.creditor_email %></span></div>
+  <div class="field-row"><span class="fk"><%= X.subject %></span><span><%= mails.creditorSubject %></span></div>
+  <pre class="mail-body" style="margin-top:10px"><%= mails.creditorText %></pre>
+  <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:22px">
+    <a class="btn btn-gold" href="/wezwanie-online"><%= X.cta %></a>
+    <a class="btn btn-ghost chan-btn" href="/baza-wiedzy/wezwanie-do-zaplaty-wzor"><%= X.readMore %></a>
+  </div>
+</div>
+<% } %>
 <%- include('partials/footer') %>

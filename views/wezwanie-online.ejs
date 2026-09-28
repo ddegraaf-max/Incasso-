@@ -44,6 +44,16 @@ var fe = function (k) { return errors[k] ? '<p class="field-err">' + w.errors[er
     <% w.bullets.forEach(function (b) { %><li><%- b %></li><% }) %>
   </ul>
 
+  <div class="wz-example">
+    <div class="kicker"><%= w.example.kicker %></div>
+    <h2 style="font-size:22px; margin:6px 0 8px"><%= w.example.h %></h2>
+    <p class="helper" style="margin:0 0 10px"><%= w.example.p %></p>
+    <ul class="helper" style="padding-left:18px; margin:0 0 14px; line-height:1.7">
+      <% w.example.items.forEach(function (i) { %><li><%- i %></li><% }) %>
+    </ul>
+    <a class="btn btn-secondary" href="/wezwanie-online/przyklad"><%= w.example.btn %></a>
+  </div>
+
   <form class="calc-form" method="post" action="/wezwanie-online" enctype="multipart/form-data" novalidate>
     <input type="text" name="website" tabindex="-1" autocomplete="off" style="position:absolute; left:-9999px" aria-hidden="true">
     <div class="kicker" style="margin-bottom:10px"><%= w.f.creditorKicker %></div>

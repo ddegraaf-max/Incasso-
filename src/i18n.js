@@ -270,6 +270,13 @@ module.exports = {
         ['Czy dłużnik widzi moje dane?', 'Tak — jako wierzyciel jesteś stroną wezwania. Dłużnik widzi Twoją firmę, numer faktury, kwotę i rachunek (jeśli go podasz). Nie widzi wyników weryfikacji ani Twojego adresu e-mail; odpowiedzi trafiają do Ciebie przez naszą stronę.'],
       ],
       legal: 'Podstawa prawna: ustawa z dnia 8 marca 2013 r. o przeciwdziałaniu nadmiernym opóźnieniom w transakcjach handlowych (art. 4a, 7, 10); art. 123 KC; art. 187 § 1 pkt 3 KPC. Narzędzie ma charakter informacyjny i nie zastępuje porady prawnej.',
+      example: {
+        metaTitle: 'Przykład wezwania online — sprzedamfakture.pl', metaDesc: 'Zobacz dokładnie, co wysyłamy: stronę wezwania z kwotą na dziś i kodem QR, e-mail do dłużnika z załączoną fakturą oraz potwierdzenie dla wierzyciela.',
+        kicker: 'Przykład', h: 'Zobacz dokładnie, co wysyłamy', p: 'Zanim wypełnisz formularz, obejrzyj gotowe wezwanie na przykładowych danych — stronę, którą zobaczy dłużnik, oraz oba e-maile.',
+        items: ['<strong>Strona wezwania</strong> pod unikalnym linkiem: logo, dane stron, podstawa prawna, kwota liczona na dziś, kod QR i przyciski odpowiedzi.', '<strong>E-mail do dłużnika</strong> z adresu windykacja@sprzedamfakture.pl — w imieniu wierzyciela, z załączoną fakturą i linkiem.', '<strong>E-mail do Ciebie</strong> z linkiem, wersją do druku i wynikiem weryfikacji dłużnika w rejestrach.'],
+        btn: 'Zobacz przykład wezwania', badge: 'PRZYKŁAD', bar: 'Tak wygląda strona, którą zobaczy dłużnik — dane są fikcyjne, przyciski nieaktywne.', cta: 'Wygeneruj własne wezwanie — bezpłatnie', disabled: 'To przykład — w prawdziwym wezwaniu dłużnik wysyła tu odpowiedź, a Ty dostajesz e-mail.',
+        mailsH: 'E-maile, które wysyłamy', mailsP: 'Treść generujemy z danych z formularza; kwoty odsetek liczymy na dzień wysyłki.', debtorMailH: 'E-mail do dłużnika', creditorMailH: 'E-mail do wierzyciela (do Ciebie)', from: 'Od', to: 'Do', replyTo: 'Odpowiedź do', subject: 'Temat', attachment: 'Załącznik', readMore: 'Co musi zawierać wezwanie — poradnik',
+      },
       letter: {
         metaDesc: 'Wezwanie do zapłaty — strona z aktualną kwotą i możliwością odpowiedzi.',
         issued: 'Data wezwania', ref: 'Nr wezwania', status: { wyslane: 'Wysłane', otwarte: 'Otwarte', obietnica: 'Deklaracja zapłaty', zaplacone: 'Zapłacone', spor: 'Zastrzeżenia' }, promisedOn: 'do', live: 'kwota na dziś', liveTitle: 'Odsetki są naliczane codziennie',
@@ -563,6 +570,13 @@ module.exports = {
         ['Does the debtor see my details?', 'Yes — as creditor you are a party to the demand. The debtor sees your company, the invoice number, the amount and the account (if given). It does not see the register check or your e-mail address; replies reach you through our page.'],
       ],
       legal: 'Legal basis: Act of 8 March 2013 on counteracting excessive delays in commercial transactions (arts. 4a, 7, 10); art. 123 Civil Code; art. 187 § 1(3) Code of Civil Procedure. The tool is for information and does not replace legal advice.',
+      example: {
+        metaTitle: 'Example of the online demand — sprzedamfakture.pl', metaDesc: 'See exactly what we send: the demand page with the amount as of today and a QR code, the e-mail to the debtor with the invoice attached, and your confirmation.',
+        kicker: 'Example', h: 'See exactly what we send', p: 'Before you fill in the form, look at a finished demand on sample data — the page the debtor sees and both e-mails.',
+        items: ['<strong>The demand page</strong> at a unique link: logo, both parties, legal basis, amount as of today, QR code and response buttons.', '<strong>E-mail to the debtor</strong> from windykacja@sprzedamfakture.pl — on your behalf, with the invoice attached and the link. The letter is in Polish.', '<strong>E-mail to you</strong> with the link, the print version and the debtor register check.'],
+        btn: 'See an example demand', badge: 'EXAMPLE', bar: 'This is the page the debtor sees — the data is fictitious, the buttons are inactive.', cta: 'Create your own demand — free', disabled: 'This is an example — in a real demand the debtor replies here and you receive an e-mail.',
+        mailsH: 'The e-mails we send', mailsP: 'The text is generated from your form data; interest is calculated as of the sending date.', debtorMailH: 'E-mail to the debtor', creditorMailH: 'E-mail to the creditor (you)', from: 'From', to: 'To', replyTo: 'Reply to', subject: 'Subject', attachment: 'Attachment', readMore: 'What a demand must contain — guide',
+      },
       letter: {
         metaDesc: 'Demand for payment — page with the current amount and a response option.',
         issued: 'Date of demand', ref: 'Demand no.', status: { wyslane: 'Sent', otwarte: 'Opened', obietnica: 'Promise to pay', zaplacone: 'Paid', spor: 'Disputed' }, promisedOn: 'by', live: 'amount as of today', liveTitle: 'Interest is calculated daily',

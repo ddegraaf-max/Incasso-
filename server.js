@@ -832,6 +832,15 @@ app.get('/w/:token/zalacznik', async (req, res, next) => {
   if (!f) return next();
   sendLeadFile(res, f);
 });
+// Voorbeeld: precies wat wij versturen — brief, mail aan de dłużnik en bevestiging aan de wierzyciel (niets wordt opgeslagen)
+app.get('/wezwanie-online/przyklad', async (req, res) => {
+  const ex = Demands.sample(res.locals.lang);
+  ex.k.url = SITE + '/wezwanie-online/przyklad'; ex.k.printUrl = SITE + '/wezwanie-online/przyklad';
+  const qr = await QRCode.toDataURL(SITE + '/wezwanie-online', { margin: 0, width: 208 });
+  res.render('w', common({ page: 'wezwanie', d: ex.d, k: ex.k, qr, file: ex.file, demo: true,
+    mails: { debtorSubject: Demands.debtorMailSubject(ex.d), debtorFrom: 'sprzedamfakture.pl <' + Demands.FROM_EMAIL + '>', debtorText: Demands.debtorMailText(ex.d, ex.k, ex.file), creditorSubject: Demands.creditorMailSubject(ex.d), creditorText: Demands.creditorMailText(ex.d, ex.k, ex.facts) } }));
+});
+
 app.get('/w/:token', async (req, res, next) => {
   const d = await Demands.byToken(req.params.token).catch(() => null);
   if (!d) return next();
@@ -878,6 +887,7 @@ app.get('/sitemap.xml', (req, res) => {
     { loc: SITE + '/', alt: true, prio: '1.0', mod: SITE_LASTMOD },
     { loc: SITE + '/kalkulator', prio: '0.7', mod: SITE_LASTMOD },
     { loc: SITE + '/wezwanie-online', alt: true, prio: '0.9', mod: SITE_LASTMOD },
+    { loc: SITE + '/wezwanie-online/przyklad', alt: true, prio: '0.6', mod: SITE_LASTMOD },
     { loc: SITE + '/skup-wyrokow', alt: true, prio: '0.8', mod: SITE_LASTMOD },
     { loc: SITE + '/baza-wiedzy', alt: true, prio: '0.8', mod: Articles.ARTICLES.reduce((m, a) => (a.updated > m ? a.updated : m), SITE_LASTMOD) },
     ...Articles.ARTICLES.map((a) => ({ loc: SITE + '/baza-wiedzy/' + a.slug, alt: true, prio: '0.7', mod: a.updated })),
