@@ -12,7 +12,8 @@ try { const m = require('@anthropic-ai/sdk'); Anthropic = m.default || m; } catc
 
 const KEY = process.env.ANTHROPIC_API_KEY || '';
 const MODEL = process.env.RESEARCH_MODEL || 'claude-opus-5';
-const client = KEY && Anthropic ? new Anthropic({ apiKey: KEY, timeout: 120000, maxRetries: 1 }) : null;
+const FAKE = process.env.AIMAIL_FAKE === '1'; // alleen voor tests: vast antwoord zonder API
+const client = KEY && Anthropic ? new Anthropic({ apiKey: KEY, timeout: 150000, maxRetries: 1 }) : null;
 
 const LANG_NAME = { pl: 'Polish', en: 'English', nl: 'Dutch' };
 const SCHEMA = {
@@ -22,7 +23,7 @@ const SCHEMA = {
   additionalProperties: false,
 };
 
-function available() { return !!client; }
+function available() { return !!client || FAKE; }
 
 function parseJson(text) {
   try { return JSON.parse(text); } catch { /* val terug op het eerste JSON-object in de tekst */ }
@@ -32,7 +33,12 @@ function parseJson(text) {
 }
 
 async function call(system, user) {
+  if (FAKE) {
+    await new Promise((r) => setTimeout(r, 400));
+    return { subject: 'FAKE: temat', body: 'FAKE: treść\n\n' + user.slice(0, 40), translation: 'FAKE: vertaling', notes: 'FAKE: notities', model: 'fake' };
+  }
   if (!client) throw new Error('AI niet beschikbaar (geen ANTHROPIC_API_KEY)');
+  const t0 = Date.now();
   const params = { model: MODEL, max_tokens: 6000, system, messages: [{ role: 'user', content: user }] };
   let resp;
   try {
@@ -44,8 +50,23 @@ async function call(system, user) {
   if (resp.stop_reason === 'refusal') throw new Error('geweigerd door het model');
   const text = (resp.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('');
   const j = parseJson(text);
+  console.log('[aimail] ok model=' + resp.model + ' in=' + (resp.usage ? resp.usage.input_tokens : '?') + ' out=' + (resp.usage ? resp.usage.output_tokens : '?') + ' ' + (Date.now() - t0) + 'ms');
   return { subject: String(j.subject || '').trim(), body: String(j.body || '').trim(), translation: String(j.translation || '').trim(), notes: String(j.notes || '').trim(), model: resp.model };
 }
+
+// ── Achtergrondtaken: de aanroep duurt 30–90 s; de composer wacht via een taak-id + auto-refresh ──
+const jobs = new Map(); // id → { status: pending|done|error, state, result, error, createdAt }
+const JOB_TTL_MS = 30 * 60 * 1000;
+function startJob(fn, state) {
+  for (const [k, j] of jobs) if (Date.now() - j.createdAt > JOB_TTL_MS) jobs.delete(k);
+  const id = require('crypto').randomUUID();
+  const job = { status: 'pending', state, result: null, error: null, createdAt: Date.now() };
+  jobs.set(id, job);
+  Promise.resolve().then(fn).then((r) => { job.status = 'done'; job.result = r; }).catch((e) => { job.status = 'error'; job.error = (e && (e.message || String(e))).slice(0, 300); console.error('[aimail] fout —', job.error); });
+  return id;
+}
+function getJob(id) { return id ? jobs.get(String(id)) || null : null; }
+function finishJob(id) { jobs.delete(String(id)); }
 
 function trim(s, n) { const t = String(s == null ? '' : s); return t.length > n ? t.slice(0, n) + '\n[…]' : t; }
 
@@ -84,4 +105,4 @@ async function translate({ subject, body, from, to }) {
   return call(system, user);
 }
 
-module.exports = { available, draft, translate, MODEL };
+module.exports = { available, draft, translate, startJob, getJob, finishJob, MODEL };

@@ -11,7 +11,7 @@ var mkUrl = function (over) {
   return base + (parts.length ? '?' + parts.join('&') : '');
 };
 %>
-<%- include('partials/head', { title: Mm.title + ' — sprzedamfakture.pl' }) %>
+<%- include('partials/head', { title: Mm.title + ' — sprzedamfakture.pl', autoRefresh: (typeof aiPending !== 'undefined' && aiPending) ? 5 : 0 }) %>
 <%- include('partials/nav') %>
 
 <div class="two-pane">
@@ -42,9 +42,10 @@ var mkUrl = function (over) {
         <div class="label"><%= Mm.aiLabel %></div>
         <p class="helper" style="margin:0 0 10px"><%= Mm.aiHelp %></p>
         <div class="fg"><label for="m-instr"><%= Mm.aiInstruction %></label><textarea id="m-instr" name="instruction" rows="3" placeholder="<%= Mm.aiPlaceholder %>"><%= instruction %></textarea></div>
+        <% if (aiPending) { %><p class="research-busy" role="status"><%- include('partials/hourglass', { id: 'ai' }) %><span><%= Mm.aiPending %></span></p><% } %>
         <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center">
-          <button class="btn btn-secondary chan-btn" type="submit" formaction="<%= action %>/ai" name="mode" value="draft" formnovalidate <%= aiOk ? '' : 'disabled' %>><%= Mm.aiDraft %></button>
-          <button class="btn btn-ghost chan-btn" type="submit" formaction="<%= action %>/ai" name="mode" value="translate" formnovalidate <%= aiOk ? '' : 'disabled' %>><%= Mm.aiTranslate %></button>
+          <button class="btn btn-secondary chan-btn" type="submit" formaction="<%= action %>/ai" name="mode" value="draft" formnovalidate <% if (!aiOk || aiPending) { %>disabled<% } %> <% if (aiPending) { %>aria-busy="true"<% } %>><% if (aiPending) { %><%- include('partials/hourglass', { id: 'aib' }) %><%= Mm.aiBusy %><% } else { %><%= Mm.aiDraft %><% } %></button>
+          <button class="btn btn-ghost chan-btn" type="submit" formaction="<%= action %>/ai" name="mode" value="translate" formnovalidate <% if (!aiOk || aiPending) { %>disabled<% } %>><%= Mm.aiTranslate %></button>
           <% if (!aiOk) { %><span class="helper" style="margin:0"><%= Mm.aiUnavailable %></span><% } %>
         </div>
       </div>

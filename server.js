@@ -325,8 +325,26 @@ app.get('/admin/leady', Auth.requireAdmin, async (req, res) => {
 const EMAIL_OK = (s) => EMAIL_RE.test(String(s || '').trim());
 function tplLang(req, fallback) { return req.query.tl === 'en' || req.body?.tl === 'en' ? 'en' : (req.query.tl === 'pl' || req.body?.tl === 'pl' ? 'pl' : fallback); }
 
+// Lopende AI-taak (?job=…) → invoer terugzetten en pending/resultaat/fout tonen
+function applyJob(req, res, over) {
+  const Mm = res.locals.t.app.mail;
+  const id = req.query.job;
+  if (!id) return over;
+  const job = AiMail.getJob(id);
+  if (!job) return { ...over, error: Mm.aiExpired };
+  const st = job.state || {};
+  const base = { ...over, ...st };
+  if (job.status === 'pending') return { ...base, aiPending: true };
+  if (job.status === 'error') { AiMail.finishJob(id); return { ...base, error: Mm.aiFailed + ': ' + job.error }; }
+  AiMail.finishJob(id);
+  const r = job.result || {};
+  if (st.mode === 'translate') return { ...base, translation: r.translation || '', notes: '' };
+  return { ...base, subject: r.subject || st.subject, body: r.body || st.body, translation: r.translation || '', notes: r.notes || '' };
+}
+
 async function renderLeadComposer(req, res, lead, over = {}) {
   const Mm = res.locals.t.app.mail;
+  over = applyJob(req, res, over);
   const tl = over.tl || tplLang(req, Research.parseNote(lead).lang === 'en' ? 'en' : 'pl');
   const tpl = over.tpl !== undefined ? over.tpl : String(req.query.tpl || '');
   const draft = tpl ? MailTpl.forLead(lead, tpl, tl) : { subject: '', body: '' };
@@ -336,7 +354,7 @@ async function renderLeadComposer(req, res, lead, over = {}) {
     action: '/admin/leady/' + lead.id + '/mail', backUrl: '/admin/leady?sel=' + lead.id, base: '/admin/leady/' + lead.id + '/mail',
     to: over.to !== undefined ? over.to : (lead.email || ''), subject: over.subject !== undefined ? over.subject : draft.subject, body: over.body !== undefined ? over.body : draft.body,
     tpl, tl, aud: 'klient', audiences: [], templates: MailTpl.list('lead', tl, lead.source === 'skup-wyrokow'), history,
-    instruction: over.instruction || '', translation: over.translation || '', notes: over.notes || '', aiOk: AiMail.available(),
+    instruction: over.instruction || '', translation: over.translation || '', notes: over.notes || '', aiOk: AiMail.available(), aiPending: !!over.aiPending,
     error: over.error || null, fromAddr: Mailer.MAIL_FROM, replyTo: Mailer.MAIL_NOTIFY, mailOk: Mailer.configured(), live: true,
   }));
 }
@@ -354,24 +372,20 @@ app.post('/admin/leady/:id/mail/ai', Auth.requireAdmin, async (req, res) => {
   if (!lead) return res.redirect('/admin/leady');
   const st = composerState(req);
   const tl = tplLang(req, 'pl');
-  if (!AiMail.available()) return renderLeadComposer(req, res, lead, { ...st, tl, error: Mm.aiUnavailable });
   const mode = req.body.mode === 'translate' ? 'translate' : 'draft';
+  if (mode === 'translate' && !st.body) return renderLeadComposer(req, res, lead, { ...st, tl, error: Mm.aiNothing });
+  if (!AiMail.available()) return renderLeadComposer(req, res, lead, { ...st, tl, error: Mm.aiUnavailable });
   const trLang = trLangFor(res, tl);
-  try {
-    let r;
-    if (mode === 'translate') {
-      if (!st.body) return renderLeadComposer(req, res, lead, { ...st, tl, error: Mm.missing });
-      r = await AiMail.translate({ subject: st.subject, body: st.body, from: tl, to: trLang || 'nl' });
-      return renderLeadComposer(req, res, lead, { ...st, tl, translation: r.translation, notes: '' });
-    }
-    const report = await db.getLeadReport(lead.id).catch(() => null);
-    const files = await db.listLeadFiles(lead.id).catch(() => []);
-    const data = { ...lead, attachments: files.map((f) => f.filename), noteParsed: Research.parseNote(lead) };
-    r = await AiMail.draft({ kind: 'lead', data, report, instruction: st.instruction, lang: tl, trLang, audience: 'klient', signature: MailTpl.signature(tl), to: st.to || lead.email });
-    return renderLeadComposer(req, res, lead, { ...st, tl, subject: r.subject, body: r.body, translation: r.translation, notes: r.notes });
-  } catch (e) {
-    return renderLeadComposer(req, res, lead, { ...st, tl, error: Mm.aiFailed + ': ' + (e.message || e) });
-  }
+  const report = await db.getLeadReport(lead.id).catch(() => null);
+  const files = await db.listLeadFiles(lead.id).catch(() => []);
+  const data = { ...lead, attachments: files.map((f) => f.filename), noteParsed: Research.parseNote(lead) };
+  const jobId = AiMail.startJob(
+    () => (mode === 'translate'
+      ? AiMail.translate({ subject: st.subject, body: st.body, from: tl, to: trLang || 'nl' })
+      : AiMail.draft({ kind: 'lead', data, report, instruction: st.instruction, lang: tl, trLang, audience: 'klient', signature: MailTpl.signature(tl), to: st.to || lead.email })),
+    { ...st, tl, mode }
+  );
+  res.redirect('/admin/leady/' + lead.id + '/mail?job=' + jobId);
 });
 
 app.get('/admin/leady/:id/mail', Auth.requireAdmin, async (req, res) => {
@@ -395,6 +409,7 @@ app.post('/admin/leady/:id/mail', Auth.requireAdmin, async (req, res) => {
 
 async function renderCaseComposer(req, res, c, over = {}) {
   const Mm = res.locals.t.app.mail;
+  over = applyJob(req, res, over);
   const isAdmin = req.user.role === 'admin';
   const audiences = isAdmin ? [{ key: 'dluznik', label: Mm.audDebtor }, { key: 'klient', label: Mm.audClient }] : [{ key: 'dluznik', label: Mm.audDebtor }];
   const aud = over.aud || (req.query.aud === 'klient' && isAdmin ? 'klient' : 'dluznik');
@@ -410,7 +425,7 @@ async function renderCaseComposer(req, res, c, over = {}) {
     action: '/app/sprawy/' + c.id + '/mail', backUrl: '/app/sprawy?sel=' + c.id, base: '/app/sprawy/' + c.id + '/mail',
     to: over.to !== undefined ? over.to : (aud === 'klient' ? (c.clientEmail || '') : (c.email || '')), subject: over.subject !== undefined ? over.subject : draft.subject, body: over.body !== undefined ? over.body : draft.body,
     tpl, tl, aud, audiences, templates, history,
-    instruction: over.instruction || '', translation: over.translation || '', notes: over.notes || '', aiOk: AiMail.available(),
+    instruction: over.instruction || '', translation: over.translation || '', notes: over.notes || '', aiOk: AiMail.available(), aiPending: !!over.aiPending,
     error: over.error || null, fromAddr: aud === 'klient' ? Mailer.MAIL_FROM : Comms.FROM_EMAIL, replyTo: Mailer.MAIL_NOTIFY, mailOk: Mailer.configured(), live: aud === 'klient' || c.real || Comms.LIVE_COMMS,
   }));
 }
@@ -424,15 +439,11 @@ app.post('/app/sprawy/:id/mail/ai', Auth.requireAuth, async (req, res) => {
   const aud = req.body.aud === 'klient' && isAdmin ? 'klient' : 'dluznik';
   const st = composerState(req);
   const tl = tplLang(req, 'pl');
-  if (!AiMail.available()) return renderCaseComposer(req, res, c, { ...st, tl, aud, error: Mm.aiUnavailable });
   const mode = req.body.mode === 'translate' ? 'translate' : 'draft';
+  if (mode === 'translate' && !st.body) return renderCaseComposer(req, res, c, { ...st, tl, aud, error: Mm.aiNothing });
+  if (!AiMail.available()) return renderCaseComposer(req, res, c, { ...st, tl, aud, error: Mm.aiUnavailable });
   const trLang = trLangFor(res, tl);
-  try {
-    if (mode === 'translate') {
-      if (!st.body) return renderCaseComposer(req, res, c, { ...st, tl, aud, error: Mm.missing });
-      const r = await AiMail.translate({ subject: st.subject, body: st.body, from: tl, to: trLang || 'nl' });
-      return renderCaseComposer(req, res, c, { ...st, tl, aud, translation: r.translation, notes: '' });
-    }
+  {
     const report = c.real && c.leadId ? await db.getLeadReport(c.leadId).catch(() => null) : null;
     const comms = await db.listComms(c.id, 8).catch(() => []);
     const data = {
@@ -441,10 +452,13 @@ app.post('/app/sprawy/:id/mail/ai', Auth.requireAuth, async (req, res) => {
       client: { company: c.clientCompany, email: c.clientEmail }, note: c.note,
       history: comms.map((k) => ({ date: k.created_at, channel: k.channel, tone: k.tone, subject: k.subject, outcome: k.outcome, status: k.status })),
     };
-    const r = await AiMail.draft({ kind: 'case', data, report, instruction: st.instruction, lang: tl, trLang, audience: aud, signature: aud === 'klient' ? MailTpl.signature(tl) : 'sprzedamfakture.pl — dział windykacji\nw imieniu wierzyciela', to: st.to });
-    return renderCaseComposer(req, res, c, { ...st, tl, aud, subject: r.subject, body: r.body, translation: r.translation, notes: r.notes });
-  } catch (e) {
-    return renderCaseComposer(req, res, c, { ...st, tl, aud, error: Mm.aiFailed + ': ' + (e.message || e) });
+    const jobId = AiMail.startJob(
+      () => (mode === 'translate'
+        ? AiMail.translate({ subject: st.subject, body: st.body, from: tl, to: trLang || 'nl' })
+        : AiMail.draft({ kind: 'case', data, report, instruction: st.instruction, lang: tl, trLang, audience: aud, signature: aud === 'klient' ? MailTpl.signature(tl) : 'sprzedamfakture.pl — dział windykacji\nw imieniu wierzyciela', to: st.to })),
+      { ...st, tl, aud, mode }
+    );
+    res.redirect('/app/sprawy/' + encodeURIComponent(c.id) + '/mail?job=' + jobId);
   }
 });
 
