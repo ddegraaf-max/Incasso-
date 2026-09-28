@@ -11,6 +11,7 @@
       <tr><th><%= W.th.invoice %></th><th><%= W.th.debtor %></th><th class="num"><%= W.th.amount %></th><th><%= W.th.aiscore %></th><th class="num"><%= W.th.offer %></th><th></th></tr>
     </thead>
     <tbody>
+      <% if (!D.claims.length) { %><tr><td colspan="6" style="color:var(--ink-55); padding:18px 12px"><%= W.empty %></td></tr><% } %>
       <% D.claims.forEach(function(c) {
         var sold = done[c.id] === 'sell';
         var scoreTag = (c.ai.grade === 'E' || c.ai.grade === 'D') ? 'tag-accent' : (c.ai.grade === 'C' ? 'tag-outline' : 'tag-neutral');

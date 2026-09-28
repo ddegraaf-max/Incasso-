@@ -11,7 +11,8 @@ Node/Express/EJS-app achter **sprzedamfakture.pl**: wykup wierzytelności (insta
 | `/sprzedam` | Oude route → 301 naar `/` |
 | `/login` · `/rejestracja` | Inloggen / registratie (bcrypt, rate limiting) |
 | `/2fa` · `/2fa/setup` | TOTP-verificatie / QR-setup (Google Authenticator e.d.) |
-| `/admin` | Admin-dashboard (alleen rol admin, 2FA verplicht) — incl. leads van het formulier |
+| `/admin` | Admin-dashboard (alleen rol admin, 2FA verplicht) — incl. laatste leads, knop *Usuń ślady danych demo* |
+| `/admin/leady` | **Leadbeheer**: alle zgłoszenia (faktura + wyrok) met detail, status (nowy / w kontakcie / oferta / zaakceptowany / odrzucony / spam), interne notitie, mailto-knop en verwijderen (`?sel=<id>`) |
 | `/app/sprawy` | Zakenoverzicht + detail-aside (`?sel=f2`) |
 | `/app/nowa` | Intake: KSeF / XML-PDF / e-mail + AI-analyse + beslissing |
 | `/app/agent` | Agent-feed + negotiatiethread, toon-switcher (`?ton=Uprzejmy\|Stanowczy\|Prawniczy`) |
@@ -45,7 +46,7 @@ npm start        # poort 3000, of PORT env var
 
 ## Deploy (Railway)
 Standaard flow: repo → GitHub Desktop → Railway auto-deploy. Geen database nodig voor het concept. Custom domain `sprzedamfakture.pl` + `www` aan de service hangen en DNS bij dns.pl naar Railway wijzen.
-Env vars: `PORT` (Railway zet die zelf), `SESSION_SECRET` (VERPLICHT in productie — lange random string), `ADMIN_EMAIL` + `ADMIN_PASSWORD` (admin-account), optioneel `SERVICE_FEE` (default 99), `EUR_PLN` (default 4.30), `DATABASE_URL` (Railway Postgres — activeert persistentie), `MONITOR_INTERVAL_MS` (default 60000) en `DEMO_EVENTS` (default 1; op 0 voor echte bronnen). `DEMO_ACCOUNT=0` verwijdert het demo-account en de hint op de loginpagina. `BOOKING_URL` (bv. een Calendly/Cal.com-link) maakt van "Umów rozmowę" op `/windykacja` een agenda-knop; zonder die variabele opent hij een e-mail naar kontakt@. Zet `NODE_ENV=production` voor secure cookies.
+Env vars: `PORT` (Railway zet die zelf), `SESSION_SECRET` (VERPLICHT in productie — lange random string), `ADMIN_EMAIL` + `ADMIN_PASSWORD` (admin-account), optioneel `SERVICE_FEE` (default 99), `EUR_PLN` (default 4.30), `DATABASE_URL` (Railway Postgres — activeert persistentie), `MONITOR_INTERVAL_MS` (default 60000) en `DEMO_EVENTS` (default 1; op 0 voor echte bronnen). `DEMO_ACCOUNT=0` verwijdert het demo-account en de hint op de loginpagina. `DEMO_CASES` bepaalt of de zes fictieve demo-zaken (Betmix, Kamex, … AgroSad) worden geladen: **standaard uit bij `NODE_ENV=production`**, aan daarbuiten; `DEMO_CASES=1` forceert aan, `0` uit. Zonder demo-zaken zijn panel, wykup, agent-feed en de admin-zakentabel leeg en start de monitor niet. `BOOKING_URL` (bv. een Calendly/Cal.com-link) maakt van "Umów rozmowę" op `/windykacja` een agenda-knop; zonder die variabele opent hij een e-mail naar kontakt@. Zet `NODE_ENV=production` voor secure cookies.
 
 ## Beveiliging
 - **Wachtwoorden**: bcrypt, kosten 12; policy min. 10 tekens met kleine/hoofdletter + cijfer.
@@ -102,10 +103,13 @@ Alles wordt gelogd in `comm_log` (PostgreSQL/memory), verschijnt als "Historia k
 - Schema (`users`, `case_actions`, `events`, `leads`, `comm_log`, `debtor_scores`, `session`) wordt bij start automatisch aangemaakt (`src/db.js`). SSL: automatisch aan voor Railway-URL's, met fallback zonder SSL; `PGSSLMODE=disable` / `PGSSL=1` forceren.
 - Controle: `/health` → `db: true` en `dbStats` (ping in ms + aantallen users/leads/events/comms); `/admin` → Integracje → PostgreSQL: Aktywne. Logregel bij start: `DB: verbonden (SSL)` + `DB: PostgreSQL verbonden, schema klaar`.
 - Lokaal tegen de Railway-DB testen: `railway variables -s Postgres --json` → `DATABASE_PUBLIC_URL` (publieke proxy) als `DATABASE_URL` meegeven.
+- **Leads** hebben `status` (default `nowy`), `admin_note` en `updated_at` (idempotente migratie) — beheer via `/admin/leady`. Het bijlagebestand van een zgłoszenie wordt niet opgeslagen; het zit alleen in de notificatiemail naar `MAIL_NOTIFY`.
+- **Demo-sporen opruimen**: knop *Usuń ślady danych demo z bazy* op `/admin` verwijdert monitor-/KRZ-/MSiG-events, events op demo-NIP's, `comm_log`, `debtor_scores` en `case_actions` van de zes demo-zaken. Leads en lead-events blijven staan. Combineer met `DEMO_CASES=0` (of gewoon `NODE_ENV=production`), anders komen de monitor-events bij de volgende herstart terug.
 - Bij de eerste start met een lege DB worden demo- en admin-account weggeschreven; daarna is de DB leidend (wachtwoorden/2FA blijven bewaard). **Zet vóór livegang `ADMIN_EMAIL` + `ADMIN_PASSWORD`**, anders staat het default-adminwachtwoord in de DB.
 
 ## Status / architectuur
-- **PostgreSQL-koppeling actief**: met `DATABASE_URL` (Railway Postgres) worden users, sessies (connect-pg-simple), zaakacties, AIScores, events, leads en communicatielog persistent; schema wordt automatisch aangemaakt. Zonder `DATABASE_URL` draait alles in-memory (demo). In demo-modus wordt de KRZ-status bij herstart vers herberekend uit de bronnen (by design — events blijven wel staan).
+- **PostgreSQL-koppeling actief**: met `DATABASE_URL` (Railway Postgres) worden users, sessies (connect-pg-simple), zaakacties, AIScores, events, leads en communicatielog persistent; schema wordt automatisch aangemaakt. Zonder `DATABASE_URL` draait alles in-memory (demo).
+- **Zaken zijn nog demodata**: het klantpanel (`/app/*`) werkt op de hard-coded zaken in `src/data.js`; er is nog geen model om een lead om te zetten in een echte zaak. In productie staan die demo-zaken uit (`DEMO_CASES`), echte aanvragen leven als leads in `/admin/leady`. In demo-modus wordt de KRZ-status bij herstart vers herberekend uit de bronnen (by design — events blijven wel staan).
 - Rentevoet 14% (NBP 4% + 10 p.p., I półrocze 2026) staat in `src/data.js` (`INTEREST_RATE`) — halfjaarlijks bijwerken.
 
 ## Roadmap-ideeën (nog niet gebouwd)

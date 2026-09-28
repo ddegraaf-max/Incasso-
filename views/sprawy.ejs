@@ -22,8 +22,9 @@
         <tr><th><%= S.th.invoice %></th><th><%= S.th.debtor %></th><th class="num"><%= S.th.amount %></th><th class="num"><%= S.th.overdue %></th><th><%= S.th.agent %></th></tr>
       </thead>
       <tbody>
+        <% if (!D.claims.length) { %><tr><td colspan="5" style="color:var(--ink-55); padding:18px 12px"><%= S.empty %></td></tr><% } %>
         <% D.claims.forEach(function(c) { %>
-        <tr class="row <%= c.id === sel.id ? 'selected' : '' %>" onclick="location.href='/app/sprawy?sel=<%= c.id %>'">
+        <tr class="row <%= sel && c.id === sel.id ? 'selected' : '' %>" onclick="location.href='/app/sprawy?sel=<%= c.id %>'">
           <td class="tnum"><%= c.nr %></td>
           <td><%= c.debtor %></td>
           <td class="num tnum"><%= D.fmt(c.amount) %></td>
@@ -37,6 +38,10 @@
 
   <aside class="pane-right detail">
     <% if (flash) { %><div class="confirm" style="margin-bottom:14px"><span class="sq"></span><span><%= flash %></span></div><% } %>
+    <% if (!sel) { %>
+    <div class="kicker"><%= S.kicker %></div>
+    <p class="helper"><%= S.emptyDetail %></p>
+    <% } else { %>
     <div class="kicker"><%= fill(S.caseKicker, { nr: sel.nr, score: sel.ai.score, grade: sel.ai.grade }) %></div>
     <h2><%= sel.debtor %></h2>
     <div class="amount tnum"><%= D.fmt(sel.amount) %></div>
@@ -116,6 +121,7 @@
       </div>
     <% } else { %>
       <div class="confirm"><span class="sq"></span><span><%= S.done[done[sel.id]] || S.done.sell %></span></div>
+    <% } %>
     <% } %>
   </aside>
 </div>

@@ -21,6 +21,7 @@
     <hr class="rule">
     <div class="kicker"><%= G.todayKicker %></div>
     <p class="helper"><%= G.todayHelper %></p>
+    <% if (!feed.length) { %><p class="helper"><%= G.noFeed %></p><% } %>
     <% feed.forEach(function(f) { %>
     <div class="feed-row <%= f.planned ? 'planned' : '' %>">
       <span class="time tnum"><%= f.time %></span>
@@ -34,7 +35,7 @@
   </section>
 
   <section class="agent-right">
-    <div class="kicker"><%= G.negKicker %></div>
+    <div class="kicker"><%= thread.length ? G.negKicker : G.negKickerEmpty %></div>
 
     <div class="label" style="margin-top:16px"><%= G.toneLabel %></div>
     <div class="tone-switch">
@@ -43,6 +44,7 @@
       <% }) %>
     </div>
 
+    <% if (!thread.length) { %><p class="helper" style="margin-top:16px"><%= G.noThread %></p><% } %>
     <% thread.forEach(function(m) { %>
     <div class="msg <%= m.agent ? 'agent' : '' %>">
       <div class="who"><%= t.tr(m.label) %></div>

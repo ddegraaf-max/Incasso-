@@ -244,8 +244,8 @@ app.get('/logout', (req, res) => {
 // ── Admin ────────────────────────────────────────────────────────────────
 app.get('/admin', Auth.requireAdmin, async (req, res) => {
   const events = await db.listEvents(15).catch(() => []);
-  const leads = await db.listLeads(15).catch(() => []);
-  res.render('admin', common({ page: 'admin', user: req.user, usersList: Auth.allUsers(), done: D.getDone(), events, leads, flash: req.query.msg || null, integr: { ...Mailer.status(), db: db.hasDb(), turnstile: Turnstile.enabled(), problems: [...Mailer.status().problems, ...Turnstile.problems()] } }));
+  const leads = await db.listLeads(8).catch(() => []);
+  res.render('admin', common({ page: 'admin', user: req.user, usersList: Auth.allUsers(), done: D.getDone(), events, leads, demoCases: D.DEMO_CASES, flash: req.query.msg || null, integr: { ...Mailer.status(), db: db.hasDb(), turnstile: Turnstile.enabled(), problems: [...Mailer.status().problems, ...Turnstile.problems()] } }));
 });
 
 // Testmail naar MAIL_NOTIFY — om de Resend-koppeling na deploy te controleren
@@ -253,6 +253,37 @@ app.post('/admin/test-mail', Auth.requireAdmin, async (req, res) => {
   const r = await Mailer.testMail(res.locals.lang, VER.version).catch((e) => ({ status: 'błąd: ' + e.message, to: null }));
   const msg = res.locals.t.app.admin.testMailResult + ': ' + res.locals.t.tr(r.status) + (r.to ? ' → ' + r.to : '');
   res.redirect('/admin?msg=' + encodeURIComponent(msg));
+});
+
+// Sporen van de demo-zaken uit de DB (events, comm_log, scores, acties) — leads blijven
+app.post('/admin/demo/usun', Auth.requireAdmin, async (req, res) => {
+  const M = res.locals.t.app.admin;
+  const r = await db.purgeDemo({ caseIds: D.DEMO_IDS, nips: D.DEMO_NIPS }).catch((e) => ({ error: e.message }));
+  const msg = r.error ? 'błąd: ' + r.error : res.locals.t.fill(M.demoDone, r);
+  res.redirect('/admin?msg=' + encodeURIComponent(msg));
+});
+
+// Leadbeheer: alle zgłoszenia uit de formulieren, met status, notitie en verwijderen
+const LEAD_STATUSES = ['nowy', 'kontakt', 'oferta', 'zaakceptowany', 'odrzucony', 'spam'];
+app.get('/admin/leady', Auth.requireAdmin, async (req, res) => {
+  const leads = await db.listLeads(300).catch(() => []);
+  const selId = parseInt(req.query.sel, 10);
+  const sel = leads.find((l) => l.id === selId) || leads[0] || null;
+  res.render('admin-leady', common({ page: 'admin', user: req.user, leads, sel, LEAD_STATUSES, flash: req.query.msg || null }));
+});
+
+app.post('/admin/leady/:id/usun', Auth.requireAdmin, async (req, res) => {
+  const L = res.locals.t.app.admin.leads;
+  const ok = await db.deleteLead(req.params.id).catch(() => false);
+  res.redirect('/admin/leady?msg=' + encodeURIComponent(ok ? res.locals.t.fill(L.deleted, { id: req.params.id }) : L.notFound));
+});
+
+app.post('/admin/leady/:id', Auth.requireAdmin, async (req, res) => {
+  const L = res.locals.t.app.admin.leads;
+  const status = LEAD_STATUSES.includes(req.body.status) ? req.body.status : 'nowy';
+  const admin_note = String(req.body.admin_note || '').trim().slice(0, 2000) || null;
+  const ok = await db.updateLead(req.params.id, { status, admin_note }).catch(() => false);
+  res.redirect('/admin/leady?sel=' + encodeURIComponent(req.params.id) + '&msg=' + encodeURIComponent(ok ? res.locals.t.fill(L.saved, { id: req.params.id }) : L.notFound));
 });
 
 // ── Marketing ────────────────────────────────────────────────────────────
@@ -472,9 +503,9 @@ app.get('/sitemap.xml', (req, res) => {
 app.get('/app', Auth.requireAuth, (req, res) => res.redirect('/app/sprawy'));
 
 app.get('/app/sprawy', Auth.requireAuth, async (req, res) => {
-  const sel = D.claims.find((c) => c.id === req.query.sel) || D.claims.find((c) => c.id === 'f2');
+  const sel = D.claims.find((c) => c.id === req.query.sel) || D.claims.find((c) => c.id === 'f2') || D.claims[0] || null;
   const done = D.getDone();
-  const comms = await db.listComms(sel.id, 6).catch(() => []);
+  const comms = sel ? await db.listComms(sel.id, 6).catch(() => []) : [];
   const flash = req.query.msg || null;
   const stats = {
     portfolio: D.claims.reduce((s, c) => s + c.amount, 0),

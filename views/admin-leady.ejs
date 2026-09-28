@@ -1,0 +1,86 @@
+<% var M = t.app.admin, L = M.leads, fill = t.fill;
+   var stTag = function(s) { return (!s || s === 'nowy' || s === 'zaakceptowany') ? 'tag-accent' : (s === 'kontakt' || s === 'oferta') ? 'tag-outline' : 'tag-neutral'; };
+   var stTxt = function(s) { return L.statuses[s] || s || L.statuses.nowy; };
+   var src = function(l) { return l.source === 'skup-wyrokow' ? L.srcWyrok : L.srcInvoice; };
+   var dateFmt = function(d) { return new Date(d).toLocaleString(t.locale, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }); };
+%>
+<%- include('partials/head', { title: t.app.titles.leads + ' — sprzedamfakture.pl' }) %>
+<%- include('partials/nav') %>
+
+<div class="two-pane">
+  <div class="pane-left">
+    <% if (flash) { %><div class="confirm" style="margin-bottom:16px"><span class="sq"></span><span><%= flash %></span></div><% } %>
+    <div class="kicker"><%= L.kicker %> · <span class="tnum"><%= leads.length %></span></div>
+    <p class="helper"><%= L.helper %></p>
+    <table class="cases">
+      <thead>
+        <tr><th><%= L.th.date %></th><th><%= L.th.source %></th><th><%= L.th.company %></th><th class="num"><%= L.th.amount %></th><th><%= L.th.status %></th></tr>
+      </thead>
+      <tbody>
+        <% if (!leads.length) { %><tr><td colspan="5" style="color:var(--ink-55); padding:18px 12px"><%= L.empty %></td></tr><% } %>
+        <% leads.forEach(function(l) { %>
+        <tr class="row <%= sel && l.id === sel.id ? 'selected' : '' %>" onclick="location.href='/admin/leady?sel=<%= l.id %>'">
+          <td class="tnum"><%= new Date(l.created_at).toLocaleDateString(t.locale, { day: 'numeric', month: 'short' }) %></td>
+          <td><span class="tag tag-outline"><%= src(l) %></span></td>
+          <td><%= l.company %></td>
+          <td class="num tnum"><%= D.fmt(Number(l.kwota) || 0) %></td>
+          <td><span class="tag <%= stTag(l.status) %>"><%= stTxt(l.status) %></span></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+
+  <aside class="pane-right detail">
+    <% if (!sel) { %>
+      <div class="kicker"><%= L.kicker %></div>
+      <p class="helper"><%= L.emptyDetail %></p>
+    <% } else { %>
+      <div class="kicker">#<%= sel.id %> · <%= src(sel) %> · <%= stTxt(sel.status) %></div>
+      <h2><%= sel.company %></h2>
+      <div class="amount tnum"><%= D.fmt(Number(sel.kwota) || 0) %></div>
+      <p class="meta tnum"><%= dateFmt(sel.created_at) %></p>
+
+      <hr class="rule">
+      <div class="field-row"><span class="fk"><%= L.f.email %></span><span><a href="mailto:<%= sel.email %>"><%= sel.email %></a></span></div>
+      <div class="field-row"><span class="fk"><%= L.f.tel %></span><span class="tnum"><% if (sel.tel) { %><a href="tel:<%= String(sel.tel).replace(/[^+\d]/g, '') %>"><%= sel.tel %></a><% } else { %>—<% } %></span></div>
+      <div class="field-row"><span class="fk"><%= L.f.nip %></span><span class="tnum"><%= sel.nip || '—' %></span></div>
+      <div class="field-row"><span class="fk"><%= L.f.forma %></span><span><%= sel.forma ? (t.app.formaLabels[sel.forma] || sel.forma) : '—' %></span></div>
+      <% if (sel.source !== 'skup-wyrokow') { %>
+      <div class="field-row"><span class="fk"><%= L.f.dni %></span><span class="tnum"><%= sel.dni != null ? t.app.days(Number(sel.dni)) : '—' %></span></div>
+      <div class="field-row"><span class="fk"><%= L.f.pct %></span><span class="tnum"><%= sel.oferta_pct != null ? sel.oferta_pct + '% · ' + D.fmt(Math.round((Number(sel.kwota) || 0) * sel.oferta_pct / 100)) : '—' %></span></div>
+      <% } %>
+      <% if (sel.note) { %>
+      <div class="label" style="margin-top:16px"><%= L.f.note %></div>
+      <p style="font-size:13.5px; white-space:pre-wrap; margin:0 0 10px"><%= String(sel.note).split(' · ').join('\n') %></p>
+      <% } %>
+      <p class="helper" style="margin:10px 0 0"><%= L.attachHint %></p>
+
+      <hr class="rule">
+      <form class="calc-form" method="post" action="/admin/leady/<%= sel.id %>" style="margin:0; padding:0; border:0; box-shadow:none; background:transparent">
+        <div class="fg">
+          <label for="status"><%= L.statusLabel %></label>
+          <select id="status" name="status">
+            <% LEAD_STATUSES.forEach(function(s) { %><option value="<%= s %>" <%= (sel.status || 'nowy') === s ? 'selected' : '' %>><%= L.statuses[s] %></option><% }) %>
+          </select>
+        </div>
+        <div class="fg">
+          <label for="admin_note"><%= L.noteLabel %></label>
+          <textarea id="admin_note" name="admin_note" rows="4" placeholder="<%= L.notePh %>"><%= sel.admin_note || '' %></textarea>
+        </div>
+        <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center">
+          <button class="btn chan-btn" type="submit"><%= L.save %></button>
+          <a class="btn btn-secondary chan-btn" href="mailto:<%= sel.email %>?subject=<%= encodeURIComponent('sprzedamfakture.pl — ' + sel.company) %>"><%= L.mailBtn %></a>
+        </div>
+      </form>
+      <% if (sel.updated_at) { %><p class="helper" style="margin:10px 0 0"><%= L.f.updated %>: <%= dateFmt(sel.updated_at) %></p><% } %>
+
+      <hr class="rule">
+      <form method="post" action="/admin/leady/<%= sel.id %>/usun" onsubmit="return confirm('<%= L.delConfirm %>')">
+        <button class="btn btn-ghost chan-btn" type="submit" style="color:var(--danger)"><%= L.del %></button>
+      </form>
+    <% } %>
+  </aside>
+</div>
+
+<%- include('partials/footer') %>

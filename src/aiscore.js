@@ -171,6 +171,11 @@ async function init(claims) {
     if (saved[c.nip] && saved[c.nip].signals) c.ai = saved[c.nip];
     await scoreClaim(c);
   }
+  if (!claims.length) {
+    // Geen dłużnicy (DEMO_CASES=0 en nog geen echte zaken): geen loop, geen systeem-event
+    console.log('AIScore: geen zaken om te monitoren — monitor niet gestart');
+    return;
+  }
   await db.insertEvent({
     nip: null, debtor: null, type: 'system', dedupe: true,
     title: `Agent AI: monitoring uruchomiony (${claims.length} dłużników, interwał ${Math.round(MONITOR_INTERVAL_MS / 1000)}s)`,

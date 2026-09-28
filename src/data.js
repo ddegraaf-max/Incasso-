@@ -3,7 +3,13 @@
 const INTEREST_RATE = 0.14;
 const SERVICE_FEE = parseInt(process.env.SERVICE_FEE || '99', 10);
 
-const claims = [
+// Demo-zaken (fictieve dłużnicy, hard-coded) — alleen buiten productie, of expliciet met
+// DEMO_CASES=1. DEMO_CASES=0 zet ze overal uit (panel, wykup, agent-feed, admin, monitor).
+const DEMO_CASES = process.env.DEMO_CASES !== undefined
+  ? process.env.DEMO_CASES !== '0'
+  : process.env.NODE_ENV !== 'production';
+
+const DEMO_CLAIMS = [
   { id: 'f6', tel: '+48 61 852 33 10', email: 'ksiegowosc@betmix.pl', nr: 'FV 2026/07/233', debtor: 'Betmix Beton Sp. z o.o.', nip: '527-020-38-15', amount: 23400, days: 5, phase: 'Nowa · analiza AI', tag: 'tag-outline', score: 'B', pct: 86, sim: { histDays: 20, krz: null, ageYears: 9 },
     timeline: [
       { text: 'Faktura zaimportowana z KSeF', date: 'dziś 12:14' },
@@ -55,6 +61,7 @@ const toneOpeners = {
 };
 
 function thread(tone) {
+  if (!DEMO_CASES) return [];
   return [
     { label: 'Agent AI · e-mail · 18 cze', text: toneOpeners[tone] || toneOpeners['Uprzejmy'], agent: true },
     { label: 'Dłużnik · odpowiedź · 30 cze', text: 'Mamy przejściowe problemy z płynnością. Czy możliwe jest rozłożenie na raty?', agent: false },
@@ -63,7 +70,7 @@ function thread(tone) {
   ];
 }
 
-const feed = [
+const DEMO_FEED = [
   { time: '9:12', text: 'Wysłano uprzejme przypomnienie e-mail — otwarte po 11 minutach', ref: 'FV 2026/07/156 · Kamex Instalacje' },
   { time: '9:40', text: 'Rozmowa AI: dłużnik potwierdza raty 3× — harmonogram wysłany do akceptacji', ref: 'FV 2026/07/114 · Stalmet' },
   { time: '10:05', text: 'Wystawiono notę obciążeniową: rekompensata 300 zł + odsetki 597 zł', ref: 'FV 2026/06/089 · TransLog Polska' },
@@ -71,6 +78,12 @@ const feed = [
   { time: '12:14', text: 'Nowa faktura z KSeF — sprawa założona automatycznie, scoring B', ref: 'FV 2026/07/233 · Betmix Beton' },
   { time: '14:00', text: 'Ostatnie wezwanie przed wpisem do KRD — czeka na Twoją zgodę', ref: 'FV 2026/06/089 · TransLog Polska', planned: true },
 ];
+
+const claims = DEMO_CASES ? DEMO_CLAIMS : [];
+const feed = DEMO_CASES ? DEMO_FEED : [];
+// Sleutels van de demo-zaken — om hun sporen (events, comm_log, scores, acties) uit de DB te halen
+const DEMO_IDS = DEMO_CLAIMS.map((c) => c.id);
+const DEMO_NIPS = DEMO_CLAIMS.map((c) => c.nip);
 
 // ── helpers ──────────────────────────────────────────────────────────────
 const fmt = (n) => n.toLocaleString('pl-PL') + ' zł';
@@ -110,6 +123,7 @@ async function initActions() { done = await db.loadActions().catch(() => ({})); 
 
 module.exports = {
   INTEREST_RATE, SERVICE_FEE, EUR_PLN, claims, toneOpeners, thread, feed,
+  DEMO_CASES, DEMO_IDS, DEMO_NIPS,
   fmt, fmtN, interest, interestExact, rekomp, rekompZl, daysFmt, przedawnienie,
   getDone: () => done,
   setDone: (id, action) => { done[id] = action; db.saveAction(id, action).catch(() => {}); },
