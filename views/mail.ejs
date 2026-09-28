@@ -1,0 +1,70 @@
+<%
+// E-mailcomposer: vanuit een lead (aan de klant) of een zaak (aan dłużnik of klant).
+// Verwacht: ctx {label}, action, backUrl, base, to, subject, body, tpl, tl, aud, audiences [{key,label}],
+// templates [{key,name}], history, error, fromAddr, replyTo, mailOk, live.
+var Mm = t.app.mail, fill = t.fill;
+var mkUrl = function (over) {
+  var q = { tpl: tpl, tl: tl, aud: aud };
+  Object.keys(over).forEach(function (k) { q[k] = over[k]; });
+  var parts = [];
+  Object.keys(q).forEach(function (k) { if (q[k]) parts.push(k + '=' + encodeURIComponent(q[k])); });
+  return base + (parts.length ? '?' + parts.join('&') : '');
+};
+%>
+<%- include('partials/head', { title: Mm.title + ' — sprzedamfakture.pl' }) %>
+<%- include('partials/nav') %>
+
+<div class="two-pane">
+  <div class="pane-left">
+    <div class="kicker"><%= Mm.kicker %> · <%= ctx.label %></div>
+    <p class="helper"><%= Mm.hint %></p>
+    <% if (error) { %><div class="form-error" role="alert"><%= error %></div><% } %>
+    <form class="calc-form flat" method="post" action="<%= action %>">
+      <input type="hidden" name="tpl" value="<%= tpl %>">
+      <input type="hidden" name="tl" value="<%= tl %>">
+      <input type="hidden" name="aud" value="<%= aud %>">
+      <div class="fg"><label for="m-to"><%= Mm.to %></label><input id="m-to" name="to" type="email" value="<%= to %>" required></div>
+      <div class="fg"><label for="m-subject"><%= Mm.subject %></label><input id="m-subject" name="subject" value="<%= subject %>" required maxlength="200"></div>
+      <div class="fg"><label for="m-body"><%= Mm.body %></label><textarea id="m-body" name="body" rows="18" required><%= body %></textarea></div>
+      <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center">
+        <button class="btn" type="submit"><%= Mm.send %></button>
+        <a class="btn btn-ghost chan-btn" href="<%= backUrl %>"><%= Mm.cancel %></a>
+      </div>
+      <p class="helper" style="margin:12px 0 0"><%= Mm.from %>: <span class="tnum"><%= fromAddr %></span> · <%= Mm.replyTo %>: <span class="tnum"><%= replyTo || '—' %></span></p>
+      <% if (!mailOk) { %><p class="field-err" style="margin-top:6px"><%= Mm.noResend %></p><% } else if (!live) { %><p class="field-err" style="margin-top:6px"><%= Mm.demoSim %></p><% } %>
+    </form>
+  </div>
+
+  <aside class="pane-right">
+    <div class="kicker"><%= Mm.templates %></div>
+    <p class="helper"><%= Mm.tplHelp %></p>
+    <div class="label"><%= Mm.lang %></div>
+    <div class="tone-switch">
+      <a href="<%= mkUrl({ tl: 'pl' }) %>" class="<%= tl === 'pl' ? 'active' : '' %>">PL</a>
+      <a href="<%= mkUrl({ tl: 'en' }) %>" class="<%= tl === 'en' ? 'active' : '' %>">EN</a>
+    </div>
+    <% if (audiences.length > 1) { %>
+    <div class="label" style="margin-top:14px"><%= Mm.audience %></div>
+    <div class="tone-switch">
+      <% audiences.forEach(function (a) { %><a href="<%= mkUrl({ aud: a.key, tpl: '' }) %>" class="<%= aud === a.key ? 'active' : '' %>"><%= a.label %></a><% }) %>
+    </div>
+    <% } %>
+    <div class="label" style="margin-top:14px"><%= Mm.tplLabel %></div>
+    <ul class="timeline">
+      <% templates.forEach(function (tp) { %>
+      <li><span class="dot"></span><span class="t"><a href="<%= mkUrl({ tpl: tp.key }) %>" style="<%= tp.key === tpl ? 'font-weight:800' : '' %>"><%= tp.name %></a></span></li>
+      <% }) %>
+    </ul>
+    <% if (history && history.length) { %>
+    <hr class="rule">
+    <div class="label"><%= Mm.history %></div>
+    <ul class="timeline">
+      <% history.forEach(function (k) { %>
+      <li><span class="dot"></span><span class="t"><%= k.subject || '—' %> · <%= t.tr(k.status) %></span><span class="d tnum"><%= new Date(k.created_at).toLocaleDateString(t.locale, { day: 'numeric', month: 'short' }) %></span></li>
+      <% }) %>
+    </ul>
+    <% } %>
+  </aside>
+</div>
+
+<%- include('partials/footer') %>

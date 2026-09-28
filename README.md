@@ -95,7 +95,12 @@ Instellen:
 4. **Controleren**: `/admin` → blok *Integracje* → knop **Wyślij testowy e-mail** → status verschijnt bovenaan (`wysłano` of de foutmelding van Resend, bijv. domein niet geverifieerd). `/health` toont `mail`, `mailFrom`, `mailNotify`.
 5. **Let op**: Resend verzendt alleen. Antwoorden van klanten komen binnen op `MAIL_NOTIFY` (reply-to). Wil je post op `kontakt@sprzedamfakture.pl` ontvangen, regel dan een mailbox of forwarding bij je domeinprovider.
 
-Mails naar **dłużnicy** (agent-knop E-mail/SMS in het panel) gaan pas echt met `LIVE_COMMS=1` — anders symulacja, ook mét keys. De demo-zaken hebben fictieve adressen; zet dit pas aan met echte zaken.
+Mails naar **dłużnicy** (agent-knop E-mail/SMS in het panel) gaan bij **echte zaken** echt zodra `RESEND_API_KEY` er is; bij demo-zaken alleen met `LIVE_COMMS=1` (fictieve adressen). Afzender `FROM_EMAIL` (default windykacja@sprzedamfakture.pl, moet op het geverifieerde Resend-domein staan), reply-to `MAIL_NOTIFY`.
+
+## Mailen vanuit het panel (composer)
+- **Vanuit een lead** (`/admin/leady` → *E-mail schrijven* → `/admin/leady/:id/mail`): mail aan de aanvrager, afzender `MAIL_FROM`, huisstijl-layout, reply-to `MAIL_NOTIFY`. Sjablonen PL/EN in `src/mailtpl.js` (oferta wykupu, prośba o dokumenty, prośba o kontakt, odmowa, oferta skupu wyroku, leeg) met de bedragen, het aanbodpercentage en de dłużnik uit de lead ingevuld; ondertekening uit `src/company.js`. Verzonden mails staan onder de lead (log `comm_log` met sleutel `L<id>`) en als event.
+- **Vanuit een zaak** (`/app/sprawy` → *E-mail schrijven* → `/app/sprawy/:id/mail`): aan de **dłużnik** (afzender `FROM_EMAIL`, sjablonen = de drie tonen van de agent, AI-tekst als `ANTHROPIC_API_KEY` er is, altijd Pools) of — alleen admin — aan de **klant** (afzender `MAIL_FROM`, sjabloon *Aktualizacja sprawy*). Gelogd in `comm_log` en als event op de zaak; een mail aan de dłużnik zet de fase bij zoals de agent-knop.
+- Zonder `RESEND_API_KEY` wordt alles alleen gelogd (status *symulacja*). Antwoorden van ontvangers komen aan op `MAIL_NOTIFY`; het pakket heeft geen inbox.
 
 ## Anti-bot (Cloudflare Turnstile)
 Het leadformulier en de registratie hebben een Turnstile-widget (naast de honeypot). Staat automatisch aan zodra beide variabelen in Railway staan; zonder keys geen widget en geen verificatie.

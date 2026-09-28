@@ -71,6 +71,14 @@ async function send({ to, subject, text, html, replyTo, from, attachments }) {
   }
 }
 
+// Platte tekst (composer) → alinea's in de huisstijl-layout; reply-to standaard MAIL_NOTIFY
+function textToHtml(text) {
+  return String(text || '').replace(/\r\n/g, '\n').split(/\n{2,}/).map((p) => '<p style="margin:0 0 14px">' + esc(p).replace(/\n/g, '<br>') + '</p>').join('');
+}
+async function sendPlain({ to, subject, text, replyTo, from, lang }) {
+  return send({ to, subject, text, html: layout(textToHtml(text), lang, String(text || '').slice(0, 120)), replyTo: replyTo || MAIL_NOTIFY || undefined, from });
+}
+
 // ── HTML-layout (eenvoudig, inline styles — werkt in elke mailclient) ────
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 function layout(bodyHtml, lang, preheader) {
@@ -254,4 +262,4 @@ async function testMail(lang, version) {
   return { ...r, to: MAIL_NOTIFY };
 }
 
-module.exports = { configured, status, send, leadConfirm, leadNotify, wyrokConfirm, wyrokNotify, welcome, testMail, MAIL_FROM, MAIL_NOTIFY };
+module.exports = { configured, status, send, sendPlain, leadConfirm, leadNotify, wyrokConfirm, wyrokNotify, welcome, testMail, MAIL_FROM, MAIL_NOTIFY };

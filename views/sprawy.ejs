@@ -82,6 +82,7 @@
       <button class="btn btn-secondary chan-btn" type="submit" form="chan-email" <%= sel.real && !sel.email ? 'disabled' : '' %>><%= S.emailBtn %></button>
       <button class="btn btn-secondary chan-btn" type="submit" form="chan-sms" <%= sel.real && !sel.tel ? 'disabled' : '' %>><%= S.smsBtn %></button>
       <a class="btn chan-btn" href="/app/sprawy/<%= sel.id %>/rozmowa"><%= S.callBtn %></a>
+      <a class="btn btn-secondary chan-btn" href="/app/sprawy/<%= sel.id %>/mail"><%= t.app.mail.composeBtn %></a>
     </div>
     <p class="helper" style="margin-top:8px; margin-bottom:0"><%= S.channelsHelper %></p>
     <% if (sel.real && (!sel.email || !sel.tel)) { %><p class="field-err" style="margin-top:6px"><%= R.noContact %></p><% } %>

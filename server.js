@@ -14,6 +14,7 @@ const Articles = require('./src/articles');
 const Company = require('./src/company');
 const Research = require('./src/research');
 const MD = require('./src/md');
+const MailTpl = require('./src/mailtpl');
 const pgSession = require('connect-pg-simple')(session);
 const compression = require('compression');
 const VER = require('./src/version');
@@ -313,7 +314,91 @@ app.get('/admin/leady', Auth.requireAdmin, async (req, res) => {
   const reportMap = await db.latestReports().catch(() => ({}));
   const researchPending = sel ? Research.isPending(sel.id) : false;
   const pendingIds = leads.filter((l) => Research.isPending(l.id)).map((l) => l.id);
-  res.render('admin-leady', common({ page: 'admin', user: req.user, leads, sel, files, fileCounts, report, reportMap, researchPending, pendingIds, LEAD_STATUSES, flash: req.query.msg || null }));
+  const mails = sel ? await db.listComms('L' + sel.id, 10).catch(() => []) : [];
+  res.render('admin-leady', common({ page: 'admin', user: req.user, leads, sel, files, fileCounts, report, reportMap, researchPending, pendingIds, mails, LEAD_STATUSES, flash: req.query.msg || null }));
+});
+
+// ── E-mailcomposer ───────────────────────────────────────────────────────
+// Vanuit een lead (admin → aanvrager) of een zaak (admin/eigenaar → dłużnik of klant).
+// Sjablonen: src/mailtpl.js (klant, PL/EN) en Comms.composeEmail (dłużnik, tonen).
+const EMAIL_OK = (s) => EMAIL_RE.test(String(s || '').trim());
+function tplLang(req, fallback) { return req.query.tl === 'en' || req.body?.tl === 'en' ? 'en' : (req.query.tl === 'pl' || req.body?.tl === 'pl' ? 'pl' : fallback); }
+
+async function renderLeadComposer(req, res, lead, over = {}) {
+  const Mm = res.locals.t.app.mail;
+  const tl = over.tl || tplLang(req, Research.parseNote(lead).lang === 'en' ? 'en' : 'pl');
+  const tpl = over.tpl !== undefined ? over.tpl : String(req.query.tpl || '');
+  const draft = tpl ? MailTpl.forLead(lead, tpl, tl) : { subject: '', body: '' };
+  const history = await db.listComms('L' + lead.id, 10).catch(() => []);
+  res.status(over.error ? 400 : 200).render('mail', common({
+    page: 'admin', user: req.user, ctx: { label: lead.company + ' · #' + lead.id },
+    action: '/admin/leady/' + lead.id + '/mail', backUrl: '/admin/leady?sel=' + lead.id, base: '/admin/leady/' + lead.id + '/mail',
+    to: over.to !== undefined ? over.to : (lead.email || ''), subject: over.subject !== undefined ? over.subject : draft.subject, body: over.body !== undefined ? over.body : draft.body,
+    tpl, tl, aud: 'klient', audiences: [], templates: MailTpl.list('lead', tl, lead.source === 'skup-wyrokow'), history,
+    error: over.error || null, fromAddr: Mailer.MAIL_FROM, replyTo: Mailer.MAIL_NOTIFY, mailOk: Mailer.configured(), live: true,
+  }));
+}
+
+app.get('/admin/leady/:id/mail', Auth.requireAdmin, async (req, res) => {
+  const lead = await db.getLead(req.params.id).catch(() => null);
+  if (!lead) return res.redirect('/admin/leady');
+  renderLeadComposer(req, res, lead);
+});
+
+app.post('/admin/leady/:id/mail', Auth.requireAdmin, async (req, res) => {
+  const Mm = res.locals.t.app.mail;
+  const lead = await db.getLead(req.params.id).catch(() => null);
+  if (!lead) return res.redirect('/admin/leady');
+  const to = String(req.body.to || '').trim(), subject = String(req.body.subject || '').trim().slice(0, 200), body = String(req.body.body || '').trim().slice(0, 20000);
+  const tl = tplLang(req, 'pl'), tpl = String(req.body.tpl || '');
+  if (!to || !subject || !body) return renderLeadComposer(req, res, lead, { to, subject, body, tl, tpl, error: Mm.missing });
+  if (!EMAIL_OK(to)) return renderLeadComposer(req, res, lead, { to, subject, body, tl, tpl, error: Mm.badTo });
+  const r = await Comms.sendLeadMail(lead, { to, subject, body, lang: tl }).catch((e) => ({ ok: false, status: 'błąd: ' + e.message }));
+  const msg = r.simulated ? res.locals.t.fill(Mm.simulated, { to }) : (r.ok ? res.locals.t.fill(Mm.sent, { to }) : res.locals.t.fill(Mm.failed, { status: res.locals.t.tr(r.status) }));
+  res.redirect('/admin/leady?sel=' + lead.id + '&msg=' + encodeURIComponent(msg));
+});
+
+async function renderCaseComposer(req, res, c, over = {}) {
+  const Mm = res.locals.t.app.mail;
+  const isAdmin = req.user.role === 'admin';
+  const audiences = isAdmin ? [{ key: 'dluznik', label: Mm.audDebtor }, { key: 'klient', label: Mm.audClient }] : [{ key: 'dluznik', label: Mm.audDebtor }];
+  const aud = over.aud || (req.query.aud === 'klient' && isAdmin ? 'klient' : 'dluznik');
+  const tl = over.tl || tplLang(req, 'pl');
+  const tpl = over.tpl !== undefined ? over.tpl : String(req.query.tpl || '');
+  let draft = { subject: '', body: '' };
+  if (tpl && aud === 'dluznik' && TONES.includes(tpl)) draft = await Comms.composeEmail(c, tpl).catch(() => ({ subject: '', body: '' }));
+  else if (tpl && aud === 'klient') draft = MailTpl.forCase(c, tpl, tl);
+  const templates = aud === 'dluznik' ? TONES.map((k) => ({ key: k, name: res.locals.t.app.tones[k] + ' · PL' })) : MailTpl.list('case', tl, false);
+  const history = await db.listComms(c.id, 10).catch(() => []);
+  res.status(over.error ? 400 : 200).render('mail', common({
+    page: 'app', tab: 'sprawy', user: req.user, ctx: { label: c.nr + ' · ' + c.debtor },
+    action: '/app/sprawy/' + c.id + '/mail', backUrl: '/app/sprawy?sel=' + c.id, base: '/app/sprawy/' + c.id + '/mail',
+    to: over.to !== undefined ? over.to : (aud === 'klient' ? (c.clientEmail || '') : (c.email || '')), subject: over.subject !== undefined ? over.subject : draft.subject, body: over.body !== undefined ? over.body : draft.body,
+    tpl, tl, aud, audiences, templates, history,
+    error: over.error || null, fromAddr: aud === 'klient' ? Mailer.MAIL_FROM : Comms.FROM_EMAIL, replyTo: Mailer.MAIL_NOTIFY, mailOk: Mailer.configured(), live: aud === 'klient' || c.real || Comms.LIVE_COMMS,
+  }));
+}
+
+app.get('/app/sprawy/:id/mail', Auth.requireAuth, async (req, res) => {
+  const c = caseById(req.params.id, req.user);
+  if (!c) return res.redirect('/app/sprawy');
+  renderCaseComposer(req, res, c);
+});
+
+app.post('/app/sprawy/:id/mail', Auth.requireAuth, async (req, res) => {
+  const Mm = res.locals.t.app.mail;
+  const c = caseById(req.params.id, req.user);
+  if (!c) return res.redirect('/app/sprawy');
+  const isAdmin = req.user.role === 'admin';
+  const aud = req.body.aud === 'klient' && isAdmin ? 'klient' : 'dluznik';
+  const to = String(req.body.to || '').trim(), subject = String(req.body.subject || '').trim().slice(0, 200), body = String(req.body.body || '').trim().slice(0, 20000);
+  const tl = tplLang(req, 'pl'), tpl = String(req.body.tpl || '');
+  if (!to || !subject || !body) return renderCaseComposer(req, res, c, { to, subject, body, tl, tpl, aud, error: Mm.missing });
+  if (!EMAIL_OK(to)) return renderCaseComposer(req, res, c, { to, subject, body, tl, tpl, aud, error: Mm.badTo });
+  const tone = aud === 'dluznik' && TONES.includes(tpl) ? tpl : null;
+  const r = await Comms.sendComposed(c, { to, subject, body, tone, audience: aud, lang: tl }).catch((e) => ({ status: 'błąd: ' + e.message }));
+  const msg = r.status === 'symulacja' ? res.locals.t.fill(Mm.simulated, { to }) : (r.status === 'wysłano' ? res.locals.t.fill(Mm.sent, { to }) : res.locals.t.fill(Mm.failed, { status: res.locals.t.tr(r.status) }));
+  res.redirect('/app/sprawy?sel=' + encodeURIComponent(c.id) + '&msg=' + encodeURIComponent(msg));
 });
 
 // Onderzoeksverslag (opnieuw) opstellen — draait op de achtergrond, de pagina vernieuwt zichzelf

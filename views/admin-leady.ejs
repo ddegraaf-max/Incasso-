@@ -79,10 +79,18 @@
         </div>
         <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center">
           <button class="btn chan-btn" type="submit"><%= L.save %></button>
-          <a class="btn btn-secondary chan-btn" href="mailto:<%= sel.email %>?subject=<%= encodeURIComponent('sprzedamfakture.pl — ' + sel.company) %>"><%= L.mailBtn %></a>
+          <a class="btn btn-secondary chan-btn" href="/admin/leady/<%= sel.id %>/mail"><%= L.mailBtn %></a>
         </div>
       </form>
       <% if (sel.updated_at) { %><p class="helper" style="margin:10px 0 0"><%= L.f.updated %>: <%= dateFmt(sel.updated_at) %></p><% } %>
+      <% if (mails && mails.length) { %>
+      <div class="label" style="margin-top:14px"><%= t.app.mail.history %></div>
+      <ul class="timeline">
+        <% mails.forEach(function (k) { %>
+        <li><span class="dot"></span><span class="t"><%= k.subject || '—' %> · <%= t.tr(k.status) %></span><span class="d tnum"><%= new Date(k.created_at).toLocaleDateString(t.locale, { day: 'numeric', month: 'short' }) %></span></li>
+        <% }) %>
+      </ul>
+      <% } %>
 
       <hr class="rule">
       <div class="label" style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:center"><span><%= L.research.label %></span>

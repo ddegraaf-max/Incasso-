@@ -1,7 +1,7 @@
 // sprzedamfakture.pl — communicatielaag van de agent
 // E-mail: Resend via mailer.js (RESEND_API_KEY). SMS: SMSAPI.pl (SMSAPI_TOKEN).
-// LIVE_COMMS=1 is vereist om écht naar dłużnicy te sturen — anders symulacja, ook mét keys
-// (de demo-zaken hebben fictieve adressen/nummers).
+// Echte zaken (c.real) sturen écht zodra de keys er zijn; demo-zaken alleen met LIVE_COMMS=1
+// (ze hebben fictieve adressen/nummers).
 // Teksten: Anthropic API (ANTHROPIC_API_KEY) of professionele PL-templates.
 // Zonder keys: alles werkt in symulacja-modus, volledig gelogd — de flow is
 // identiek, alleen de laatste verzendstap is dan een no-op.
@@ -113,8 +113,8 @@ async function sendEmail(c, tone) {
   const msg = await composeEmail(c, tone);
   let status = 'symulacja';
   if (!c.email) status = 'brak adresata';
-  else if (LIVE_COMMS) {
-    const r = await Mailer.send({ from: FROM_EMAIL, to: c.email, subject: msg.subject, text: msg.body });
+  else if (LIVE_COMMS || c.real) {
+    const r = await Mailer.send({ from: FROM_EMAIL, to: c.email, subject: msg.subject, text: msg.body, replyTo: Mailer.MAIL_NOTIFY || undefined });
     status = r.status;
   }
   await db.logComm({ case_id: c.id, channel: 'email', tone, subject: msg.subject, body: msg.body, status });
@@ -138,7 +138,7 @@ async function sendSms(c, tone) {
   const body = gsmSafe((TPL.sms[tone] || TPL.sms.Uprzejmy)(c, f));
   let status = 'symulacja';
   if (!c.tel) status = 'brak adresata';
-  else if (LIVE_COMMS && SMSAPI_TOKEN) {
+  else if ((LIVE_COMMS || c.real) && SMSAPI_TOKEN) {
     try {
       const params = new URLSearchParams({ to: c.tel.replace(/\s/g, ''), from: SMS_FROM, message: body, format: 'json' });
       const r = await fetch('https://api.smsapi.pl/sms.do', {
@@ -157,6 +157,34 @@ async function sendSms(c, tone) {
   }).catch(() => {});
   if (status !== 'brak adresata') await bumpPhase(c, tone);
   return { body, status };
+}
+
+// ── Composer: zelf geschreven e-mail vanuit een zaak (aan dłużnik of klant) ──
+async function sendComposed(c, { to, subject, body, tone, audience, lang }) {
+  let status;
+  const toDebtor = audience !== 'klient';
+  if (!to) status = 'brak adresata';
+  else if (toDebtor && !(LIVE_COMMS || c.real)) status = 'symulacja';
+  else if (toDebtor) status = (await Mailer.send({ from: FROM_EMAIL, to, subject, text: body, replyTo: Mailer.MAIL_NOTIFY || undefined })).status;
+  else status = (await Mailer.sendPlain({ to, subject, text: body, lang })).status;
+  await db.logComm({ case_id: c.id, channel: 'email', tone: tone || null, subject, body, status });
+  await db.insertEvent({
+    nip: c.nip, debtor: c.debtor, type: 'email', case_id: c.id,
+    title: (toDebtor ? 'E-mail' : 'E-mail do klienta') + (tone ? ` (${tone})` : '') + `: ${subject} — ${status}`, source: 'panel klienta',
+  }).catch(() => {});
+  if (toDebtor && status !== 'brak adresata') await bumpPhase(c, tone || 'Uprzejmy');
+  return { status };
+}
+
+// Composer vanuit een lead: mail aan de aanvrager (klant); log onder sleutel L<id>
+async function sendLeadMail(lead, { to, subject, body, lang }) {
+  const r = await Mailer.sendPlain({ to, subject, text: body, lang });
+  await db.logComm({ case_id: 'L' + lead.id, channel: 'email', tone: null, subject, body, status: r.status });
+  await db.insertEvent({
+    nip: lead.nip || null, debtor: lead.company || null, type: 'email',
+    title: `E-mail do klienta (${to}): ${subject} — ${r.status}`, source: 'panel admin',
+  }).catch(() => {});
+  return r;
 }
 
 // ── Belvoorbereiding + resultaat ─────────────────────────────────────────
@@ -188,4 +216,4 @@ async function logCall(c, outcome, note, promisedDate) {
   return detail;
 }
 
-module.exports = { sendEmail, sendSms, prepareCall, logCall, OUTCOMES, composeEmail };
+module.exports = { sendEmail, sendSms, sendComposed, sendLeadMail, prepareCall, logCall, OUTCOMES, composeEmail, FROM_EMAIL, LIVE_COMMS };

@@ -100,6 +100,14 @@ const pl = {
     declined: 'Oferta odrzucona · windykacja trwa', acceptAnyway: 'Jednak przyjmij', empty: 'Brak wierzytelności do wykupu.',
     note: 'Cesja obejmuje należność główną i odsetki. Rekompensata (170/300/430 zł) jest z mocy ustawy niezbywalna — przy windykacji serwisowej agent dochodzi jej w Twoim imieniu.',
   },
+  mail: {
+    title: 'Nowa wiadomość', kicker: 'E-mail', hint: 'Treść możesz dowolnie edytować przed wysłaniem. Odpowiedzi trafią na adres MAIL_NOTIFY (Twoja skrzynka).',
+    to: 'Do', subject: 'Temat', body: 'Treść', send: 'Wyślij', cancel: 'Anuluj', from: 'Nadawca', replyTo: 'Odpowiedzi na',
+    templates: 'Szablony', tplHelp: 'Kliknij szablon — temat i treść wypełnią się danymi zgłoszenia lub sprawy. Szablony dla dłużnika są po polsku.', lang: 'Język szablonu', tplLabel: 'Szablon', audience: 'Adresat', audDebtor: 'Dłużnik', audClient: 'Klient',
+    history: 'Wysłane e-maile', noResend: 'Brak RESEND_API_KEY — wiadomość zostanie tylko zalogowana (symulacja).', demoSim: 'Sprawa demo: wysyłka do dłużnika tylko w symulacji (LIVE_COMMS=1 wymusza).',
+    sent: 'E-mail wysłany do {to}', simulated: 'E-mail zalogowany jako symulacja — {to}', failed: 'Wysyłka nie powiodła się: {status}', missing: 'Uzupełnij adresata, temat i treść.', badTo: 'Nieprawidłowy adres e-mail.',
+    composeBtn: 'Napisz e-mail',
+  },
   rozmowa: {
     kicker: 'Przygotowanie rozmowy · {nr} · AIScore {score}', meta: '{amount} · {days} po terminie · odsetki {interest} · rekompensata {rekomp}',
     goal: 'Cel rozmowy', opening: 'Otwarcie', args: 'Argumenty', objections: 'Reakcje na wymówki', closing: 'Zamknięcie', scriptNote: '',
@@ -223,7 +231,7 @@ const FRAGMENTS = [
   ['Sprawa założona z leada', 'Case opened from lead'], ['Sprawa założona ręcznie', 'Case opened manually'], ['Dane sprawy zaktualizowane', 'Case details updated'],
   ['Zlecono windykację', 'Collection ordered'], ['Oferta wykupu przyjęta', 'Buy-out offer accepted'], ['Sprawa zamknięta i odpisana', 'Case closed and written off'],
   ['brak NIP', 'no NIP'], ['Nowe zgłoszenie skupu wyroku:', 'New judgment buy-out request:'], ['Oferta wykupu odrzucona przez klienta', 'Buy-out offer declined by client'],
-  ['panel klienta', 'client panel'], ['Agent AI:', 'AI agent:'], ['sprawa', 'case'],
+  ['panel klienta', 'client panel'], ['panel admin', 'admin panel'], ['E-mail do klienta', 'E-mail to client'], ['Agent AI:', 'AI agent:'], ['sprawa', 'case'],
 ];
 
 // Vertaler voor dynamische PL-teksten: exact woordenboek → regels met getallen → losse fragmenten → maanden/dagen
@@ -308,7 +316,7 @@ const FRAGMENTS_NL = [
   ['Sprawa założona z leada', 'Zaak aangemaakt uit lead'], ['Sprawa założona ręcznie', 'Zaak handmatig aangemaakt'], ['Dane sprawy zaktualizowane', 'Zaakgegevens bijgewerkt'],
   ['Zlecono windykację', 'Incasso opgedragen'], ['Oferta wykupu przyjęta', 'Opkoopaanbod geaccepteerd'], ['Oferta wykupu odrzucona przez klienta', 'Opkoopaanbod afgewezen door klant'],
   ['Sprawa zamknięta i odpisana', 'Zaak gesloten en afgeboekt'], ['brak NIP', 'geen NIP'], ['Nowe zgłoszenie skupu wyroku:', 'Nieuwe aanvraag opkoop vonnis:'],
-  ['panel klienta', 'klantenpanel'], ['Agent AI:', 'AI-agent:'], ['sprawa', 'zaak'],
+  ['panel klienta', 'klantenpanel'], ['panel admin', 'adminpanel'], ['E-mail do klienta', 'E-mail aan klant'], ['Agent AI:', 'AI-agent:'], ['sprawa', 'zaak'],
 ];
 const trNl = makeTr({ dict: DICT_NL, rules: RULES_NL, fragments: FRAGMENTS_NL, months: MONTHS_NL, za: 'over $1 dagen', dni: '$1 dagen' });
 
@@ -407,6 +415,14 @@ const nl = {
     sold: 'Verkocht · uitbetaling binnen 24 u', accept: 'Accepteren', decline: 'Afwijzen',
     declined: 'Aanbod afgewezen · incasso loopt door', acceptAnyway: 'Toch accepteren', empty: 'Geen vorderingen voor opkoop.',
     note: 'De cessie omvat hoofdsom en rente. De forfaitaire vergoeding (170/300/430 zł) is wettelijk niet overdraagbaar — bij service-incasso vordert de agent die in jouw naam.',
+  },
+  mail: {
+    title: 'Nieuw bericht', kicker: 'E-mail', hint: 'Je kunt de tekst vrij bewerken voordat je verstuurt. Antwoorden komen binnen op het MAIL_NOTIFY-adres (jouw mailbox).',
+    to: 'Aan', subject: 'Onderwerp', body: 'Bericht', send: 'Versturen', cancel: 'Annuleren', from: 'Afzender', replyTo: 'Antwoorden naar',
+    templates: 'Sjablonen', tplHelp: 'Klik op een sjabloon — onderwerp en tekst worden gevuld met de gegevens van de aanvraag of zaak. Sjablonen voor de debiteur zijn in het Pools.', lang: 'Taal van het sjabloon', tplLabel: 'Sjabloon', audience: 'Ontvanger', audDebtor: 'Debiteur', audClient: 'Klant',
+    history: 'Verzonden e-mails', noResend: 'Geen RESEND_API_KEY — het bericht wordt alleen gelogd (simulatie).', demoSim: 'Demozaak: verzending naar de debiteur alleen als simulatie (LIVE_COMMS=1 forceert).',
+    sent: 'E-mail verstuurd naar {to}', simulated: 'E-mail gelogd als simulatie — {to}', failed: 'Versturen mislukt: {status}', missing: 'Vul ontvanger, onderwerp en bericht in.', badTo: 'Ongeldig e-mailadres.',
+    composeBtn: 'E-mail schrijven',
   },
   rozmowa: {
     kicker: 'Gespreksvoorbereiding · {nr} · AIScore {score}', meta: '{amount} · {days} na vervaldatum · rente {interest} · forfaitaire vergoeding {rekomp}',
@@ -549,6 +565,14 @@ const en = {
     sold: 'Sold · payout within 24 h', accept: 'Accept', decline: 'Decline',
     declined: 'Offer declined · collection continues', acceptAnyway: 'Accept after all', empty: 'No claims to buy out.',
     note: 'The assignment covers the principal and interest. The recovery fee (170/300/430 zł) is non-transferable by law — with service collection the agent claims it on your behalf.',
+  },
+  mail: {
+    title: 'New message', kicker: 'E-mail', hint: 'Edit the text freely before sending. Replies go to the MAIL_NOTIFY address (your inbox).',
+    to: 'To', subject: 'Subject', body: 'Message', send: 'Send', cancel: 'Cancel', from: 'From', replyTo: 'Replies to',
+    templates: 'Templates', tplHelp: 'Click a template — subject and text are filled with the request or case data. Debtor templates are in Polish.', lang: 'Template language', tplLabel: 'Template', audience: 'Recipient', audDebtor: 'Debtor', audClient: 'Client',
+    history: 'Sent e-mails', noResend: 'No RESEND_API_KEY — the message will only be logged (simulation).', demoSim: 'Demo case: sending to the debtor is simulated only (LIVE_COMMS=1 forces it).',
+    sent: 'E-mail sent to {to}', simulated: 'E-mail logged as simulation — {to}', failed: 'Sending failed: {status}', missing: 'Fill in recipient, subject and message.', badTo: 'Invalid e-mail address.',
+    composeBtn: 'Write e-mail',
   },
   rozmowa: {
     kicker: 'Call preparation · {nr} · AIScore {score}', meta: '{amount} · {days} overdue · interest {interest} · recovery fee {rekomp}',

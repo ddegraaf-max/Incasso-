@@ -394,10 +394,12 @@ async function deleteLead(id) {
     mem.leads = mem.leads.filter((x) => x.id !== n);
     mem.files = mem.files.filter((f) => f.lead_id !== n);
     mem.reports = mem.reports.filter((x) => x.lead_id !== n);
+    mem.comms = mem.comms.filter((x) => x.case_id !== 'L' + n);
     return mem.leads.length < before;
   }
   await pool.query('DELETE FROM lead_files WHERE lead_id=$1', [n]);
   await pool.query('DELETE FROM lead_reports WHERE lead_id=$1', [n]);
+  await pool.query('DELETE FROM comm_log WHERE case_id=$1', ['L' + n]);
   const r = await pool.query('DELETE FROM leads WHERE id=$1', [n]);
   return r.rowCount > 0;
 }
