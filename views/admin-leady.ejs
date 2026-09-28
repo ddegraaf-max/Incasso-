@@ -22,7 +22,7 @@
         <tr class="row <%= sel && l.id === sel.id ? 'selected' : '' %>" onclick="location.href='/admin/leady?sel=<%= l.id %>'">
           <td class="tnum"><%= new Date(l.created_at).toLocaleDateString(t.locale, { day: 'numeric', month: 'short' }) %></td>
           <td><span class="tag tag-outline"><%= src(l) %></span></td>
-          <td><%= l.company %></td>
+          <td><%= l.company %><% if (fileCounts && fileCounts[l.id]) { %> <span title="<%= L.filesLabel %>">📎</span><% } %></td>
           <td class="num tnum"><%= D.fmt(Number(l.kwota) || 0) %></td>
           <td><span class="tag <%= stTag(l.status) %>"><%= stTxt(l.status) %></span></td>
         </tr>
@@ -54,7 +54,16 @@
       <div class="label" style="margin-top:16px"><%= L.f.note %></div>
       <p style="font-size:13.5px; white-space:pre-wrap; margin:0 0 10px"><%= String(sel.note).split(' · ').join('\n') %></p>
       <% } %>
-      <p class="helper" style="margin:10px 0 0"><%= L.attachHint %></p>
+      <div class="label" style="margin-top:14px"><%= L.filesLabel %></div>
+      <% if (files && files.length) { %>
+      <ul class="timeline" style="margin:0 0 4px">
+        <% files.forEach(function (f) { %>
+        <li><span class="dot"></span><span class="t"><a href="/admin/leady/<%= sel.id %>/zalacznik/<%= f.id %>" target="_blank" rel="noopener"><%= f.filename %></a> <span class="tnum" style="color:var(--ink-55)">· <%= Math.max(1, Math.round((f.size || 0) / 1024)) %> KB</span></span></li>
+        <% }) %>
+      </ul>
+      <% } else { %>
+      <p class="helper" style="margin:0"><%= L.noFiles %></p>
+      <% } %>
 
       <hr class="rule">
       <form class="calc-form" method="post" action="/admin/leady/<%= sel.id %>" style="margin:0; padding:0; border:0; box-shadow:none; background:transparent">

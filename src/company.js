@@ -5,15 +5,15 @@
 // Alle velden via Railway-variabelen, zodat ze zonder deploy te wijzigen zijn. Lege velden worden
 // niet getoond; `complete()` zegt of de kernset (adres, KvK, BTW) is ingevuld — zie /health → company.
 const C = {
-  name: process.env.COMPANY_NAME || 'Creditline B.V.',
+  name: process.env.COMPANY_NAME || 'Creditline Montage BV',
   brand: 'sprzedamfakture.pl',
-  street: process.env.COMPANY_STREET || '',   // bv. 'Voorbeeldstraat 1'
-  city: process.env.COMPANY_CITY || '',       // bv. '1234 AB Amsterdam'
+  street: process.env.COMPANY_STREET || 'Torenlaan 5B',
+  city: process.env.COMPANY_CITY || '1402 AT Bussum',
   country: (process.env.COMPANY_COUNTRY || 'NL').toUpperCase(), // ISO-landcode
-  kvk: process.env.COMPANY_KVK || '',         // KvK-nummer
-  vat: process.env.COMPANY_VAT || '',         // BTW-id, bv. NL123456789B01 (= NIP UE)
+  kvk: process.env.COMPANY_KVK || '59683198',
+  vat: process.env.COMPANY_VAT || 'NL853603108B01', // BTW-id (= NIP UE)
   email: process.env.COMPANY_EMAIL || 'kontakt@sprzedamfakture.pl',
-  phone: process.env.COMPANY_PHONE || '',     // bv. '+31 20 123 4567'
+  phone: process.env.COMPANY_PHONE || '',     // bewust leeg: contact uitsluitend per e-mail
   rep: process.env.COMPANY_REP || '',         // vertegenwoordiger / bestuurder (optioneel)
   extra: process.env.COMPANY_EXTRA || '',     // vrije regel, bv. Poolse entiteit of NIP (optioneel)
 };

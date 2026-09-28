@@ -13,6 +13,7 @@ const mem = {
   scores: {},    // nip → { score, grade, pct, reco, signals, checkedAt }
   comms: [],     // communicatielog
   leads: [],     // sprzedamfakture-leads
+  files: [],     // bijlagen bij leads (buffer in geheugen)
   cases: [],     // echte zaken (nieuwste eerst)
 };
 
@@ -104,6 +105,17 @@ async function init() {
       reco TEXT,
       signals JSONB,
       checked_at TIMESTAMPTZ DEFAULT now()
+    );
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS lead_files (
+      id SERIAL PRIMARY KEY,
+      lead_id INT NOT NULL,
+      filename TEXT,
+      mimetype TEXT,
+      size INT,
+      data BYTEA,
+      created_at TIMESTAMPTZ DEFAULT now()
     );
   `);
   await pool.query(`
@@ -247,11 +259,50 @@ let memLeadId = 1;
 async function saveLead(l) {
   const row = { ...l, status: 'nowy', admin_note: null, created_at: new Date() };
   if (!pool) { row.id = memLeadId++; mem.leads.unshift(row); return row; }
-  await pool.query(
-    'INSERT INTO leads (source, company, nip, email, tel, kwota, dni, oferta_pct, note, forma) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)',
+  const r = await pool.query(
+    'INSERT INTO leads (source, company, nip, email, tel, kwota, dni, oferta_pct, note, forma) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id',
     [l.source || 'sprzedamfakture', l.company, l.nip, l.email, l.tel, l.kwota, l.dni, l.oferta_pct, l.note || null, l.forma || null]
   );
+  row.id = r.rows[0].id;
   return row;
+}
+
+// ── Bijlagen bij leads (factuur/vonnis uit het formulier) ────────────────
+// Naast de kopie in de notificatiemail bewaren we het bestand in de DB (max 8 MB, zie multer),
+// zodat het in /admin/leady en in de zaak (via lead_id) te openen is.
+let memFileId = 1;
+async function saveLeadFile(leadId, file) {
+  const n = parseInt(leadId, 10);
+  const row = { lead_id: n, filename: file.originalname || 'zalacznik', mimetype: file.mimetype || 'application/octet-stream', size: file.size || (file.buffer ? file.buffer.length : 0), created_at: new Date() };
+  if (!pool) { row.id = memFileId++; row.data = file.buffer; mem.files.push(row); return row; }
+  const r = await pool.query('INSERT INTO lead_files (lead_id, filename, mimetype, size, data) VALUES ($1,$2,$3,$4,$5) RETURNING id', [n, row.filename, row.mimetype, row.size, file.buffer]);
+  row.id = r.rows[0].id;
+  return row;
+}
+
+async function listLeadFiles(leadId) {
+  const n = parseInt(leadId, 10);
+  if (!Number.isInteger(n)) return [];
+  if (!pool) return mem.files.filter((f) => f.lead_id === n).map(({ data, ...rest }) => rest);
+  const r = await pool.query('SELECT id, lead_id, filename, mimetype, size, created_at FROM lead_files WHERE lead_id=$1 ORDER BY id', [n]);
+  return r.rows;
+}
+
+async function getLeadFile(id) {
+  const n = parseInt(id, 10);
+  if (!Number.isInteger(n)) return null;
+  if (!pool) return mem.files.find((f) => f.id === n) || null;
+  const r = await pool.query('SELECT * FROM lead_files WHERE id=$1', [n]);
+  return r.rows[0] || null;
+}
+
+// { lead_id: aantal } — voor het paperclip-icoon in de leadlijst
+async function countLeadFiles() {
+  const out = {};
+  if (!pool) { mem.files.forEach((f) => { out[f.lead_id] = (out[f.lead_id] || 0) + 1; }); return out; }
+  const r = await pool.query('SELECT lead_id, count(*)::int AS n FROM lead_files GROUP BY lead_id');
+  r.rows.forEach((x) => { out[x.lead_id] = x.n; });
+  return out;
 }
 
 async function listLeads(limit = 30) {
@@ -294,8 +345,10 @@ async function deleteLead(id) {
   if (!pool) {
     const before = mem.leads.length;
     mem.leads = mem.leads.filter((x) => x.id !== n);
+    mem.files = mem.files.filter((f) => f.lead_id !== n);
     return mem.leads.length < before;
   }
+  await pool.query('DELETE FROM lead_files WHERE lead_id=$1', [n]);
   const r = await pool.query('DELETE FROM leads WHERE id=$1', [n]);
   return r.rowCount > 0;
 }
@@ -434,5 +487,6 @@ module.exports = {
   saveScore, loadScores,
   logComm, listComms, countComms,
   saveLead, listLeads, getLead, updateLead, deleteLead, setLeadCase,
+  saveLeadFile, listLeadFiles, getLeadFile, countLeadFiles,
   purgeDemo,
 };

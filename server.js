@@ -107,6 +107,20 @@ function zalacznikMw(req, res, next) {
     next();
   });
 }
+// Geldige bijlage bij de lead bewaren (naast de kopie in de notificatiemail)
+async function storeLeadFile(savedLead, req) {
+  if (!savedLead || !savedLead.id || !req.file || req.zalacznikError || !ALLOWED_UPLOAD.includes(req.file.mimetype)) return;
+  await db.saveLeadFile(savedLead.id, req.file).catch((e) => console.error('Lead-bijlage opslaan mislukt —', e.message));
+}
+function sendLeadFile(res, f) {
+  const mime = f.mimetype || 'application/octet-stream';
+  const name = String(f.filename || 'zalacznik');
+  const ascii = name.replace(/[^\x20-\x7e]/g, '_').replace(/["\\]/g, '');
+  res.set('Content-Type', mime);
+  res.set('Content-Disposition', (mime === 'application/pdf' || /^image\//.test(mime) ? 'inline' : 'attachment') + '; filename="' + ascii + '"; filename*=UTF-8\'\'' + encodeURIComponent(name));
+  res.set('Cache-Control', 'private, no-store');
+  res.send(f.data);
+}
 
 // ── MF biała lista: bedrijfsnaam + VAT-status bij een NIP (open API, gecachet) ──
 const NIP_CACHE = new Map();
@@ -290,7 +304,16 @@ app.get('/admin/leady', Auth.requireAdmin, async (req, res) => {
   const leads = await db.listLeads(300).catch(() => []);
   const selId = parseInt(req.query.sel, 10);
   const sel = leads.find((l) => l.id === selId) || leads[0] || null;
-  res.render('admin-leady', common({ page: 'admin', user: req.user, leads, sel, LEAD_STATUSES, flash: req.query.msg || null }));
+  const files = sel ? await db.listLeadFiles(sel.id).catch(() => []) : [];
+  const fileCounts = await db.countLeadFiles().catch(() => ({}));
+  res.render('admin-leady', common({ page: 'admin', user: req.user, leads, sel, files, fileCounts, LEAD_STATUSES, flash: req.query.msg || null }));
+});
+
+// Bijlage van een lead openen (admin)
+app.get('/admin/leady/:id/zalacznik/:fid', Auth.requireAdmin, async (req, res, next) => {
+  const f = await db.getLeadFile(req.params.fid).catch(() => null);
+  if (!f || f.lead_id !== parseInt(req.params.id, 10)) return next();
+  sendLeadFile(res, f);
 });
 
 app.post('/admin/leady/:id/usun', Auth.requireAdmin, async (req, res) => {
@@ -421,7 +444,8 @@ app.post('/sprzedaj', zalacznikMw, async (req, res) => {
   const lead = { company: form.company, nip, forma: form.forma, email: form.email, tel: form.tel, kwota: kw, dni: dn };
   const reg = await nipRegisterLookup(nip).catch(() => null);
   if (reg) lead.rejestr = reg.line;
-  await db.saveLead({ ...lead, oferta_pct: est.pct, note: 'lang=' + res.locals.lang + (lead.rejestr ? ' · ' + lead.rejestr : '') }).catch(() => {});
+  const savedLead = await db.saveLead({ ...lead, oferta_pct: est.pct, note: 'lang=' + res.locals.lang + (lead.rejestr ? ' · ' + lead.rejestr : '') }).catch(() => null);
+  await storeLeadFile(savedLead, req);
   // e-mails: notificatie naar MAIL_NOTIFY + bevestiging aan de klant (PL/EN); fouten blokkeren het formulier niet
   const [notify, confirm] = await Promise.all([
     Mailer.leadNotify(lead, est, res.locals.lang, errors.zalacznik ? null : req.file).catch((e) => ({ status: 'błąd: ' + e.message })),
@@ -493,13 +517,14 @@ app.post('/skup-wyrokow', zalacznikMw, async (req, res) => {
     return renderWyroki(req, res, { form, errors });
   }
   const lead = { ...form, nip: form.nip.replace(/\D/g, ''), kwota: kw };
-  await db.saveLead({
+  const savedLead = await db.saveLead({
     source: 'skup-wyrokow', company: form.company, nip: lead.nip, email: form.email, tel: form.tel,
     kwota: kw, dni: 0, oferta_pct: null, forma: form.forma,
     note: ['wyrok ' + form.sygnatura, form.sad, form.data_wyroku, 'dłużnik: ' + form.dluznik,
       'egzekucja: ' + form.egzekucja + (form.egzekucja_rok ? ' (' + form.egzekucja_rok + ')' : ''), form.uwagi]
       .filter(Boolean).join(' · ').slice(0, 900) + ' · lang=' + res.locals.lang,
-  }).catch(() => {});
+  }).catch(() => null);
+  await storeLeadFile(savedLead, req);
   const [notify, confirm] = await Promise.all([
     Mailer.wyrokNotify(lead, res.locals.lang, req.zalacznikError ? null : req.file).catch((e) => ({ status: 'błąd: ' + e.message })),
     Mailer.wyrokConfirm(lead, res.locals.lang).catch((e) => ({ status: 'błąd: ' + e.message })),
@@ -558,12 +583,22 @@ app.get('/app/sprawy', Auth.requireAuth, async (req, res) => {
   const done = D.getDone();
   const comms = sel ? await db.listComms(sel.id, 6).catch(() => []) : [];
   const timeline = sel && sel.real ? await db.listCaseEvents(sel.id, 40).catch(() => []) : [];
+  const files = sel && sel.real && sel.leadId ? await db.listLeadFiles(sel.leadId).catch(() => []) : [];
   const flash = req.query.msg || null;
   const stats = {
     portfolio: claims.reduce((s, c) => s + c.amount, 0),
     active: claims.length,
   };
-  res.render('sprawy', common({ user: req.user, page: 'app', tab: 'sprawy', claims, sel, done, stats, comms, timeline, flash }));
+  res.render('sprawy', common({ user: req.user, page: 'app', tab: 'sprawy', claims, sel, done, stats, comms, timeline, files, flash }));
+});
+
+// Bijlage uit de aanvraag openen vanuit de zaak (admin of eigenaar van de zaak)
+app.get('/app/sprawy/:id/zalacznik/:fid', Auth.requireAuth, async (req, res, next) => {
+  const c = caseById(req.params.id, req.user);
+  if (!c || !c.real || !c.leadId) return res.redirect('/app/sprawy');
+  const f = await db.getLeadFile(req.params.fid).catch(() => null);
+  if (!f || f.lead_id !== c.leadId) return next();
+  sendLeadFile(res, f);
 });
 
 // ── Agent-acties: e-mail / sms / rozmowa ─────────────────────────────────

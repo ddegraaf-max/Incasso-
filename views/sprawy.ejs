@@ -49,6 +49,7 @@
     <% if (sel.real) { %>
     <p class="meta"><%= R.f.nip %>: <span class="tnum"><%= sel.nip || '—' %></span> · <%= R.f.due %>: <span class="tnum"><%= sel.dueDate || '—' %></span><% if (user.role === 'admin' && (sel.clientCompany || sel.clientEmail)) { %> · <%= R.clientLabel %>: <%= sel.clientCompany || '' %><%= sel.clientEmail ? ' (' + sel.clientEmail + ')' : '' %><% } %></p>
     <% if (sel.note) { %><p class="meta"><%= R.f.note %>: <%= sel.note %></p><% } %>
+    <% if (typeof files !== 'undefined' && files && files.length) { %><p class="meta"><%= R.files %>: <% files.forEach(function (f, i) { %><%= i ? ' · ' : '' %><a href="/app/sprawy/<%= sel.id %>/zalacznik/<%= f.id %>" target="_blank" rel="noopener"><%= f.filename %></a><% }) %></p><% } %>
     <% } %>
 
     <hr class="rule">
