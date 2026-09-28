@@ -70,7 +70,7 @@ module.exports = {
     copyright: '© 2026 sprzedamfakture.pl',
 
     common: {
-      navHome: 'Strona główna', navSell: 'Sprzedaj fakturę', navCollection: 'Windykacja', navCalc: 'Kalkulator odsetek', navPanel: 'Panel klienta', navJudgments: 'Skup wyroków', footJudgments: 'skup starych wyroków', navKb: 'Baza wiedzy', footKb: 'baza wiedzy', navDemand: 'Wezwanie online', footDemand: 'bezpłatne wezwanie online',
+      navHome: 'Strona główna', navSell: 'Sprzedaj fakturę', navCollection: 'Windykacja', navCalc: 'Kalkulator odsetek', navPanel: 'Panel klienta', navJudgments: 'Skup wyroków', footJudgments: 'skup starych wyroków', navKb: 'Baza wiedzy', footKb: 'baza wiedzy', navDemand: 'Wezwanie online', navDemandBadge: '0 zł', footDemand: 'bezpłatne wezwanie online',
       company: { operator: 'Serwis {brand} prowadzi', address: 'Adres', kvk: 'Nr rejestru handlowego (KvK)', vat: 'NIP UE / VAT', email: 'E-mail', phone: 'Telefon', rep: 'Reprezentacja', countries: { NL: 'Holandia', PL: 'Polska', DE: 'Niemcy', BE: 'Belgia' } },
       footerModel: 'Nasz model: Ty płacisz {fee} zł za sprawę — odsetki, rekompensatę i koszty pokrywa dłużnik. Albo sprzedajesz fakturę i masz gotówkę w 24 godziny.',
       footCollection: 'windykacja', footCalc: 'kalkulator odsetek', footConcept: 'koncept produktu',
@@ -124,6 +124,7 @@ module.exports = {
         cta: 'Sprawdź skup wyroków',
       },
       kbTeaser: { kicker: 'Baza wiedzy', h: 'Zanim sprzedasz fakturę — sprawdź, co Ci się należy', more: 'Czytaj →', all: 'Wszystkie poradniki' },
+      liveStrip: { kicker: 'Nowość · bezpłatnie', strong: 'Wezwanie do zapłaty online', text: 'odsetki liczą się same, dłużnik odpowiada jednym kliknięciem, a Ty widzisz, kiedy je otworzył. Gotowe w 2 minuty, bez rejestracji.', btn: 'Wygeneruj wezwanie', badge: '0 zł' },
       why: {
         kicker: 'Dlaczego warto sprzedać',
         items: [
@@ -370,7 +371,7 @@ module.exports = {
     copyright: '© 2026 sprzedamfakture.pl',
 
     common: {
-      navHome: 'Home', navSell: 'Sell an invoice', navCollection: 'Debt collection', navCalc: 'Interest calculator', navPanel: 'Client panel', navJudgments: 'Old judgments', footJudgments: 'we buy old judgments', navKb: 'Knowledge base', footKb: 'knowledge base', navDemand: 'Online demand', footDemand: 'free online demand letter',
+      navHome: 'Home', navSell: 'Sell an invoice', navCollection: 'Debt collection', navCalc: 'Interest calculator', navPanel: 'Client panel', navJudgments: 'Old judgments', footJudgments: 'we buy old judgments', navKb: 'Knowledge base', footKb: 'knowledge base', navDemand: 'Online demand', navDemandBadge: 'free', footDemand: 'free online demand letter',
       company: { operator: '{brand} is operated by', address: 'Address', kvk: 'Chamber of Commerce (KvK) no.', vat: 'VAT ID', email: 'E-mail', phone: 'Phone', rep: 'Represented by', countries: { NL: 'the Netherlands', PL: 'Poland', DE: 'Germany', BE: 'Belgium' } },
       footerModel: 'Our model: you pay {fee} zł per case — interest, the recovery fee and costs are borne by the debtor. Or sell the invoice and have cash within 24 hours.',
       footCollection: 'debt collection', footCalc: 'interest calculator', footConcept: 'product concept',
@@ -424,6 +425,7 @@ module.exports = {
         cta: 'Explore judgment purchase',
       },
       kbTeaser: { kicker: 'Knowledge base', h: 'Before you sell — know what you are owed', more: 'Read →', all: 'All guides' },
+      liveStrip: { kicker: 'New · free', strong: 'Online demand for payment', text: 'interest updates itself, the debtor replies with one click and you see when it was opened. Ready in 2 minutes, no registration.', btn: 'Create a demand', badge: 'free' },
       why: {
         kicker: 'Why sell',
         items: [

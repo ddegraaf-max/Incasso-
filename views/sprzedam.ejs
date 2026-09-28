@@ -45,7 +45,7 @@ var ld = [
     <a href="#faq"><%= h.nav.faq %></a>
     <% if (!windykacjaOff) { %><a href="/windykacja"><%= h.nav.collection %></a><% } %>
     <a href="/skup-wyrokow"><%= t.common.navJudgments %></a>
-    <a href="/wezwanie-online"><%= t.common.navDemand %></a>
+    <a href="/wezwanie-online" class="btn btn-live nav-live"><%= t.common.navDemand %> <span class="live-badge"><%= t.common.navDemandBadge %></span></a>
     <a href="/baza-wiedzy"><%= t.common.navKb %></a>
     <a href="/login"><%= h.nav.panel %></a>
     <a href="#formularz" class="nav-cta"><%= h.nav.cta %></a>
@@ -84,6 +84,18 @@ var ld = [
     </div>
   </div>
 </section>
+
+<% if (h.liveStrip) { %>
+<section class="live-strip" aria-label="<%= h.liveStrip.kicker %>">
+  <div class="live-strip-inner">
+    <div>
+      <div class="kicker"><%= h.liveStrip.kicker %></div>
+      <p><strong><%= h.liveStrip.strong %></strong> — <%= h.liveStrip.text %></p>
+    </div>
+    <a class="btn btn-live" href="/wezwanie-online"><%= h.liveStrip.btn %> <span class="live-badge"><%= h.liveStrip.badge %></span></a>
+  </div>
+</section>
+<% } %>
 
 <section class="path" id="jak">
   <div class="kicker"><%= h.steps.kicker %></div>
