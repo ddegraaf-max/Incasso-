@@ -27,6 +27,8 @@ var ld = [
 <%- include('partials/meta') %>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Manrope:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Manrope:wght@400;500;600;700;800&display=swap">
 <link rel="stylesheet" href="/css/app.css?v=<%= version %>">
 <script type="application/ld+json"><%- JSON.stringify(ld).replace(/</g, '\\u003c') %></script>
 </head>
@@ -151,7 +153,7 @@ var ld = [
   <div class="kicker"><%= h.why.kicker %></div>
   <div class="model-grid">
     <% h.why.items.forEach(function (w, i) { %>
-    <div class="cell <%= i === 2 ? 'alt' : '' %>"><div class="m-who"><%= w[0] %></div><h4><%= w[1] %></h4><p><%= w[2] %></p></div>
+    <div class="cell <%= i === 2 ? 'alt' : '' %>"><div class="m-who"><%= w[0] %></div><h3><%= w[1] %></h3><p><%= w[2] %></p></div>
     <% }) %>
   </div>
 </section>

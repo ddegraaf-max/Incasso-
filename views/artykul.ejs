@@ -22,7 +22,7 @@ if (x.faq && x.faq.length) {
 }
 var related = (a.related || []).map(function (s) { return articles.find(function (o) { return o.slug === s; }); }).filter(Boolean);
 var cta = x.cta || {};
-%><%- include('partials/head', { title: x.title + ' — sprzedamfakture.pl', desc: x.desc, ld: ld }) %>
+%><%- include('partials/head', { title: (x.seoTitle || x.title) + ' — sprzedamfakture.pl', desc: x.desc, ld: ld }) %>
 <%- include('partials/nav') %>
 
 <article class="calc-wrap kb-article" style="flex:1" id="main">

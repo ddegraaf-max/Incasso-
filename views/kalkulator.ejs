@@ -1,4 +1,19 @@
-<%- include('partials/head', { title: 'Kalkulator odsetek za opóźnienie w transakcjach handlowych 2026 — sprzedamfakture.pl', desc: 'Darmowy kalkulator odsetek ustawowych za opóźnienie w transakcjach handlowych (14% w 2026 r.) i rekompensaty 40/70/100 €. Policz i wygeneruj gotowe wezwanie do zapłaty.', altLang: false }) %>
+<%
+// Kalkulator odsetek (PL-only): title ≤ 65, description ≤ 160, JSON-LD WebApplication + FAQPage + BreadcrumbList.
+var kFaq = [
+  ['Jaka jest stawka odsetek za opóźnienie w transakcjach handlowych w 2026 r.?', 'W I półroczu 2026 r. stawka wynosi 14% w skali roku: stopa referencyjna NBP (4%) plus 10 punktów procentowych. Minister Finansów ogłasza stawkę na każde półrocze.'],
+  ['Od którego dnia liczy się odsetki?', 'Od dnia następnego po terminie płatności do dnia zapłaty włącznie. Odsetki należą się z mocy ustawy — bez wezwania i bez zapisu w umowie.'],
+  ['Czy rekompensata 40/70/100 € należy się od każdej faktury?', 'Tak. Rekompensata przysługuje od każdej transakcji osobno: 40 € do 5 000 zł, 70 € od 5 000 do 50 000 zł, 100 € od 50 000 zł — bez wykazywania kosztów.'],
+  ['Czy kalkulator jest bezpłatny i czy muszę się rejestrować?', 'Kalkulator i generator wezwania do zapłaty są bezpłatne i nie wymagają rejestracji. Wynik ma charakter poglądowy.'],
+];
+var kLd = [
+  { '@context': 'https://schema.org', '@type': 'WebApplication', name: 'Kalkulator odsetek za opóźnienie w transakcjach handlowych', url: site + '/kalkulator', applicationCategory: 'FinanceApplication', operatingSystem: 'Web', inLanguage: 'pl', isAccessibleForFree: true,
+    description: 'Bezpłatny kalkulator odsetek ustawowych za opóźnienie w transakcjach handlowych (14% w 2026 r.) i rekompensaty 40/70/100 € z generatorem wezwania do zapłaty.',
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'PLN' }, provider: { '@type': 'Organization', name: 'sprzedamfakture.pl', url: site + '/' } },
+  { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: kFaq.map(function (q) { return { '@type': 'Question', name: q[0], acceptedAnswer: { '@type': 'Answer', text: q[1] } }; }) },
+  { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: 'Strona główna', item: site + '/' }, { '@type': 'ListItem', position: 2, name: 'Kalkulator odsetek', item: site + '/kalkulator' }] },
+];
+%><%- include('partials/head', { title: 'Kalkulator odsetek handlowych 2026 — sprzedamfakture.pl', desc: 'Darmowy kalkulator odsetek ustawowych za opóźnienie w transakcjach handlowych (14% w 2026 r.) i rekompensaty 40/70/100 €. Wygeneruj gotowe wezwanie do zapłaty.', altLang: false, ld: kLd }) %>
 <%- include('partials/nav') %>
 
 <div class="calc-wrap" style="flex:1">
@@ -38,6 +53,24 @@
     </div>
     <% } %>
   </form>
+
+  <h2 style="margin-top:36px">Jak działa kalkulator</h2>
+  <p class="helper" style="max-width:70ch">Wpisujesz kwotę faktury i liczbę dni po terminie płatności. Kalkulator liczy odsetki ustawowe za opóźnienie w transakcjach handlowych według wzoru <strong>kwota × 14% × dni ÷ 365</strong> oraz dolicza zryczałtowaną rekompensatę za koszty odzyskiwania należności. Wynik to kwota, której możesz żądać od dłużnika na dziś — bez wezwania i bez zapisu w umowie, bo oba roszczenia wynikają wprost z ustawy.</p>
+
+  <h2 style="margin-top:30px">Podstawa prawna i stawka</h2>
+  <p class="helper" style="max-width:70ch">Stawka to stopa referencyjna NBP powiększona o 10 punktów procentowych (art. 4 pkt 3 ustawy z 8 marca 2013 r.). Minister Finansów ogłasza ją obwieszczeniem na każde półrocze; w I półroczu 2026 r. wynosi 14% rocznie. Odsetki biegną od dnia następnego po terminie płatności i przysługują, gdy wierzyciel spełnił swoje świadczenie, a dłużnik nie zapłacił w terminie (art. 7 ust. 1). Odsetki od odsetek można naliczać dopiero od wytoczenia powództwa.</p>
+
+  <h2 style="margin-top:30px">Rekompensata 40 / 70 / 100 euro</h2>
+  <p class="helper" style="max-width:70ch">Do każdej faktury po terminie dochodzi rekompensata za koszty odzyskiwania należności (art. 10): 40 € przy należności do 5 000 zł, 70 € od 5 000 do 50 000 zł i 100 € od 50 000 zł. Przelicza się ją według średniego kursu euro NBP z ostatniego dnia roboczego miesiąca poprzedzającego miesiąc wymagalności — kalkulator pokazuje kwotę orientacyjną w złotych. Rekompensata jest niezbywalna: przy sprzedaży faktury zostaje u wierzyciela.</p>
+
+  <h2 style="margin-top:30px">Co dalej po obliczeniu</h2>
+  <p class="helper" style="max-width:70ch">Wygeneruj wezwanie do zapłaty z policzonymi odsetkami i rekompensatą i wyślij je listem poleconym oraz e-mailem — to najtańszy krok windykacji i standardowy załącznik do pozwu. Jeżeli dłużnik nie reaguje, możesz <a href="/#wycena">sprzedać fakturę</a> i mieć gotówkę w 24 godziny albo zlecić windykację. Więcej w bazie wiedzy: <a href="/baza-wiedzy/odsetki-za-opoznienie-w-transakcjach-handlowych">jak liczyć odsetki</a>, <a href="/baza-wiedzy/rekompensata-40-70-100-euro">rekompensata</a>, <a href="/baza-wiedzy/wezwanie-do-zaplaty-wzor">wezwanie do zapłaty</a>, <a href="/baza-wiedzy/przedawnienie-faktury-b2b">przedawnienie</a>.</p>
+
+  <h2 style="margin-top:30px">Najczęstsze pytania</h2>
+  <% kFaq.forEach(function (q) { %>
+  <h3 style="font-size:17px; margin-top:18px"><%= q[0] %></h3>
+  <p class="helper" style="max-width:70ch"><%= q[1] %></p>
+  <% }) %>
 
   <p class="legal-note">Podstawa prawna: ustawa z dnia 8 marca 2013 r. o przeciwdziałaniu nadmiernym opóźnieniom w transakcjach handlowych, art. 4a, 7 i 10. Kalkulator ma charakter poglądowy. Więcej: <a href="/baza-wiedzy/odsetki-za-opoznienie-w-transakcjach-handlowych">jak liczyć odsetki</a> · <a href="/baza-wiedzy/rekompensata-40-70-100-euro">rekompensata 40/70/100 €</a> · <a href="/baza-wiedzy/wezwanie-do-zaplaty-wzor">wezwanie do zapłaty</a>.</p>
 </div>

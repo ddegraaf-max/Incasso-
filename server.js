@@ -31,6 +31,13 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.set('trust proxy', 1); // Railway zit achter een proxy
 app.disable('x-powered-by');
+// Eén canonieke host: www.sprzedamfakture.pl → sprzedamfakture.pl (301). Vereist dat het www-domein
+// aan de Railway-service hangt en in DNS naar Railway wijst; anders komt het verzoek hier nooit aan.
+app.use((req, res, next) => {
+  const host = String(req.hostname || '');
+  if (/^www\./i.test(host)) return res.redirect(301, 'https://' + host.replace(/^www\./i, '') + req.originalUrl);
+  next();
+});
 app.use(compression());
 app.use((req, res, next) => {
   res.set({

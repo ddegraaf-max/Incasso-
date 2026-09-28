@@ -84,7 +84,7 @@ module.exports = {
 
     home: {
       metaTitle: 'sprzedamfakture.pl — Sprzedaj fakturę. Gotówka w 24 godziny.',
-      metaDesc: 'Sprzedaj przeterminowaną fakturę B2B na sprzedamfakture.pl. Wycena AI w kilka minut, cesja online, przelew w 24 godziny. Ryzyko niewypłacalności dłużnika przechodzi na nas.',
+      metaDesc: 'Sprzedaj przeterminowaną fakturę B2B: wycena AI w kilka minut, cesja online, przelew w 24 godziny. Ryzyko niewypłacalności dłużnika przechodzi na nas.',
       ogDesc: 'Kontrahent nie płaci? Sprzedaj nam fakturę B2B: wycena AI w kilka minut, cesja online, przelew następnego dnia roboczego.',
       nav: { how: 'Jak to działa', quote: 'Wycena', faq: 'FAQ', collection: 'Windykacja', panel: 'Panel klienta', cta: 'Sprzedaj fakturę' },
       heroH1: ['Sprzedaj fakturę.', 'Gotówka w 24 godziny.'],
@@ -167,7 +167,7 @@ module.exports = {
     // Skup starych wyroków (oude vonnissen): /skup-wyrokow
     wyroki: {
       metaTitle: 'Skup starych wyroków i nakazów zapłaty — sprzedamfakture.pl',
-      metaDesc: 'Masz prawomocny wyrok albo nakaz zapłaty, po którym komornik umorzył egzekucję? Skupujemy stare tytuły wykonawcze — zazwyczaj za 10–40% wartości nominalnej, po ocenie każdej sprawy.',
+      metaDesc: 'Masz prawomocny wyrok lub nakaz zapłaty po umorzonej egzekucji? Skupujemy stare tytuły wykonawcze — zwykle za 10–40% wartości nominalnej, po ocenie sprawy.',
       kicker: 'Skup starych wyroków',
       h1: 'Stary wyrok wciąż ma wartość',
       lead: 'Prawomocny wyrok lub nakaz zapłaty, po którym egzekucja okazała się bezskuteczna, to nie makulatura — to opcja na przyszłość. Skupujemy stare tytuły wykonawcze: pojedyncze wyroki i małe pakiety, także od wierzycieli z Holandii i Niemiec.',
@@ -234,8 +234,8 @@ module.exports = {
     },
 
     kb: {
-      metaTitle: 'Baza wiedzy: odsetki, rekompensata, przedawnienie, wezwanie do zapłaty — sprzedamfakture.pl',
-      metaDesc: 'Praktyczne poradniki o należnościach B2B w Polsce: odsetki ustawowe za opóźnienie, rekompensata 40/70/100 €, przedawnienie faktur, wezwanie do zapłaty, wpis do KRD, sprzedaż wierzytelności.',
+      metaTitle: 'Baza wiedzy: należności B2B w Polsce — sprzedamfakture.pl',
+      metaDesc: 'Praktyczne poradniki o należnościach B2B: odsetki za opóźnienie, rekompensata 40/70/100 €, przedawnienie faktur, wezwanie do zapłaty, wpis do KRD, cesja.',
       kicker: 'Baza wiedzy', h1: 'Należności B2B — poradniki bez prawniczego żargonu',
       lead: 'Krótko i konkretnie: co Ci się należy od dłużnika, jak liczyć terminy i co zrobić, gdy faktura leży po terminie. Stan prawny: wrzesień 2026.',
       readMore: 'Czytaj →', back: '← Wszystkie poradniki', published: 'Aktualizacja', faqH: 'Najczęstsze pytania', relatedH: 'Powiązane poradniki', crumbsHome: 'Strona główna',
@@ -329,7 +329,7 @@ module.exports = {
 
     home: {
       metaTitle: 'sprzedamfakture.pl — Sell your invoice. Cash in 24 hours.',
-      metaDesc: 'Sell an overdue B2B invoice on sprzedamfakture.pl. AI valuation in minutes, assignment signed online, payout within 24 hours. The debtor\'s insolvency risk passes to us.',
+      metaDesc: 'Sell an overdue Polish B2B invoice: AI valuation in minutes, assignment signed online, payout within 24 hours. The debtor\'s insolvency risk passes to us.',
       ogDesc: 'Customer not paying? Sell us the B2B invoice: AI valuation in minutes, assignment signed online, transfer the next business day.',
       nav: { how: 'How it works', quote: 'Quote', faq: 'FAQ', collection: 'Debt collection', panel: 'Client panel', cta: 'Sell an invoice' },
       heroH1: ['Sell your invoice.', 'Cash in 24 hours.'],
@@ -411,8 +411,8 @@ module.exports = {
 
     // We buy old judgments: /skup-wyrokow
     wyroki: {
-      metaTitle: 'We buy old Polish judgments and payment orders — sprzedamfakture.pl',
-      metaDesc: 'Holding a final Polish judgment the bailiff could not enforce? We buy old enforceable titles (tytuły wykonawcze) — typically for 10–40% of nominal value, after a per-case assessment.',
+      metaTitle: 'We buy old Polish judgments — sprzedamfakture.pl',
+      metaDesc: 'Holding a final Polish judgment the bailiff could not enforce? We buy old enforceable titles — typically for 10–40% of nominal value, after a case review.',
       kicker: 'We buy old judgments',
       h1: 'An old judgment still has value',
       lead: 'A final judgment or payment order that enforcement could not collect is not waste paper — it is an option on the future. We buy old enforceable titles: single judgments and small portfolios, including from Dutch and German creditors with titles against Polish debtors. Correspondence in English.',
@@ -479,8 +479,8 @@ module.exports = {
     },
 
     kb: {
-      metaTitle: 'Knowledge base: late-payment interest, recovery fee, limitation, demand letters in Poland — sprzedamfakture.pl',
-      metaDesc: 'Practical guides to B2B receivables in Poland: statutory late-payment interest, the EUR 40/70/100 recovery fee, limitation periods, demand letters, KRD listings and selling receivables.',
+      metaTitle: 'Knowledge base: B2B receivables in Poland — sprzedamfakture.pl',
+      metaDesc: 'Practical guides to B2B receivables in Poland: late-payment interest, the EUR 40/70/100 recovery fee, limitation periods, demand letters, KRD listings.',
       kicker: 'Knowledge base', h1: 'B2B receivables in Poland — guides without the legal jargon',
       lead: 'Short and concrete: what a Polish debtor owes you, how to count the deadlines and what to do when an invoice is overdue. Legal position: September 2026.',
       readMore: 'Read →', back: '← All guides', published: 'Updated', faqH: 'Frequently asked questions', relatedH: 'Related guides', crumbsHome: 'Home',

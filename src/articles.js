@@ -11,7 +11,8 @@ const ARTICLES = [
     related: ['rekompensata-40-70-100-euro', 'wezwanie-do-zaplaty-wzor', 'przedawnienie-faktury-b2b'],
     pl: {
       title: 'Odsetki ustawowe za opóźnienie w transakcjach handlowych — stawka 2026 i sposób liczenia',
-      desc: 'Ile wynoszą odsetki za opóźnienie w zapłacie faktury B2B w 2026 r., od kiedy się naliczają, jak je policzyć i czy trzeba wysyłać wezwanie. Z przykładem i kalkulatorem.',
+      seoTitle: 'Odsetki za opóźnienie B2B 2026 — jak liczyć',
+      desc: 'Ile wynoszą odsetki za opóźnienie w zapłacie faktury B2B w 2026 r. (14%), od kiedy się naliczają i jak je policzyć — z przykładem i kalkulatorem.',
       lead: 'Za każdy dzień zwłoki w zapłacie faktury między firmami wierzycielowi należą się odsetki ustawowe za opóźnienie w transakcjach handlowych. Nie trzeba ich zastrzegać w umowie ani wcześniej wzywać dłużnika — naliczają się z mocy ustawy.',
       sections: [
         { h: 'Jaka stawka obowiązuje w 2026 roku', p: [
@@ -46,7 +47,8 @@ const ARTICLES = [
     },
     en: {
       title: 'Statutory interest for late payment in Polish B2B transactions — the 2026 rate and how to calculate it',
-      desc: 'How much late-payment interest a Polish business debtor owes in 2026, from which day it accrues, how to calculate it and whether a demand letter is required. With an example and a free calculator.',
+      seoTitle: 'Late-payment interest in Poland 2026',
+      desc: 'How much late-payment interest a Polish business debtor owes in 2026 (14%), from which day it accrues and how to calculate it — with a free calculator.',
       lead: 'For every day a Polish company pays an invoice late, the creditor is entitled to statutory interest for late payment in commercial transactions. It does not have to be agreed in the contract and no prior demand is needed — it accrues by operation of law.',
       sections: [
         { h: 'The rate in 2026', p: [
@@ -86,7 +88,8 @@ const ARTICLES = [
     related: ['odsetki-za-opoznienie-w-transakcjach-handlowych', 'sprzedaz-faktury-cesja-a-faktoring', 'wezwanie-do-zaplaty-wzor'],
     pl: {
       title: 'Rekompensata 40, 70 i 100 euro za koszty odzyskiwania należności — komu, kiedy i ile',
-      desc: 'Za każdą fakturę zapłaconą po terminie należy się zryczałtowana rekompensata 40, 70 lub 100 euro — bez dowodu kosztów. Progi, kurs przeliczenia, przedawnienie i dlaczego nie można jej sprzedać.',
+      seoTitle: 'Rekompensata 40/70/100 € za opóźnienie',
+      desc: 'Za każdą fakturę po terminie należy się rekompensata 40, 70 lub 100 € — bez dowodu kosztów. Progi, kurs NBP, przedawnienie i dlaczego nie można jej sprzedać.',
       lead: 'Oprócz odsetek wierzycielowi w transakcji handlowej przysługuje od dłużnika stała rekompensata za koszty odzyskiwania należności. Nie trzeba niczego udowadniać ani wzywać — wystarczy, że termin płatności minął.',
       sections: [
         { h: 'Trzy progi', ul: [
@@ -117,7 +120,8 @@ const ARTICLES = [
     },
     en: {
       title: 'The EUR 40 / 70 / 100 fixed recovery fee for late payment in Poland — who gets it, when and how much',
-      desc: 'Every invoice paid late by a Polish business debtor carries a flat recovery fee of EUR 40, 70 or 100 — no proof of costs required. Thresholds, exchange rate, limitation and why the fee cannot be sold.',
+      seoTitle: 'EUR 40/70/100 recovery fee in Poland',
+      desc: 'Every invoice paid late in Poland carries a flat recovery fee of EUR 40, 70 or 100 — no proof of costs needed. Thresholds, exchange rate, limitation.',
       lead: 'On top of interest, a creditor in a commercial transaction is owed a fixed compensation for recovery costs. Nothing has to be proven and no demand sent — it is enough that the due date has passed.',
       sections: [
         { h: 'Three thresholds', ul: [
@@ -153,7 +157,8 @@ const ARTICLES = [
     related: ['odsetki-za-opoznienie-w-transakcjach-handlowych', 'wezwanie-do-zaplaty-wzor', 'windykacja-w-polsce-dla-zagranicznych-wierzycieli'],
     pl: {
       title: 'Przedawnienie faktury B2B — terminy, przerwanie i zawieszenie biegu',
-      desc: 'Po jakim czasie przedawnia się faktura wystawiona firmie: 3 lata, 2 lata dla sprzedaży, koniec roku kalendarzowego. Co przerywa bieg przedawnienia, co go tylko zawiesza i co zmienia wyrok.',
+      seoTitle: 'Przedawnienie faktury B2B — terminy',
+      desc: 'Po jakim czasie przedawnia się faktura wystawiona firmie: 3 lata, 2 lata dla sprzedaży, koniec roku. Co przerywa bieg przedawnienia, a co go tylko zawiesza.',
       lead: 'Nieopłacona faktura nie traci mocy z dnia na dzień, ale ma termin, po którym dłużnik może skutecznie odmówić zapłaty. W obrocie między firmami terminy są krótkie, a kilka reguł jest nieintuicyjnych.',
       sections: [
         { h: 'Podstawowe terminy', ul: [
@@ -183,7 +188,8 @@ const ARTICLES = [
     },
     en: {
       title: 'Limitation periods for unpaid invoices in Poland — 3 years, 2 years and the end-of-year rule',
-      desc: 'When an invoice issued to a Polish company becomes time-barred: 3 years, 2 years for sales, end of the calendar year. What interrupts the limitation period, what merely suspends it and what a judgment changes.',
+      seoTitle: 'Limitation periods for Polish invoices',
+      desc: 'When an invoice to a Polish company becomes time-barred: 3 years, 2 years for sales, end of the year. What interrupts limitation and what only suspends it.',
       lead: 'An unpaid invoice does not expire overnight, but there is a date after which the debtor can lawfully refuse to pay. In business-to-business dealings the periods are short and a few rules are counter-intuitive.',
       sections: [
         { h: 'The basic periods', ul: [
@@ -218,7 +224,8 @@ const ARTICLES = [
     related: ['odsetki-za-opoznienie-w-transakcjach-handlowych', 'wpis-dluznika-do-krd-big', 'przedawnienie-faktury-b2b'],
     pl: {
       title: 'Wezwanie do zapłaty — co musi zawierać, jak je wysłać i dlaczego warto (wzór)',
-      desc: 'Elementy skutecznego wezwania do zapłaty za fakturę B2B: kwota, odsetki, rekompensata, termin, ostrzeżenie o KRD i sądzie. Forma wysyłki, dowód doręczenia i znaczenie w pozwie. Darmowy generator.',
+      seoTitle: 'Wezwanie do zapłaty — wzór i zasady',
+      desc: 'Co musi zawierać wezwanie do zapłaty za fakturę B2B: kwota, odsetki, rekompensata, termin, ostrzeżenie o KRD. Jak wysłać z dowodem doręczenia. Generator.',
       lead: 'Wezwanie do zapłaty nie jest warunkiem naliczania odsetek, ale jest najtańszym narzędziem windykacji i standardowym załącznikiem do pozwu. Dobrze napisane odzyskuje pieniądze bez sądu — pod warunkiem, że zawiera to, co trzeba.',
       sections: [
         { h: 'Co musi zawierać', ul: [
@@ -249,7 +256,8 @@ const ARTICLES = [
     },
     en: {
       title: 'Demand for payment to a Polish debtor (wezwanie do zapłaty) — what it must contain and how to send it',
-      desc: 'The elements of an effective demand for payment of a B2B invoice in Poland: amount, interest, recovery fee, deadline, warning about credit-bureau listing and court. How to send it with proof of delivery and why it matters in court. Free generator.',
+      seoTitle: 'Demand for payment to a Polish debtor',
+      desc: 'What a demand for payment of a Polish B2B invoice must contain: amount, interest, recovery fee, deadline, KRD warning. How to send it with proof of delivery.',
       lead: 'A demand for payment is not a condition for charging interest, but it is the cheapest collection tool and a standard attachment to a court claim. A well-drafted one recovers the money without court — provided it contains what it should.',
       sections: [
         { h: 'What it must contain', ul: [
@@ -285,7 +293,8 @@ const ARTICLES = [
     related: ['rekompensata-40-70-100-euro', 'przedawnienie-faktury-b2b', 'windykacja-w-polsce-dla-zagranicznych-wierzycieli'],
     pl: {
       title: 'Sprzedaż faktury (cesja wierzytelności) a faktoring — czym się różnią i co przechodzi na nabywcę',
-      desc: 'Cesja wierzytelności z art. 509 KC krok po kroku: zgoda dłużnika, zakaz cesji, zawiadomienie, odpowiedzialność zbywcy. Sprzedaż przeterminowanej faktury a faktoring — kiedy co się opłaca.',
+      seoTitle: 'Sprzedaż faktury (cesja) a faktoring',
+      desc: 'Cesja wierzytelności z art. 509 KC krok po kroku: zgoda dłużnika, zakaz cesji, zawiadomienie. Sprzedaż przeterminowanej faktury a faktoring — co się opłaca.',
       lead: 'Sprzedaż faktury i faktoring to dwa różne narzędzia, choć oba zamieniają fakturę na gotówkę. Pierwsze rozwiązuje problem faktury, której dłużnik nie płaci; drugie finansuje bieżący obrót. Podstawą prawną w obu wypadkach jest przelew wierzytelności.',
       sections: [
         { h: 'Jak działa cesja (art. 509–518 KC)', p: [
@@ -316,7 +325,8 @@ const ARTICLES = [
     },
     en: {
       title: 'Selling a Polish invoice (assignment of receivables) vs factoring — the differences and what passes to the buyer',
-      desc: 'Assignment of receivables under art. 509 of the Polish Civil Code step by step: debtor consent, non-assignment clauses, notification, seller liability. Selling an overdue invoice vs factoring — when each pays off.',
+      seoTitle: 'Selling an invoice vs factoring (Poland)',
+      desc: 'Assignment of receivables under Polish law step by step: debtor consent, non-assignment clauses, notification. Selling an overdue invoice vs factoring.',
       lead: 'Selling an invoice and factoring are two different tools, although both turn an invoice into cash. The first solves the problem of an invoice the debtor does not pay; the second finances ongoing turnover. The legal basis for both is the assignment of a receivable.',
       sections: [
         { h: 'How assignment works (arts. 509–518 Civil Code)', p: [
@@ -352,7 +362,8 @@ const ARTICLES = [
     related: ['wezwanie-do-zaplaty-wzor', 'przedawnienie-faktury-b2b', 'odsetki-za-opoznienie-w-transakcjach-handlowych'],
     pl: {
       title: 'Wpis dłużnika do KRD lub innego BIG — warunki, procedura i skutki',
-      desc: 'Kiedy firma może wpisać dłużnika-przedsiębiorcę do biura informacji gospodarczej: 500 zł, 30 dni, wezwanie z ostrzeżeniem i miesiąc odczekania. Jakie biura działają w Polsce i co wpis daje wierzycielowi.',
+      seoTitle: 'Wpis dłużnika do KRD/BIG — warunki',
+      desc: 'Kiedy firma może wpisać dłużnika do KRD lub innego BIG: 500 zł, 30 dni, wezwanie z ostrzeżeniem i miesiąc odczekania. Jakie biura działają i co daje wpis.',
       lead: 'Zapowiedź wpisu do KRD to jeden z najskuteczniejszych argumentów w windykacji polubownej — bo wpis widzą banki, leasingodawcy i kontrahenci dłużnika. Ustawa stawia jednak konkretne warunki, których pominięcie naraża wierzyciela na odpowiedzialność.',
       sections: [
         { h: 'Biura informacji gospodarczej w Polsce', p: [
@@ -380,7 +391,8 @@ const ARTICLES = [
     },
     en: {
       title: 'Listing a Polish debtor in KRD or another credit information bureau (BIG) — conditions, procedure and effects',
-      desc: 'When a company may list a business debtor in a Polish credit information bureau: PLN 500, 30 days overdue, a demand with a warning and a one-month wait. Which bureaus operate in Poland and what a listing achieves.',
+      seoTitle: 'Listing a Polish debtor in KRD/BIG',
+      desc: 'When a company may list a business debtor in a Polish credit bureau: PLN 500, 30 days overdue, a demand with a warning, a one-month wait. What a listing does.',
       lead: 'Announcing a KRD listing is one of the most effective arguments in amicable collection — banks, lessors and the debtor’s customers all see it. The law sets specific conditions, and skipping them exposes the creditor to liability.',
       sections: [
         { h: 'Credit information bureaus in Poland', p: [
@@ -413,7 +425,8 @@ const ARTICLES = [
     related: ['odsetki-za-opoznienie-w-transakcjach-handlowych', 'wezwanie-do-zaplaty-wzor', 'sprzedaz-faktury-cesja-a-faktoring'],
     pl: {
       title: 'Windykacja należności od polskiej firmy — poradnik dla zagranicznych wierzycieli',
-      desc: 'Jak odzyskać pieniądze od kontrahenta z Polski krok po kroku: weryfikacja w KRS i KRZ, odsetki i rekompensata, wezwanie, europejski nakaz zapłaty, polski sąd i komornik, odpowiedzialność zarządu, sprzedaż wierzytelności.',
+      seoTitle: 'Windykacja w Polsce — poradnik dla firm z UE',
+      desc: 'Jak odzyskać pieniądze od firmy z Polski: weryfikacja w KRS i KRZ, odsetki i rekompensata, wezwanie, europejski nakaz zapłaty, sąd, komornik, sprzedaż długu.',
       lead: 'Polska firma nie płaci, a Ty jesteś w Holandii, Niemczech czy Wielkiej Brytanii? Procedura jest przewidywalna, a polskie przepisy są dla wierzyciela korzystniejsze, niż wielu zagranicznych przedsiębiorców sądzi.',
       sections: [
         { h: 'Krok 1: sprawdź dłużnika (bezpłatnie)', ul: [
@@ -446,7 +459,8 @@ const ARTICLES = [
     },
     en: {
       title: 'How to collect a debt from a Polish company — a practical guide for foreign creditors',
-      desc: 'Recovering money from a Polish business step by step: free checks in KRS and KRZ, 14% interest and the EUR 40/70/100 fee, a Polish demand letter, the European order for payment, Polish courts and bailiffs, director liability and selling the claim.',
+      seoTitle: 'Collecting a debt from a Polish company',
+      desc: 'Recovering money from a Polish business step by step: free register checks, 14% interest, the EUR 40/70/100 fee, a Polish demand letter, EU payment order.',
       lead: 'A Polish company is not paying and you are in the Netherlands, Germany or the UK? The procedure is predictable, and Polish law is more creditor-friendly than many foreign businesses assume.',
       sections: [
         { h: 'Step 1: check the debtor (free of charge)', ul: [
