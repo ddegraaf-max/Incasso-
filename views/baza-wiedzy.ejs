@@ -1,0 +1,46 @@
+<%
+// Baza wiedzy — overzicht van de SEO-artikelen (src/articles.js), PL/EN via taalcookie.
+var k = t.kb, L = lang === 'en' ? 'en' : 'pl';
+var loc = lang === 'en' ? 'en-GB' : 'pl-PL';
+var dateFmt = function (d) { return new Date(d).toLocaleDateString(loc, { day: 'numeric', month: 'long', year: 'numeric' }); };
+var ld = [
+  { '@context': 'https://schema.org', '@type': 'CollectionPage', name: k.h1, description: k.metaDesc, inLanguage: lang,
+    url: site + '/baza-wiedzy' + (lang === 'en' ? '?lang=en' : ''), isPartOf: { '@type': 'WebSite', name: 'sprzedamfakture.pl', url: site + '/' },
+    hasPart: articles.map(function (a) { return { '@type': 'Article', headline: a[L].title, url: site + '/baza-wiedzy/' + a.slug, datePublished: a.date, dateModified: a.updated }; }) },
+  { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+    { '@type': 'ListItem', position: 1, name: k.crumbsHome, item: site + '/' },
+    { '@type': 'ListItem', position: 2, name: k.kicker, item: site + '/baza-wiedzy' },
+  ] },
+];
+%><%- include('partials/head', { title: k.metaTitle, desc: k.metaDesc, ld: ld }) %>
+<%- include('partials/nav') %>
+
+<div class="calc-wrap kb" style="flex:1" id="main">
+  <nav class="crumbs" aria-label="breadcrumb"><a href="/"><%= k.crumbsHome %></a> › <span><%= k.kicker %></span></nav>
+  <div class="kicker"><%= k.kicker %></div>
+  <h1 style="font-size:clamp(30px, 4.2vw, 40px)"><%= k.h1 %></h1>
+  <p class="lead"><%= k.lead %></p>
+
+  <div class="kb-list">
+    <% articles.forEach(function (a) { var x = a[L]; %>
+    <a class="kb-card" href="/baza-wiedzy/<%= a.slug %>">
+      <div class="kb-date tnum"><%= k.published %>: <%= dateFmt(a.updated) %></div>
+      <h2><%= x.title %></h2>
+      <p><%= x.desc %></p>
+      <span class="kb-more"><%= k.readMore %></span>
+    </a>
+    <% }) %>
+  </div>
+
+  <div class="kb-cta">
+    <h2><%= k.ctaH %></h2>
+    <p><%= k.ctaP %></p>
+    <div class="cta">
+      <a class="btn" href="/#wycena"><%= k.ctaBtn %></a>
+      <a class="btn btn-secondary" href="/kalkulator"><%= k.ctaBtn2 %></a>
+    </div>
+  </div>
+  <p class="legal-note"><%= k.disclaimer %></p>
+</div>
+
+<%- include('partials/footer') %>

@@ -13,6 +13,7 @@ const mem = {
   scores: {},    // nip → { score, grade, pct, reco, signals, checkedAt }
   comms: [],     // communicatielog
   leads: [],     // sprzedamfakture-leads
+  cases: [],     // echte zaken (nieuwste eerst)
 };
 
 async function init() {
@@ -105,8 +106,32 @@ async function init() {
       checked_at TIMESTAMPTZ DEFAULT now()
     );
   `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS cases (
+      id SERIAL PRIMARY KEY,
+      nr TEXT,
+      debtor TEXT,
+      nip TEXT,
+      amount NUMERIC,
+      due_date DATE,
+      debtor_email TEXT,
+      debtor_tel TEXT,
+      client_company TEXT,
+      client_email TEXT,
+      owner_user_id INT,
+      phase TEXT,
+      tag TEXT,
+      source TEXT DEFAULT 'admin',
+      lead_id INT,
+      note TEXT,
+      created_at TIMESTAMPTZ DEFAULT now(),
+      updated_at TIMESTAMPTZ
+    );
+  `);
   // idempotente migraties voor bestaande databases
   await pool.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS forma TEXT');
+  await pool.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS case_id TEXT');
+  await pool.query('ALTER TABLE events ADD COLUMN IF NOT EXISTS case_id TEXT');
   await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'nowy'");
   await pool.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS admin_note TEXT');
   await pool.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ');
@@ -123,7 +148,7 @@ async function stats() {
   const t0 = Date.now();
   try {
     const r = await pool.query(
-      "SELECT (SELECT count(*)::int FROM users) AS users, (SELECT count(*)::int FROM leads) AS leads, (SELECT count(*)::int FROM events) AS events, (SELECT count(*)::int FROM comm_log) AS comms"
+      "SELECT (SELECT count(*)::int FROM users) AS users, (SELECT count(*)::int FROM leads) AS leads, (SELECT count(*)::int FROM events) AS events, (SELECT count(*)::int FROM comm_log) AS comms, (SELECT count(*)::int FROM cases) AS cases"
     );
     return { connected: true, pingMs: Date.now() - t0, ...r.rows[0] };
   } catch (e) {
@@ -197,10 +222,17 @@ async function insertEvent(e) {
   // demo-/monitor-events komen bij elke herstart terug: oude identieke titel eerst weg
   if (e.dedupe) await pool.query('DELETE FROM events WHERE title=$1', [e.title]).catch(() => {});
   await pool.query(
-    'INSERT INTO events (nip, debtor, type, title, source) VALUES ($1,$2,$3,$4,$5)',
-    [e.nip, e.debtor, e.type, e.title, e.source]
+    'INSERT INTO events (nip, debtor, type, title, source, case_id) VALUES ($1,$2,$3,$4,$5,$6)',
+    [e.nip, e.debtor, e.type, e.title, e.source, e.case_id || null]
   );
   return ev;
+}
+
+// Tijdlijn van één zaak (echte zaken): events met case_id, oudste eerst
+async function listCaseEvents(caseId, limit = 40) {
+  if (!pool) return mem.events.filter((e) => e.case_id === caseId).slice(0, limit).reverse();
+  const r = await pool.query('SELECT * FROM events WHERE case_id=$1 ORDER BY created_at ASC LIMIT $2', [caseId, limit]);
+  return r.rows;
 }
 
 async function listEvents(limit = 20) {
@@ -249,6 +281,13 @@ async function updateLead(id, { status, admin_note }) {
   return r.rowCount > 0;
 }
 
+async function setLeadCase(id, caseId) {
+  const n = parseInt(id, 10);
+  if (!Number.isInteger(n)) return;
+  if (!pool) { const l = mem.leads.find((x) => x.id === n); if (l) l.case_id = caseId; return; }
+  await pool.query('UPDATE leads SET case_id=$2, updated_at=now() WHERE id=$1', [n, caseId]);
+}
+
 async function deleteLead(id) {
   const n = parseInt(id, 10);
   if (!Number.isInteger(n)) return false;
@@ -269,7 +308,7 @@ const DEMO_EVENT_SOURCES = ['monitor', 'krz.ms.gov.pl', 'MSiG', 'panel klienta',
 async function purgeDemo({ caseIds = [], nips = [] }) {
   if (!pool) {
     const ev0 = mem.events.length;
-    mem.events = mem.events.filter((e) => e.type === 'lead' || !(DEMO_EVENT_SOURCES.includes(e.source) || nips.includes(e.nip)));
+    mem.events = mem.events.filter((e) => e.type === 'lead' || !(nips.includes(e.nip) || caseIds.includes(e.case_id) || (!e.case_id && DEMO_EVENT_SOURCES.includes(e.source))));
     const cm0 = mem.comms.length;
     mem.comms = mem.comms.filter((c) => !caseIds.includes(c.case_id));
     let scores = 0; for (const n of nips) if (mem.scores[n]) { delete mem.scores[n]; scores++; }
@@ -277,8 +316,8 @@ async function purgeDemo({ caseIds = [], nips = [] }) {
     return { events: ev0 - mem.events.length, comms: cm0 - mem.comms.length, scores, actions };
   }
   const ev = await pool.query(
-    "DELETE FROM events WHERE type IS DISTINCT FROM 'lead' AND (source = ANY($1) OR nip = ANY($2))",
-    [DEMO_EVENT_SOURCES, nips]
+    "DELETE FROM events WHERE type IS DISTINCT FROM 'lead' AND (nip = ANY($2) OR case_id = ANY($3) OR (case_id IS NULL AND source = ANY($1)))",
+    [DEMO_EVENT_SOURCES, nips, caseIds]
   );
   const cm = await pool.query('DELETE FROM comm_log WHERE case_id = ANY($1)', [caseIds]);
   const sc = await pool.query('DELETE FROM debtor_scores WHERE nip = ANY($1)', [nips]);
@@ -309,6 +348,62 @@ async function countComms() {
   return r.rows[0].n;
 }
 
+// ── Zaken (echte sprawy) ─────────────────────────────────────────────────
+// Sleutel in de app: 'c<id>' (string, net als de demo-ids f1..f6) — case_actions, comm_log en
+// events verwijzen met die sleutel. Kolommen in snake_case; hydratatie in src/cases.js.
+const CASE_COLS = ['nr', 'debtor', 'nip', 'amount', 'due_date', 'debtor_email', 'debtor_tel', 'client_company', 'client_email', 'owner_user_id', 'phase', 'tag', 'source', 'lead_id', 'note'];
+let memCaseId = 1;
+async function listCases() {
+  if (!pool) return mem.cases.slice();
+  const r = await pool.query('SELECT * FROM cases ORDER BY created_at DESC');
+  return r.rows;
+}
+
+async function insertCase(c) {
+  const row = {}; for (const k of CASE_COLS) row[k] = c[k] === undefined ? null : c[k];
+  if (!pool) { row.id = memCaseId++; row.created_at = new Date(); mem.cases.unshift(row); return row; }
+  const r = await pool.query(
+    `INSERT INTO cases (${CASE_COLS.join(', ')}) VALUES (${CASE_COLS.map((_, i) => '$' + (i + 1)).join(', ')}) RETURNING *`,
+    CASE_COLS.map((k) => row[k])
+  );
+  return r.rows[0];
+}
+
+async function updateCase(id, fields) {
+  const keys = Object.keys(fields).filter((k) => CASE_COLS.includes(k));
+  if (!keys.length) return false;
+  if (!pool) {
+    const c = mem.cases.find((x) => x.id === id);
+    if (!c) return false;
+    for (const k of keys) c[k] = fields[k];
+    c.updated_at = new Date();
+    return true;
+  }
+  const r = await pool.query(
+    `UPDATE cases SET ${keys.map((k, i) => k + '=$' + (i + 2)).join(', ')}, updated_at=now() WHERE id=$1`,
+    [id, ...keys.map((k) => fields[k])]
+  );
+  return r.rowCount > 0;
+}
+
+// Zaak + alle sporen (communicatie, acties, events) weg; leads verliezen alleen de koppeling
+async function deleteCase(id, caseKey) {
+  if (!pool) {
+    mem.cases = mem.cases.filter((x) => x.id !== id);
+    mem.comms = mem.comms.filter((x) => x.case_id !== caseKey);
+    mem.events = mem.events.filter((x) => x.case_id !== caseKey);
+    delete mem.actions[caseKey];
+    mem.leads.forEach((l) => { if (l.case_id === caseKey) l.case_id = null; });
+    return true;
+  }
+  await pool.query('DELETE FROM comm_log WHERE case_id=$1', [caseKey]);
+  await pool.query('DELETE FROM events WHERE case_id=$1', [caseKey]);
+  await pool.query('DELETE FROM case_actions WHERE case_id=$1', [caseKey]);
+  await pool.query('UPDATE leads SET case_id=NULL WHERE case_id=$1', [caseKey]);
+  const r = await pool.query('DELETE FROM cases WHERE id=$1', [id]);
+  return r.rowCount > 0;
+}
+
 // ── AIScores ─────────────────────────────────────────────────────────────
 async function saveScore(nip, s) {
   if (!pool) { mem.scores[nip] = { ...s, checkedAt: new Date() }; return; }
@@ -334,9 +429,10 @@ module.exports = {
   init, hasDb, getPool, stats,
   loadUsers, saveUser, updateUserTotp, updateUserPassword, deleteUser,
   loadActions, saveAction,
-  insertEvent, listEvents,
+  insertEvent, listEvents, listCaseEvents,
+  listCases, insertCase, updateCase, deleteCase,
   saveScore, loadScores,
   logComm, listComms, countComms,
-  saveLead, listLeads, getLead, updateLead, deleteLead,
+  saveLead, listLeads, getLead, updateLead, deleteLead, setLeadCase,
   purgeDemo,
 };

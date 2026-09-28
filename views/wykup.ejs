@@ -11,16 +11,17 @@
       <tr><th><%= W.th.invoice %></th><th><%= W.th.debtor %></th><th class="num"><%= W.th.amount %></th><th><%= W.th.aiscore %></th><th class="num"><%= W.th.offer %></th><th></th></tr>
     </thead>
     <tbody>
-      <% if (!D.claims.length) { %><tr><td colspan="6" style="color:var(--ink-55); padding:18px 12px"><%= W.empty %></td></tr><% } %>
-      <% D.claims.forEach(function(c) {
+      <% if (!claims.length) { %><tr><td colspan="6" style="color:var(--ink-55); padding:18px 12px"><%= W.empty %></td></tr><% } %>
+      <% claims.forEach(function(c) {
         var sold = done[c.id] === 'sell';
-        var scoreTag = (c.ai.grade === 'E' || c.ai.grade === 'D') ? 'tag-accent' : (c.ai.grade === 'C' ? 'tag-outline' : 'tag-neutral');
+        var ai = c.ai || { score: '—', grade: '—' };
+        var scoreTag = (ai.grade === 'E' || ai.grade === 'D') ? 'tag-accent' : (ai.grade === 'C' ? 'tag-outline' : 'tag-neutral');
       %>
       <tr>
         <td class="tnum"><%= c.nr %></td>
         <td><%= c.debtor %></td>
         <td class="num tnum"><%= D.fmt(c.amount) %></td>
-        <td><span class="tag <%= scoreTag %>"><span class="tnum"><%= c.ai.score %></span> · <%= c.ai.grade %></span></td>
+        <td><span class="tag <%= scoreTag %>"><span class="tnum"><%= ai.score %></span> · <%= ai.grade %></span></td>
         <td class="num tnum"><%= D.fmt(Math.round(c.amount * c.pct / 100)) %> · <%= c.pct %>%</td>
         <td>
           <% if (sold) { %>

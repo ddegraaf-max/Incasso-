@@ -8,9 +8,8 @@ var hasErr = Object.keys(errors).length > 0;
 var ld = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: w.faqLd.map(function (i) {
   return { '@type': 'Question', name: i[0], acceptedAnswer: { '@type': 'Answer', text: i[1] } };
 }) };
-%><%- include('partials/head', { title: w.metaTitle }) %>
+%><%- include('partials/head', { title: w.metaTitle, desc: w.metaDesc, ld: ld }) %>
 <%- include('partials/nav') %>
-<script type="application/ld+json"><%- JSON.stringify(ld).replace(/</g, '\\u003c') %></script>
 
 <div class="calc-wrap" style="flex:1">
   <div class="kicker"><%= w.kicker %></div>

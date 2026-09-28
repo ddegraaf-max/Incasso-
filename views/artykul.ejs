@@ -1,0 +1,69 @@
+<%
+// Eén artikel uit de baza wiedzy: Article + BreadcrumbList (+ FAQPage) JSON-LD, PL/EN.
+var k = t.kb, L = lang === 'en' ? 'en' : 'pl', x = a[L];
+var loc = lang === 'en' ? 'en-GB' : 'pl-PL';
+var dateFmt = function (d) { return new Date(d).toLocaleDateString(loc, { day: 'numeric', month: 'long', year: 'numeric' }); };
+var url = site + '/baza-wiedzy/' + a.slug;
+var ld = [
+  { '@context': 'https://schema.org', '@type': 'Article', headline: x.title, description: x.desc, inLanguage: lang,
+    datePublished: a.date, dateModified: a.updated, mainEntityOfPage: url + (lang === 'en' ? '?lang=en' : ''), image: site + '/img/og.png',
+    author: { '@type': 'Organization', name: 'sprzedamfakture.pl', url: site + '/' },
+    publisher: { '@type': 'Organization', name: 'sprzedamfakture.pl', logo: { '@type': 'ImageObject', url: site + '/img/logo.svg' } } },
+  { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+    { '@type': 'ListItem', position: 1, name: k.crumbsHome, item: site + '/' },
+    { '@type': 'ListItem', position: 2, name: k.kicker, item: site + '/baza-wiedzy' },
+    { '@type': 'ListItem', position: 3, name: x.title, item: url },
+  ] },
+];
+if (x.faq && x.faq.length) {
+  ld.push({ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: x.faq.map(function (q) {
+    return { '@type': 'Question', name: q[0], acceptedAnswer: { '@type': 'Answer', text: String(q[1]).replace(/<[^>]+>/g, '') } };
+  }) });
+}
+var related = (a.related || []).map(function (s) { return articles.find(function (o) { return o.slug === s; }); }).filter(Boolean);
+var cta = x.cta || {};
+%><%- include('partials/head', { title: x.title + ' — sprzedamfakture.pl', desc: x.desc, ld: ld }) %>
+<%- include('partials/nav') %>
+
+<article class="calc-wrap kb-article" style="flex:1" id="main">
+  <nav class="crumbs" aria-label="breadcrumb"><a href="/"><%= k.crumbsHome %></a> › <a href="/baza-wiedzy"><%= k.kicker %></a> › <span><%= x.title %></span></nav>
+  <div class="kicker"><%= k.kicker %> · <span class="tnum"><%= k.published %>: <%= dateFmt(a.updated) %></span></div>
+  <h1><%= x.title %></h1>
+  <p class="lead"><%= x.lead %></p>
+
+  <% x.sections.forEach(function (s) { %>
+  <h2><%= s.h %></h2>
+  <% (s.p || []).forEach(function (p) { %><p><%- p %></p><% }) %>
+  <% if (s.ul && s.ul.length) { %><ul><% s.ul.forEach(function (li) { %><li><%- li %></li><% }) %></ul><% } %>
+  <% (s.p2 || []).forEach(function (p) { %><p><%- p %></p><% }) %>
+  <% }) %>
+
+  <% if (x.faq && x.faq.length) { %>
+  <h2><%= k.faqH %></h2>
+  <% x.faq.forEach(function (q) { %>
+  <h3><%= q[0] %></h3>
+  <p><%- q[1] %></p>
+  <% }) %>
+  <% } %>
+
+  <div class="kb-cta">
+    <h2><%= cta.h || k.ctaH %></h2>
+    <p><%= cta.p || k.ctaP %></p>
+    <div class="cta">
+      <a class="btn" href="<%= cta.href || '/#wycena' %>"><%= cta.btn || k.ctaBtn %></a>
+      <a class="btn btn-secondary" href="/kalkulator"><%= k.ctaBtn2 %></a>
+    </div>
+  </div>
+
+  <% if (related.length) { %>
+  <div class="kb-related">
+    <div class="label"><%= k.relatedH %></div>
+    <% related.forEach(function (r) { %><a href="/baza-wiedzy/<%= r.slug %>"><%= r[L].title %></a><% }) %>
+  </div>
+  <% } %>
+
+  <p class="legal-note"><%= k.disclaimer %></p>
+  <p style="font-size:13.5px"><a href="/baza-wiedzy"><%= k.back %></a></p>
+</article>
+
+<%- include('partials/footer') %>

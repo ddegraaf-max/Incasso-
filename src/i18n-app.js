@@ -55,7 +55,16 @@ const pl = {
     collect: { h: 'Windykacja — Ty płacisz tylko opłatę serwisową', p: 'Odsetki 14%, rekompensata {rekomp} zł i koszty obciążają dłużnika. Odzyskana kwota w całości trafia do Ciebie.', btn: 'Zleć windykację — {fee} zł' },
     sell: { h: 'Albo sprzedaj wierzytelność', p: 'Wycena agenta AI: {pct}% wartości. Wypłata w 24 godziny, ryzyko przechodzi na nas.', btn: 'Przyjmij ofertę — {amount}' },
     done: { collect: 'Zlecono windykację — agent AI przejął sprawę.', close: 'Sprawa zamknięta — wierzytelność odpisana (rekomendacja AI).', sell: 'Oferta przyjęta — wypłata w ciągu 24 godzin.' },
-    empty: 'Brak spraw. Dane demo są wyłączone — nowe sprawy pojawią się tu po uruchomieniu windykacji.', emptyDetail: 'Brak wybranej sprawy.',
+    empty: 'Brak spraw. Załóż pierwszą w zakładce „Nowa sprawa” — albo poczekaj na lead z formularza.', emptyDetail: 'Brak wybranej sprawy.',
+    real: {
+      clientLabel: 'Wierzyciel', timelineEmpty: 'Brak zdarzeń — tu pojawi się historia działań w sprawie.',
+      edit: 'Edytuj dane sprawy', del: 'Usuń sprawę', delConfirm: 'Usunąć sprawę wraz z całą historią? Tej operacji nie można cofnąć.',
+      noContact: 'Uzupełnij e-mail lub telefon dłużnika (Edytuj dane sprawy), aby wysyłać wiadomości.',
+      saved: 'Zapisano dane sprawy', deleted: 'Sprawa usunięta', created: 'Sprawa założona — agent AI policzył AIScore', noAccess: 'Brak dostępu do tej sprawy',
+      f: { nr: 'Nr faktury / sygnatura', debtor: 'Dłużnik (nazwa)', nip: 'NIP dłużnika', amount: 'Kwota (zł)', due: 'Termin płatności', days: 'Dni po terminie (zamiast daty)', email: 'E-mail dłużnika', tel: 'Telefon dłużnika', note: 'Notatka', client: 'Wierzyciel (firma klienta)', clientEmail: 'E-mail klienta' },
+      save: 'Zapisz',
+      errors: { caseDebtor: 'Podaj nazwę dłużnika.', caseAmount: 'Podaj kwotę większą od 0.', caseDue: 'Podaj termin płatności (data) albo liczbę dni po terminie.', caseEmail: 'Nieprawidłowy e-mail dłużnika.', caseNip: 'NIP musi mieć 10 cyfr.' },
+    },
   },
   nowa: {
     k1: '01 · Źródło', h1: 'Trzy drogi do założenia sprawy — wybierz wygodną dla siebie.',
@@ -71,6 +80,7 @@ const pl = {
     run: { h: 'Uruchom agenta AI', p: 'Monitoring, przypomnienia, negocjacje i eskalacja — odsetki 14%, rekompensata 300 zł i koszty obciążają dłużnika.', btn: 'Uruchom — {fee} zł' },
     sell: { h: 'Albo sprzedaj od razu', p: 'Wycena agenta AI: 86% wartości. Wypłata w 24 godziny, ryzyko przechodzi na nas.', btn: 'Przyjmij ofertę — 20 124 zł' },
     done: { collect: 'Agent AI uruchomiony — pierwsze przypomnienie jutro o 9:00.', sell: 'Oferta przyjęta — cesja do podpisu, wypłata w 24 godziny.' },
+    manual: { kicker: 'Załóż sprawę', h: 'Wpisz dane faktury — agent AI od razu policzy AIScore, sprawdzi białą listę VAT i założy sprawę.', btn: 'Załóż sprawę', helper: 'Kontakt dłużnika możesz uzupełnić później w szczegółach sprawy. Import z KSeF i z pliku — w przygotowaniu.' },
   },
   agent: {
     monKicker: 'Monitoring — dane publiczne na żywo',
@@ -119,6 +129,9 @@ const pl = {
       del: 'Usuń zgłoszenie', delConfirm: 'Usunąć to zgłoszenie bezpowrotnie?', saved: 'Zapisano lead #{id}', deleted: 'Usunięto lead #{id}', notFound: 'Nie znaleziono leada.',
       empty: 'Brak leadów.', emptyDetail: 'Wybierz lead z listy.', attachHint: 'Załącznik (faktura / wyrok) trafił wyłącznie do e-maila powiadamiającego na MAIL_NOTIFY.',
       statuses: { nowy: 'Nowy', kontakt: 'W kontakcie', oferta: 'Oferta wysłana', zaakceptowany: 'Zaakceptowany', odrzucony: 'Odrzucony', spam: 'Spam / test' },
+      caseKicker: 'Sprawa', caseBtn: 'Załóż sprawę z tego leada', caseLink: 'Przejdź do sprawy →',
+      caseHint: 'Pola wypełnione wstępnie z leada — sprawdź dłużnika i termin. Kontakt dłużnika uzupełnisz w sprawie.',
+      caseCreated: 'Sprawa założona z leada #{id}',
     },
   },
 };
@@ -196,6 +209,10 @@ const FRAGMENTS = [
   ['mail: wysłano', 'mail: sent'], ['mail: symulacja', 'mail: simulation'], ['/ wysłano', '/ sent'], ['/ symulacja', '/ simulation'],
   ['brak MAIL_NOTIFY', 'MAIL_NOTIFY not set'], ['brak adresata', 'no recipient'], ['błąd sieci', 'network error'], ['błąd ', 'error '], ['błąd:', 'error:'],
   ['termin:', 'date:'], ['dziś', 'today'], ['jutro', 'tomorrow'],
+  // echte zaken
+  ['Sprawa założona z leada', 'Case opened from lead'], ['Sprawa założona ręcznie', 'Case opened manually'], ['Dane sprawy zaktualizowane', 'Case details updated'],
+  ['Zlecono windykację', 'Collection ordered'], ['Oferta wykupu przyjęta', 'Buy-out offer accepted'], ['Sprawa zamknięta i odpisana', 'Case closed and written off'],
+  ['brak NIP', 'no NIP'], ['sprawa', 'case'],
 ];
 
 function trEn(s) {
@@ -263,7 +280,16 @@ const en = {
     collect: { h: 'Debt collection — you pay only the service fee', p: 'Interest at 14%, the {rekomp} zł recovery fee and costs are charged to the debtor. The recovered amount goes to you in full.', btn: 'Order collection — {fee} zł' },
     sell: { h: 'Or sell the claim', p: 'AI agent valuation: {pct}% of face value. Payout within 24 hours, the risk passes to us.', btn: 'Accept the offer — {amount}' },
     done: { collect: 'Collection ordered — the AI agent has taken over the case.', close: 'Case closed — claim written off (AI recommendation).', sell: 'Offer accepted — payout within 24 hours.' },
-    empty: 'No cases. Demo data is switched off — new cases will appear here once collection starts.', emptyDetail: 'No case selected.',
+    empty: 'No cases. Open the first one under “New case” — or wait for a lead from the form.', emptyDetail: 'No case selected.',
+    real: {
+      clientLabel: 'Creditor', timelineEmpty: 'No events yet — the case history will appear here.',
+      edit: 'Edit case details', del: 'Delete case', delConfirm: 'Delete this case with its whole history? This cannot be undone.',
+      noContact: 'Add the debtor\'s e-mail or phone (Edit case details) to send messages.',
+      saved: 'Case details saved', deleted: 'Case deleted', created: 'Case opened — the AI agent has calculated the AIScore', noAccess: 'No access to this case',
+      f: { nr: 'Invoice no. / case ref.', debtor: 'Debtor (name)', nip: 'Debtor NIP', amount: 'Amount (PLN)', due: 'Due date', days: 'Days overdue (instead of a date)', email: 'Debtor e-mail', tel: 'Debtor phone', note: 'Note', client: 'Creditor (client company)', clientEmail: 'Client e-mail' },
+      save: 'Save',
+      errors: { caseDebtor: 'Enter the debtor\'s name.', caseAmount: 'Enter an amount greater than 0.', caseDue: 'Enter a due date or the number of days overdue.', caseEmail: 'Invalid debtor e-mail.', caseNip: 'The NIP must have 10 digits.' },
+    },
   },
   nowa: {
     k1: '01 · Source', h1: 'Three ways to open a case — pick the one that suits you.',
@@ -279,6 +305,7 @@ const en = {
     run: { h: 'Start the AI agent', p: 'Monitoring, reminders, negotiation and escalation — 14% interest, the 300 zł recovery fee and costs are charged to the debtor.', btn: 'Start — {fee} zł' },
     sell: { h: 'Or sell right away', p: 'AI agent valuation: 86% of face value. Payout within 24 hours, the risk passes to us.', btn: 'Accept the offer — 20 124 zł' },
     done: { collect: 'AI agent started — first reminder tomorrow at 9:00.', sell: 'Offer accepted — assignment ready for signature, payout within 24 hours.' },
+    manual: { kicker: 'Open a case', h: 'Enter the invoice details — the AI agent calculates the AIScore, checks the VAT white list and opens the case.', btn: 'Open case', helper: 'You can add the debtor\'s contact details later in the case view. KSeF and file import — coming soon.' },
   },
   agent: {
     monKicker: 'Monitoring — live public data',
@@ -328,6 +355,9 @@ const en = {
       del: 'Delete submission', delConfirm: 'Delete this submission permanently?', saved: 'Lead #{id} saved', deleted: 'Lead #{id} deleted', notFound: 'Lead not found.',
       empty: 'No leads.', emptyDetail: 'Select a lead from the list.', attachHint: 'The attachment (invoice / judgment) was sent only in the notification e-mail to MAIL_NOTIFY.',
       statuses: { nowy: 'New', kontakt: 'In contact', oferta: 'Offer sent', zaakceptowany: 'Accepted', odrzucony: 'Declined', spam: 'Spam / test' },
+      caseKicker: 'Case', caseBtn: 'Open a case from this lead', caseLink: 'Go to the case →',
+      caseHint: 'Fields pre-filled from the lead — check the debtor and the due date. Add the debtor\'s contact details in the case.',
+      caseCreated: 'Case opened from lead #{id}',
     },
   },
 };

@@ -6,7 +6,7 @@
 
 <div class="stats">
   <div class="stat"><div class="v tnum"><%= usersList.filter(u => u.role === 'client').length %></div><div class="l"><%= M.stats.clients %></div></div>
-  <div class="stat"><div class="v tnum"><%= D.claims.length %></div><div class="l"><%= M.stats.cases %></div></div>
+  <div class="stat"><div class="v tnum"><%= claims.length %></div><div class="l"><%= M.stats.cases %></div></div>
   <div class="stat"><div class="v tnum accent"><%= Object.values(done).filter(v => v === 'collect').length %></div><div class="l"><%= M.stats.collections %></div></div>
   <div class="stat"><div class="v tnum"><%= Object.values(done).filter(v => v === 'sell').length %></div><div class="l"><%= M.stats.bought %></div></div>
 </div>
@@ -58,10 +58,10 @@
     <table class="cases">
       <thead><tr><th><%= M.th.invoice %></th><th class="num"><%= M.th.amount %></th><th><%= M.th.status %></th></tr></thead>
       <tbody>
-        <% if (!D.claims.length) { %><tr><td colspan="3" style="color:var(--ink-55); padding:14px 12px"><%= M.noCases %></td></tr><% } %>
-        <% D.claims.forEach(function(c) { var st = done[c.id]; %>
+        <% if (!claims.length) { %><tr><td colspan="3" style="color:var(--ink-55); padding:14px 12px"><%= M.noCases %></td></tr><% } %>
+        <% claims.forEach(function(c) { var st = done[c.id]; %>
         <tr>
-          <td class="tnum"><%= c.nr %></td>
+          <td class="tnum"><a href="/app/sprawy?sel=<%= c.id %>"><%= c.nr %></a><% if (c.real && c.clientCompany) { %> <span class="fr2" style="font-size:11.5px; color:var(--ink-55)">· <%= c.clientCompany %></span><% } %></td>
           <td class="num tnum"><%= D.fmt(c.amount) %></td>
           <td><span class="tag <%= st && st !== 'decline' ? 'tag-accent' : st === 'decline' ? 'tag-outline' : 'tag-neutral' %>"><%= st === 'collect' ? M.stCollect : st === 'sell' ? M.stSold : st === 'close' ? M.stClosed : st === 'decline' ? M.stDeclined : t.tr(c.phase) %></span></td>
         </tr>

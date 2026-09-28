@@ -1,14 +1,42 @@
-<!DOCTYPE html>
+<%
+// Gedeelde <head> voor alle pagina's die niet hun eigen head hebben (sprzedam/landing wel).
+// Parameters via include(): title, desc, ld (JSON-LD object of array), noindex, altLang (hreflang PL/EN, default aan).
+// Panel-, auth-, admin- en foutpagina's krijgen automatisch noindex (page-naam).
+var _title = typeof title !== 'undefined' && title ? title : t.home.metaTitle;
+var _desc = typeof desc !== 'undefined' && desc ? desc : t.home.metaDesc;
+var _site = typeof site !== 'undefined' ? site : 'https://sprzedamfakture.pl';
+var _path = typeof canonicalPath !== 'undefined' ? canonicalPath : '/';
+var _page = typeof page !== 'undefined' ? page : '';
+var _noindex = typeof noindex !== 'undefined' ? !!noindex : ['auth', 'app', 'admin', 'error', 'przerwa'].indexOf(_page) !== -1;
+var _alt = typeof altLang !== 'undefined' ? !!altLang : true;
+var _ld = typeof ld !== 'undefined' && ld ? (Array.isArray(ld) ? ld : [ld]) : [];
+%><!DOCTYPE html>
 <html lang="<%= lang %>">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title><%= typeof title !== 'undefined' ? title : t.home.metaTitle %></title>
-<meta name="description" content="<%= t.home.metaDesc %>">
+<title><%= _title %></title>
+<meta name="description" content="<%= _desc %>">
+<% if (_noindex) { %>
+<meta name="robots" content="noindex, nofollow">
+<% } else { %>
+<link rel="canonical" href="<%= _site + _path + (_alt && lang === 'en' ? '?lang=en' : '') %>">
+<% if (_alt) { %>
+<link rel="alternate" hreflang="pl" href="<%= _site + _path %>?lang=pl">
+<link rel="alternate" hreflang="en" href="<%= _site + _path %>?lang=en">
+<link rel="alternate" hreflang="x-default" href="<%= _site + _path %>">
+<% } %>
+<meta property="og:title" content="<%= _title %>">
+<meta property="og:description" content="<%= _desc %>">
+<meta property="og:url" content="<%= _site + _path %>">
+<meta property="og:locale" content="<%= lang === 'en' ? 'en_GB' : 'pl_PL' %>">
+<meta name="twitter:card" content="summary_large_image">
+<% } %>
 <%- include('meta') %>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="/css/app.css?v=<%= version %>">
-</head>
+<% _ld.forEach(function (o) { %><script type="application/ld+json"><%- JSON.stringify(o).replace(/</g, '\\u003c') %></script>
+<% }) %></head>
 <body>
 <div style="min-height:100vh; display:flex; flex-direction:column">

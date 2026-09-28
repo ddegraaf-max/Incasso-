@@ -105,18 +105,31 @@ async function composeEmail(c, tone) {
 }
 
 // ── Verzenden ────────────────────────────────────────────────────────────
+// Fase van de zaak volgt de communicatie; echte zaken bewaren de fase in de DB
+async function bumpPhase(c, tone) {
+  if (tone === 'Prawniczy') { c.phase = 'Eskalacja'; c.tag = 'tag-accent'; }
+  else if (c.phase === 'Nowa · analiza AI' || c.phase === 'Monitoring') { c.phase = 'Przypomnienia'; c.tag = 'tag-neutral'; }
+  else return;
+  await persistPhase(c);
+}
+async function persistPhase(c) {
+  if (c.real && c.dbId) await db.updateCase(c.dbId, { phase: c.phase, tag: c.tag }).catch(() => {});
+}
+
 async function sendEmail(c, tone) {
   const msg = await composeEmail(c, tone);
   let status = 'symulacja';
-  if (LIVE_COMMS) {
+  if (!c.email) status = 'brak adresata';
+  else if (LIVE_COMMS) {
     const r = await Mailer.send({ from: FROM_EMAIL, to: c.email, subject: msg.subject, text: msg.body });
     status = r.status;
   }
   await db.logComm({ case_id: c.id, channel: 'email', tone, subject: msg.subject, body: msg.body, status });
   await db.insertEvent({
-    nip: c.nip, debtor: c.debtor, type: 'email',
+    nip: c.nip, debtor: c.debtor, type: 'email', case_id: c.id,
     title: `E-mail (${tone}): ${msg.subject} — ${status}`, source: msg.engine === 'AI' ? 'agent AI + Resend' : 'szablon + Resend',
   }).catch(() => {});
+  if (status !== 'brak adresata') await bumpPhase(c, tone);
   return { ...msg, status };
 }
 
@@ -131,7 +144,8 @@ async function sendSms(c, tone) {
   const f = baseFacts(c);
   const body = gsmSafe((TPL.sms[tone] || TPL.sms.Uprzejmy)(c, f));
   let status = 'symulacja';
-  if (LIVE_COMMS && SMSAPI_TOKEN) {
+  if (!c.tel) status = 'brak adresata';
+  else if (LIVE_COMMS && SMSAPI_TOKEN) {
     try {
       const params = new URLSearchParams({ to: c.tel.replace(/\s/g, ''), from: SMS_FROM, message: body, format: 'json' });
       const r = await fetch('https://api.smsapi.pl/sms.do', {
@@ -145,9 +159,10 @@ async function sendSms(c, tone) {
   }
   await db.logComm({ case_id: c.id, channel: 'sms', tone, subject: null, body, status });
   await db.insertEvent({
-    nip: c.nip, debtor: c.debtor, type: 'sms',
-    title: `SMS (${tone}) do ${c.tel} — ${status}`, source: 'SMSAPI.pl',
+    nip: c.nip, debtor: c.debtor, type: 'sms', case_id: c.id,
+    title: `SMS (${tone}) do ${c.tel || '—'} — ${status}`, source: 'SMSAPI.pl',
   }).catch(() => {});
+  if (status !== 'brak adresata') await bumpPhase(c, tone);
   return { body, status };
 }
 
@@ -169,13 +184,14 @@ async function logCall(c, outcome, note, promisedDate) {
   const detail = [label, promisedDate ? `termin: ${promisedDate}` : null, note || null].filter(Boolean).join(' · ');
   await db.logComm({ case_id: c.id, channel: 'telefon', tone: null, subject: label, body: note || '', status: 'zarejestrowano', outcome: detail });
   await db.insertEvent({
-    nip: c.nip, debtor: c.debtor, type: 'telefon',
+    nip: c.nip, debtor: c.debtor, type: 'telefon', case_id: c.id,
     title: `Rozmowa telefoniczna: ${detail}`, source: 'rozmowa własna',
   }).catch(() => {});
   // wynik → fase van de zaak
   if (outcome === 'obietnica') { c.phase = 'Obietnica zapłaty'; c.tag = 'tag-neutral'; }
   if (outcome === 'raty') { c.phase = 'Harmonogram rat'; c.tag = 'tag-neutral'; }
   if (outcome === 'odmowa') { c.phase = 'Eskalacja'; c.tag = 'tag-accent'; }
+  if (['obietnica', 'raty', 'odmowa'].includes(outcome)) await persistPhase(c);
   return detail;
 }
 

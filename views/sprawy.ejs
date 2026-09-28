@@ -1,4 +1,4 @@
-<% var S = t.app.sprawy, fill = t.fill; %>
+<% var S = t.app.sprawy, R = S.real, fill = t.fill; %>
 <%- include('partials/head', { title: t.app.titles.sprawy + ' — sprzedamfakture.pl' }) %>
 <%- include('partials/nav') %>
 
@@ -22,8 +22,8 @@
         <tr><th><%= S.th.invoice %></th><th><%= S.th.debtor %></th><th class="num"><%= S.th.amount %></th><th class="num"><%= S.th.overdue %></th><th><%= S.th.agent %></th></tr>
       </thead>
       <tbody>
-        <% if (!D.claims.length) { %><tr><td colspan="5" style="color:var(--ink-55); padding:18px 12px"><%= S.empty %></td></tr><% } %>
-        <% D.claims.forEach(function(c) { %>
+        <% if (!claims.length) { %><tr><td colspan="5" style="color:var(--ink-55); padding:18px 12px"><%= S.empty %></td></tr><% } %>
+        <% claims.forEach(function(c) { %>
         <tr class="row <%= sel && c.id === sel.id ? 'selected' : '' %>" onclick="location.href='/app/sprawy?sel=<%= c.id %>'">
           <td class="tnum"><%= c.nr %></td>
           <td><%= c.debtor %></td>
@@ -41,24 +41,28 @@
     <% if (!sel) { %>
     <div class="kicker"><%= S.kicker %></div>
     <p class="helper"><%= S.emptyDetail %></p>
-    <% } else { %>
-    <div class="kicker"><%= fill(S.caseKicker, { nr: sel.nr, score: sel.ai.score, grade: sel.ai.grade }) %></div>
+    <% } else { var ai = sel.ai || { score: 0, grade: '—', signals: [], reco: 'windykacja', recoTxt: '' }; %>
+    <div class="kicker"><%= fill(S.caseKicker, { nr: sel.nr, score: ai.score, grade: ai.grade }) %></div>
     <h2><%= sel.debtor %></h2>
     <div class="amount tnum"><%= D.fmt(sel.amount) %></div>
     <p class="meta tnum"><%= fill(S.meta, { days: t.app.days(sel.days), interest: D.fmt(D.interest(sel.amount, sel.days)) }) %></p>
+    <% if (sel.real) { %>
+    <p class="meta"><%= R.f.nip %>: <span class="tnum"><%= sel.nip || '—' %></span> · <%= R.f.due %>: <span class="tnum"><%= sel.dueDate || '—' %></span><% if (user.role === 'admin' && (sel.clientCompany || sel.clientEmail)) { %> · <%= R.clientLabel %>: <%= sel.clientCompany || '' %><%= sel.clientEmail ? ' (' + sel.clientEmail + ')' : '' %><% } %></p>
+    <% if (sel.note) { %><p class="meta"><%= R.f.note %>: <%= sel.note %></p><% } %>
+    <% } %>
 
     <hr class="rule">
     <div class="label"><%= S.aiLabel %></div>
     <div class="aiscore-head">
-      <span class="ai-num tnum"><%= sel.ai.score %><span class="ai-max">/100</span></span>
-      <span class="tag <%= sel.ai.grade === 'E' || sel.ai.grade === 'D' ? 'tag-accent' : (sel.ai.grade === 'C' ? 'tag-outline' : 'tag-neutral') %>"><%= fill(S.grade, { grade: sel.ai.grade }) %></span>
+      <span class="ai-num tnum"><%= ai.score %><span class="ai-max">/100</span></span>
+      <span class="tag <%= ai.grade === 'E' || ai.grade === 'D' ? 'tag-accent' : (ai.grade === 'C' ? 'tag-outline' : 'tag-neutral') %>"><%= fill(S.grade, { grade: ai.grade }) %></span>
     </div>
     <ul class="ai-signals">
-      <% sel.ai.signals.forEach(function(sg) { %>
+      <% ai.signals.forEach(function(sg) { %>
       <li><span class="s-label"><%= t.tr(sg.label) %></span><span class="s-impact tnum <%= sg.impact < 0 ? 'neg' : '' %>"><%= sg.impact < 0 ? sg.impact : '—' %></span></li>
       <% }) %>
     </ul>
-    <p class="ai-reco <%= sel.ai.reco === 'zamknij' ? 'warn' : '' %>"><%= t.tr(sel.ai.recoTxt) %></p>
+    <p class="ai-reco <%= ai.reco === 'zamknij' ? 'warn' : '' %>"><%= t.tr(ai.recoTxt) %></p>
 
     <hr class="rule">
     <div class="label"><%= S.channelsLabel %></div>
@@ -69,11 +73,12 @@
         <% Object.keys(t.app.tones).forEach(function(k) { %><option value="<%= k %>"><%= t.app.tones[k] %></option><% }) %>
       </select>
       <input type="hidden" name="ton" id="chan-sms-tone" value="Uprzejmy" form="chan-sms">
-      <button class="btn btn-secondary chan-btn" type="submit" form="chan-email"><%= S.emailBtn %></button>
-      <button class="btn btn-secondary chan-btn" type="submit" form="chan-sms"><%= S.smsBtn %></button>
+      <button class="btn btn-secondary chan-btn" type="submit" form="chan-email" <%= sel.real && !sel.email ? 'disabled' : '' %>><%= S.emailBtn %></button>
+      <button class="btn btn-secondary chan-btn" type="submit" form="chan-sms" <%= sel.real && !sel.tel ? 'disabled' : '' %>><%= S.smsBtn %></button>
       <a class="btn chan-btn" href="/app/sprawy/<%= sel.id %>/rozmowa"><%= S.callBtn %></a>
     </div>
     <p class="helper" style="margin-top:8px; margin-bottom:0"><%= S.channelsHelper %></p>
+    <% if (sel.real && (!sel.email || !sel.tel)) { %><p class="field-err" style="margin-top:6px"><%= R.noContact %></p><% } %>
 
     <% if (comms.length) { %>
     <div class="label" style="margin-top:16px"><%= S.commsLabel %></div>
@@ -86,18 +91,27 @@
 
     <hr class="rule">
     <div class="label"><%= S.actionsLabel %></div>
+    <% if (sel.real) { %>
+      <% if (!timeline.length) { %><p class="helper" style="margin-bottom:0"><%= R.timelineEmpty %></p><% } %>
+      <ul class="timeline">
+        <% timeline.forEach(function(ev) { %>
+        <li><span class="dot"></span><span class="t"><%= t.tr(ev.title) %></span><span class="d tnum"><%= new Date(ev.created_at).toLocaleDateString(t.locale, {day:'numeric', month:'short'}) %></span></li>
+        <% }) %>
+      </ul>
+    <% } else { %>
     <ul class="timeline">
       <% sel.timeline.forEach(function(tl) { %>
       <li class="<%= tl.planned ? 'planned' : '' %>"><span class="dot"></span><span class="t"><%= t.tr(tl.text) %></span><span class="d"><%= t.tr(tl.date) %></span></li>
       <% }) %>
     </ul>
+    <% } %>
 
     <hr class="rule">
     <% if (!done[sel.id] || done[sel.id] === 'decline') { %>
-      <% if (sel.ai.reco === 'zamknij') { %>
+      <% if (ai.reco === 'zamknij') { %>
       <div class="action-block">
         <h3><%= S.close.h %></h3>
-        <p><%= fill(S.close.p, { score: sel.ai.score }) %></p>
+        <p><%= fill(S.close.p, { score: ai.score }) %></p>
         <form class="inline" method="post" action="/app/sprawy/<%= sel.id %>/close">
           <button class="btn" type="submit"><%= S.close.btn %></button>
         </form>
@@ -121,6 +135,32 @@
       </div>
     <% } else { %>
       <div class="confirm"><span class="sq"></span><span><%= S.done[done[sel.id]] || S.done.sell %></span></div>
+    <% } %>
+    <% if (sel.real) { %>
+    <hr class="rule">
+    <details class="case-edit">
+      <summary class="btn btn-ghost chan-btn"><%= R.edit %></summary>
+      <form class="calc-form flat" method="post" action="/app/sprawy/<%= sel.id %>/edytuj">
+        <div class="fg"><label for="e-nr"><%= R.f.nr %></label><input id="e-nr" name="nr" value="<%= sel.nr %>"></div>
+        <div class="fg"><label for="e-debtor"><%= R.f.debtor %></label><input id="e-debtor" name="debtor" value="<%= sel.debtor %>" required></div>
+        <div class="fg"><label for="e-nip"><%= R.f.nip %></label><input id="e-nip" name="nip" class="tnum" value="<%= sel.nip %>"></div>
+        <div class="fg"><label for="e-amount"><%= R.f.amount %></label><input id="e-amount" name="amount" class="tnum" inputmode="decimal" value="<%= sel.amount %>" required></div>
+        <div class="fg"><label for="e-due"><%= R.f.due %></label><input id="e-due" name="dueDate" type="date" class="tnum" value="<%= sel.dueDate || '' %>" required></div>
+        <div class="fg"><label for="e-email"><%= R.f.email %></label><input id="e-email" name="email" type="email" value="<%= sel.email %>"></div>
+        <div class="fg"><label for="e-tel"><%= R.f.tel %></label><input id="e-tel" name="tel" value="<%= sel.tel %>"></div>
+        <% if (user.role === 'admin') { %>
+        <div class="fg"><label for="e-client"><%= R.f.client %></label><input id="e-client" name="clientCompany" value="<%= sel.clientCompany %>"></div>
+        <div class="fg"><label for="e-cemail"><%= R.f.clientEmail %></label><input id="e-cemail" name="clientEmail" type="email" value="<%= sel.clientEmail %>"></div>
+        <% } %>
+        <div class="fg"><label for="e-note"><%= R.f.note %></label><textarea id="e-note" name="note" rows="3"><%= sel.note %></textarea></div>
+        <button class="btn chan-btn" type="submit"><%= R.save %></button>
+      </form>
+    </details>
+    <% if (user.role === 'admin') { %>
+    <form method="post" action="/app/sprawy/<%= sel.id %>/usun" onsubmit="return confirm('<%= R.delConfirm %>')" style="margin-top:12px">
+      <button class="btn btn-ghost chan-btn" type="submit" style="color:var(--danger)"><%= R.del %></button>
+    </form>
+    <% } %>
     <% } %>
     <% } %>
   </aside>

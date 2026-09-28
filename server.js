@@ -9,6 +9,8 @@ const AiScore = require('./src/aiscore');
 const Comms = require('./src/comms');
 const Mailer = require('./src/mailer');
 const Turnstile = require('./src/turnstile');
+const Cases = require('./src/cases');
+const Articles = require('./src/articles');
 const pgSession = require('connect-pg-simple')(session);
 const compression = require('compression');
 const VER = require('./src/version');
@@ -16,6 +18,9 @@ const i18n = require('./src/i18n');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+// Zichtbaarheid op internet: Search Console / Bing-verificatie en Plausible-analytics via env
+const SEO = { google: process.env.GOOGLE_SITE_VERIFICATION || '', bing: process.env.BING_SITE_VERIFICATION || '', plausible: process.env.PLAUSIBLE_DOMAIN || '' };
+const SITE_LASTMOD = '2026-09-28'; // laatste inhoudelijke wijziging van de statische pagina's (sitemap)
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -60,6 +65,9 @@ app.use((req, res, next) => {
   res.locals.version = VER.version;
   res.locals.commit = VER.commit;
   res.locals.turnstile = { enabled: Turnstile.enabled(), siteKey: Turnstile.SITE_KEY };
+  res.locals.site = SITE;
+  res.locals.canonicalPath = req.path.length > 1 ? req.path.replace(/\/+$/, '') : '/';
+  res.locals.seo = SEO;
   next();
 });
 app.use(express.urlencoded({ extended: true }));
@@ -245,7 +253,7 @@ app.get('/logout', (req, res) => {
 app.get('/admin', Auth.requireAdmin, async (req, res) => {
   const events = await db.listEvents(15).catch(() => []);
   const leads = await db.listLeads(8).catch(() => []);
-  res.render('admin', common({ page: 'admin', user: req.user, usersList: Auth.allUsers(), done: D.getDone(), events, leads, demoCases: D.DEMO_CASES, flash: req.query.msg || null, integr: { ...Mailer.status(), db: db.hasDb(), turnstile: Turnstile.enabled(), problems: [...Mailer.status().problems, ...Turnstile.problems()] } }));
+  res.render('admin', common({ page: 'admin', user: req.user, usersList: Auth.allUsers(), done: D.getDone(), events, leads, claims: D.claims, demoCases: D.DEMO_CASES, flash: req.query.msg || null, integr: { ...Mailer.status(), db: db.hasDb(), turnstile: Turnstile.enabled(), problems: [...Mailer.status().problems, ...Turnstile.problems()] } }));
 });
 
 // Testmail naar MAIL_NOTIFY — om de Resend-koppeling na deploy te controleren
@@ -276,6 +284,23 @@ app.post('/admin/leady/:id/usun', Auth.requireAdmin, async (req, res) => {
   const L = res.locals.t.app.admin.leads;
   const ok = await db.deleteLead(req.params.id).catch(() => false);
   res.redirect('/admin/leady?msg=' + encodeURIComponent(ok ? res.locals.t.fill(L.deleted, { id: req.params.id }) : L.notFound));
+});
+
+// Lead → echte zaak (admin): velden uit het formulier, klant = e-mail van de lead (gekoppeld aan account als dat bestaat)
+app.post('/admin/leady/:id/sprawa', Auth.requireAdmin, async (req, res) => {
+  const L = res.locals.t.app.admin.leads;
+  const lead = await db.getLead(req.params.id).catch(() => null);
+  if (!lead) return res.redirect('/admin/leady?msg=' + encodeURIComponent(L.notFound));
+  if (lead.case_id && Cases.byId(lead.case_id)) return res.redirect('/app/sprawy?sel=' + encodeURIComponent(lead.case_id));
+  try {
+    const clientEmail = String(req.body.clientEmail || lead.email || '').trim();
+    const owner = Auth.findUser(clientEmail);
+    const c = await Cases.create({ ...req.body, clientCompany: req.body.clientCompany || lead.company, clientEmail }, { user: req.user, lead, source: 'lead', ownerUserId: owner ? owner.id : null });
+    res.redirect('/app/sprawy?sel=' + encodeURIComponent(c.id) + '&msg=' + encodeURIComponent(res.locals.t.fill(L.caseCreated, { id: lead.id })));
+  } catch (e) {
+    const err = res.locals.t.app.sprawy.real.errors[e.message] || e.message;
+    res.redirect('/admin/leady?sel=' + encodeURIComponent(lead.id) + '&msg=' + encodeURIComponent(err));
+  }
 });
 
 app.post('/admin/leady/:id', Auth.requireAdmin, async (req, res) => {
@@ -474,11 +499,21 @@ app.post('/skup-wyrokow', zalacznikMw, async (req, res) => {
   res.redirect('/skup-wyrokow?lead=ok#formularz');
 });
 
+// ── Baza wiedzy (SEO-artikelen, PL/EN) ─────────────────────────────────
+app.get('/baza-wiedzy', (req, res) => {
+  res.render('baza-wiedzy', common({ page: 'kb', articles: Articles.ARTICLES }));
+});
+app.get('/baza-wiedzy/:slug', (req, res, next) => {
+  const a = Articles.bySlug(req.params.slug);
+  if (!a) return next();
+  res.render('artykul', common({ page: 'kb', a, articles: Articles.ARTICLES }));
+});
+
 app.get('/health', async (req, res) => {
   res.set('Cache-Control', 'no-store');
   const m = Mailer.status();
   const dbs = await db.stats().catch((e) => ({ connected: false, error: e.message }));
-  res.json({ ok: true, name: 'sprzedamfakture.pl', version: VER.version, commit: VER.commit, startedAt: VER.startedAt, uptimeSec: Math.round(process.uptime()), db: db.hasDb(), dbStats: dbs, mail: m.resend ? 'resend' : 'simulation', mailFrom: m.from, mailNotify: !!m.notify, mailProblems: m.problems, liveComms: m.liveComms, smsapi: m.smsapi, anthropic: m.anthropic, turnstile: Turnstile.enabled(), turnstileProblems: Turnstile.problems() });
+  res.json({ ok: true, name: 'sprzedamfakture.pl', version: VER.version, commit: VER.commit, startedAt: VER.startedAt, uptimeSec: Math.round(process.uptime()), db: db.hasDb(), dbStats: dbs, mail: m.resend ? 'resend' : 'simulation', mailFrom: m.from, mailNotify: !!m.notify, mailProblems: m.problems, liveComms: m.liveComms, smsapi: m.smsapi, anthropic: m.anthropic, turnstile: Turnstile.enabled(), turnstileProblems: Turnstile.problems(), cases: D.claims.filter((c) => c.real).length, demoCases: D.DEMO_CASES, articles: Articles.ARTICLES.length, seo: { verification: !!(SEO.google || SEO.bing), analytics: !!SEO.plausible } });
 });
 
 const SITE = 'https://sprzedamfakture.pl';
@@ -487,14 +522,16 @@ app.get('/robots.txt', (req, res) => {
 });
 app.get('/sitemap.xml', (req, res) => {
   const urls = [
-    { loc: SITE + '/', alt: true, prio: '1.0' },
-    { loc: SITE + '/windykacja', alt: true, prio: '0.8' },
-    { loc: SITE + '/kalkulator', prio: '0.7' },
-    { loc: SITE + '/skup-wyrokow', alt: true, prio: '0.8' },
+    { loc: SITE + '/', alt: true, prio: '1.0', mod: SITE_LASTMOD },
+    { loc: SITE + '/kalkulator', prio: '0.7', mod: SITE_LASTMOD },
+    { loc: SITE + '/skup-wyrokow', alt: true, prio: '0.8', mod: SITE_LASTMOD },
+    { loc: SITE + '/baza-wiedzy', alt: true, prio: '0.8', mod: Articles.ARTICLES.reduce((m, a) => (a.updated > m ? a.updated : m), SITE_LASTMOD) },
+    ...Articles.ARTICLES.map((a) => ({ loc: SITE + '/baza-wiedzy/' + a.slug, alt: true, prio: '0.7', mod: a.updated })),
   ];
+  if (process.env.WINDYKACJA_OFF !== '1') urls.splice(1, 0, { loc: SITE + '/windykacja', alt: true, prio: '0.8', mod: SITE_LASTMOD });
   const alt = (loc) => '<xhtml:link rel="alternate" hreflang="pl" href="' + loc + '?lang=pl"/><xhtml:link rel="alternate" hreflang="en" href="' + loc + '?lang=en"/>';
   const xml = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">']
-    .concat(urls.map((u) => '<url><loc>' + u.loc + '</loc>' + (u.alt ? alt(u.loc) : '') + '<priority>' + u.prio + '</priority></url>'))
+    .concat(urls.map((u) => '<url><loc>' + u.loc + '</loc>' + (u.alt ? alt(u.loc) : '') + '<lastmod>' + u.mod + '</lastmod><priority>' + u.prio + '</priority></url>'))
     .concat(['</urlset>', '']).join('\n');
   res.type('application/xml').send(xml);
 });
@@ -503,22 +540,25 @@ app.get('/sitemap.xml', (req, res) => {
 app.get('/app', Auth.requireAuth, (req, res) => res.redirect('/app/sprawy'));
 
 app.get('/app/sprawy', Auth.requireAuth, async (req, res) => {
-  const sel = D.claims.find((c) => c.id === req.query.sel) || D.claims.find((c) => c.id === 'f2') || D.claims[0] || null;
+  const claims = Cases.visibleFor(req.user);
+  const sel = claims.find((c) => c.id === req.query.sel) || claims.find((c) => c.id === 'f2') || claims[0] || null;
   const done = D.getDone();
   const comms = sel ? await db.listComms(sel.id, 6).catch(() => []) : [];
+  const timeline = sel && sel.real ? await db.listCaseEvents(sel.id, 40).catch(() => []) : [];
   const flash = req.query.msg || null;
   const stats = {
-    portfolio: D.claims.reduce((s, c) => s + c.amount, 0),
-    active: D.claims.length,
+    portfolio: claims.reduce((s, c) => s + c.amount, 0),
+    active: claims.length,
   };
-  res.render('sprawy', common({ user: req.user, page: 'app', tab: 'sprawy', sel, done, stats, comms, flash }));
+  res.render('sprawy', common({ user: req.user, page: 'app', tab: 'sprawy', claims, sel, done, stats, comms, timeline, flash }));
 });
 
 // ── Agent-acties: e-mail / sms / rozmowa ─────────────────────────────────
-const caseById = (id) => D.claims.find((c) => c.id === id);
+// Alleen zaken waar de gebruiker bij mag (demo-zaken: iedereen; echte: admin of eigenaar)
+const caseById = (id, user) => { const c = Cases.byId(id); return c && Cases.canAccess(user, c) ? c : null; };
 
 app.post('/app/sprawy/:id/email', Auth.requireAuth, async (req, res) => {
-  const c = caseById(req.params.id);
+  const c = caseById(req.params.id, req.user);
   if (!c) return res.redirect('/app/sprawy');
   const tone = TONES.includes(req.body.ton) ? req.body.ton : 'Uprzejmy';
   const r = await Comms.sendEmail(c, tone).catch(() => ({ status: 'błąd' }));
@@ -526,7 +566,7 @@ app.post('/app/sprawy/:id/email', Auth.requireAuth, async (req, res) => {
 });
 
 app.post('/app/sprawy/:id/sms', Auth.requireAuth, async (req, res) => {
-  const c = caseById(req.params.id);
+  const c = caseById(req.params.id, req.user);
   if (!c) return res.redirect('/app/sprawy');
   const tone = TONES.includes(req.body.ton) ? req.body.ton : 'Uprzejmy';
   const r = await Comms.sendSms(c, tone).catch(() => ({ status: 'błąd' }));
@@ -534,28 +574,71 @@ app.post('/app/sprawy/:id/sms', Auth.requireAuth, async (req, res) => {
 });
 
 app.get('/app/sprawy/:id/rozmowa', Auth.requireAuth, (req, res) => {
-  const c = caseById(req.params.id);
+  const c = caseById(req.params.id, req.user);
   if (!c) return res.redirect('/app/sprawy');
   res.render('rozmowa', common({ user: req.user, page: 'app', tab: 'sprawy', c, script: Comms.prepareCall(c), OUTCOMES: Comms.OUTCOMES }));
 });
 
 app.post('/app/sprawy/:id/rozmowa', Auth.requireAuth, async (req, res) => {
-  const c = caseById(req.params.id);
+  const c = caseById(req.params.id, req.user);
   if (!c) return res.redirect('/app/sprawy');
   const detail = await Comms.logCall(c, req.body.wynik, req.body.notatka, req.body.termin).catch(() => 'zapisano');
   res.redirect('/app/sprawy?sel=' + c.id + '&msg=' + encodeURIComponent(res.locals.t.app.msg.flashCall + ': ' + res.locals.t.tr(detail)));
 });
 
-app.post('/app/sprawy/:id/:action', Auth.requireAuth, (req, res) => {
+// Echte zaak bewerken (admin of eigenaar); klantvelden alleen door admin
+app.post('/app/sprawy/:id/edytuj', Auth.requireAuth, async (req, res) => {
+  const c = caseById(req.params.id, req.user);
+  const Rl = res.locals.t.app.sprawy.real;
+  if (!c || !c.real) return res.redirect('/app/sprawy');
+  try {
+    const input = { ...req.body };
+    if (req.user.role !== 'admin') { delete input.clientCompany; delete input.clientEmail; }
+    await Cases.update(c, input);
+    res.redirect('/app/sprawy?sel=' + encodeURIComponent(c.id) + '&msg=' + encodeURIComponent(Rl.saved));
+  } catch (e) {
+    res.redirect('/app/sprawy?sel=' + encodeURIComponent(c.id) + '&msg=' + encodeURIComponent(Rl.errors[e.message] || e.message));
+  }
+});
+
+app.post('/app/sprawy/:id/usun', Auth.requireAdmin, async (req, res) => {
+  const c = Cases.byId(req.params.id);
+  const Rl = res.locals.t.app.sprawy.real;
+  if (c && c.real) await Cases.remove(c).catch((e) => console.error('Cases: verwijderen mislukt —', e.message));
+  res.redirect('/app/sprawy?msg=' + encodeURIComponent(Rl.deleted));
+});
+
+app.post('/app/sprawy/:id/:action', Auth.requireAuth, async (req, res) => {
   const { id, action } = req.params;
-  if (D.claims.some((c) => c.id === id) && ['collect', 'sell', 'close'].includes(action)) {
+  const c = caseById(id, req.user);
+  if (c && ['collect', 'sell', 'close'].includes(action)) {
     D.setDone(id, action);
+    const title = action === 'collect' ? 'Zlecono windykację' : action === 'sell' ? 'Oferta wykupu przyjęta' : 'Sprawa zamknięta i odpisana';
+    await db.insertEvent({ nip: c.nip, debtor: c.debtor, type: 'decyzja', case_id: c.real ? c.id : null, title: title + ' — ' + c.nr, source: 'panel klienta' }).catch(() => {});
   }
   res.redirect('/app/sprawy?sel=' + encodeURIComponent(id));
 });
 
 app.get('/app/nowa', Auth.requireAuth, (req, res) => {
-  res.render('nowa', common({ user: req.user, page: 'app', tab: 'nowa', nowaDone: D.getNowaDone() }));
+  res.render('nowa', common({ user: req.user, page: 'app', tab: 'nowa', nowaDone: D.getNowaDone(), flash: req.query.msg || null }));
+});
+
+// Handmatig een echte zaak aanmaken: klant = eigenaar; admin kan een klant (e-mail) opgeven
+app.post('/app/nowa', Auth.requireAuth, async (req, res) => {
+  const Rl = res.locals.t.app.sprawy.real;
+  const isAdmin = req.user.role === 'admin';
+  try {
+    const clientEmail = isAdmin ? String(req.body.clientEmail || '').trim() : req.user.email;
+    const owner = isAdmin ? (clientEmail ? Auth.findUser(clientEmail) : null) : req.user;
+    const c = await Cases.create({
+      ...req.body,
+      clientCompany: isAdmin ? (req.body.clientCompany || '') : req.user.company,
+      clientEmail,
+    }, { user: req.user, source: 'panel', ownerUserId: owner ? owner.id : null });
+    res.redirect('/app/sprawy?sel=' + encodeURIComponent(c.id) + '&msg=' + encodeURIComponent(Rl.created));
+  } catch (e) {
+    res.redirect('/app/nowa?msg=' + encodeURIComponent(Rl.errors[e.message] || e.message));
+  }
 });
 
 app.post('/app/nowa/:action', Auth.requireAuth, (req, res) => {
@@ -570,21 +653,25 @@ app.get('/app/agent', Auth.requireAuth, async (req, res) => {
 });
 
 app.get('/app/wykup', Auth.requireAuth, (req, res) => {
-  res.render('wykup', common({ user: req.user, page: 'app', tab: 'wykup', done: D.getDone() }));
+  res.render('wykup', common({ user: req.user, page: 'app', tab: 'wykup', claims: Cases.visibleFor(req.user), done: D.getDone() }));
 });
 
-app.post('/app/wykup/:id/sprzedaj', Auth.requireAuth, (req, res) => {
-  if (D.claims.some((c) => c.id === req.params.id)) D.setDone(req.params.id, 'sell');
+app.post('/app/wykup/:id/sprzedaj', Auth.requireAuth, async (req, res) => {
+  const c = caseById(req.params.id, req.user);
+  if (c) {
+    D.setDone(c.id, 'sell');
+    await db.insertEvent({ nip: c.nip, debtor: c.debtor, type: 'wykup', case_id: c.real ? c.id : null, title: 'Oferta wykupu przyjęta — ' + c.nr, source: 'panel klienta' }).catch(() => {});
+  }
   res.redirect('/app/wykup');
 });
 
 // Oferta afwijzen: alleen als er nog geen definitieve actie is; windykacja loopt gewoon door
 app.post('/app/wykup/:id/odrzuc', Auth.requireAuth, async (req, res) => {
-  const c = D.claims.find((x) => x.id === req.params.id);
+  const c = caseById(req.params.id, req.user);
   const st = D.getDone()[req.params.id];
   if (c && (!st || st === 'decline')) {
     D.setDone(c.id, 'decline');
-    await db.insertEvent({ nip: c.nip, debtor: c.debtor, type: 'wykup', title: 'Oferta wykupu odrzucona przez klienta — ' + c.nr, source: 'panel klienta' }).catch(() => {});
+    await db.insertEvent({ nip: c.nip, debtor: c.debtor, type: 'wykup', case_id: c.real ? c.id : null, title: 'Oferta wykupu odrzucona przez klienta — ' + c.nr, source: 'panel klienta' }).catch(() => {});
   }
   res.redirect('/app/wykup');
 });
@@ -635,6 +722,7 @@ async function start() {
   sessionMiddleware = session(sessionOpts);
   await Auth.initFromDb().catch(() => {});
   await D.initActions().catch(() => {});
+  await Cases.init().catch((e) => console.error('Cases init:', e.message));
   await AiScore.init(D.claims).catch((e) => console.error('AIScore init:', e.message));
   app.listen(PORT, () => console.log('sprzedamfakture.pl draait op poort ' + PORT));
 }

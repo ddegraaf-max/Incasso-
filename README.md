@@ -12,9 +12,10 @@ Node/Express/EJS-app achter **sprzedamfakture.pl**: wykup wierzytelności (insta
 | `/login` · `/rejestracja` | Inloggen / registratie (bcrypt, rate limiting) |
 | `/2fa` · `/2fa/setup` | TOTP-verificatie / QR-setup (Google Authenticator e.d.) |
 | `/admin` | Admin-dashboard (alleen rol admin, 2FA verplicht) — incl. laatste leads, knop *Usuń ślady danych demo* |
-| `/admin/leady` | **Leadbeheer**: alle zgłoszenia (faktura + wyrok) met detail, status (nowy / w kontakcie / oferta / zaakceptowany / odrzucony / spam), interne notitie, mailto-knop en verwijderen (`?sel=<id>`) |
-| `/app/sprawy` | Zakenoverzicht + detail-aside (`?sel=f2`) |
-| `/app/nowa` | Intake: KSeF / XML-PDF / e-mail + AI-analyse + beslissing |
+| `/admin/leady` | **Leadbeheer**: alle zgłoszenia (faktura + wyrok) met detail, status (nowy / w kontakcie / oferta / zaakceptowany / odrzucony / spam), interne notitie, mailto-knop, verwijderen en **Załóż sprawę** (lead → echte zaak, `POST /admin/leady/:id/sprawa`) |
+| `/baza-wiedzy` · `/baza-wiedzy/:slug` | **Baza wiedzy** (PL/EN): SEO-artikelen uit `src/articles.js` — odsetki, rekompensata, przedawnienie, wezwanie, cesja vs faktoring, KRD/BIG, poradnik voor buitenlandse wierzyciele. Article + BreadcrumbList + FAQPage JSON-LD, in de sitemap met lastmod |
+| `/app/sprawy` | Zakenoverzicht + detail-aside (`?sel=c12` / demo `?sel=f2`). Echte zaken: tijdlijn uit `events.case_id`, **Edytuj dane sprawy** (`POST …/edytuj`, admin of eigenaar), **Usuń sprawę** (`POST …/usun`, admin); e-mail/SMS-knoppen uit zolang de dłużnik geen contactgegevens heeft |
+| `/app/nowa` | **Nowa sprawa**: handmatig formulier → echte zaak (`POST /app/nowa`; klant = eigenaar, admin kan klant-e-mail opgeven); KSeF / XML-PDF / e-mail als concept-bronnen; demo-analyse alleen met `DEMO_CASES=1` |
 | `/app/agent` | Agent-feed + negotiatiethread, toon-switcher (`?ton=Uprzejmy\|Stanowczy\|Prawniczy`) |
 | `/app/wykup` | Wykup wierzytelności (AI-offertes, cesja) |
 | `/kalkulator` | Publieke kalkulator odsetek (14%) + rekompensata 40/70/100 € — leadmagnet/SEO |
@@ -46,7 +47,21 @@ npm start        # poort 3000, of PORT env var
 
 ## Deploy (Railway)
 Standaard flow: repo → GitHub Desktop → Railway auto-deploy. Geen database nodig voor het concept. Custom domain `sprzedamfakture.pl` + `www` aan de service hangen en DNS bij dns.pl naar Railway wijzen.
-Env vars: `PORT` (Railway zet die zelf), `SESSION_SECRET` (VERPLICHT in productie — lange random string), `ADMIN_EMAIL` + `ADMIN_PASSWORD` (admin-account), optioneel `SERVICE_FEE` (default 99), `EUR_PLN` (default 4.30), `DATABASE_URL` (Railway Postgres — activeert persistentie), `MONITOR_INTERVAL_MS` (default 60000) en `DEMO_EVENTS` (default 1; op 0 voor echte bronnen). `DEMO_ACCOUNT=0` verwijdert het demo-account en de hint op de loginpagina. `DEMO_CASES` bepaalt of de zes fictieve demo-zaken (Betmix, Kamex, … AgroSad) worden geladen: **standaard uit bij `NODE_ENV=production`**, aan daarbuiten; `DEMO_CASES=1` forceert aan, `0` uit. Zonder demo-zaken zijn panel, wykup, agent-feed en de admin-zakentabel leeg en start de monitor niet. `BOOKING_URL` (bv. een Calendly/Cal.com-link) maakt van "Umów rozmowę" op `/windykacja` een agenda-knop; zonder die variabele opent hij een e-mail naar kontakt@. Zet `NODE_ENV=production` voor secure cookies.
+Env vars: `PORT` (Railway zet die zelf), `SESSION_SECRET` (VERPLICHT in productie — lange random string), `ADMIN_EMAIL` + `ADMIN_PASSWORD` (admin-account), optioneel `SERVICE_FEE` (default 99), `EUR_PLN` (default 4.30), `DATABASE_URL` (Railway Postgres — activeert persistentie), `MONITOR_INTERVAL_MS` (default 60000) en `DEMO_EVENTS` (default 1; op 0 voor echte bronnen). `DEMO_ACCOUNT=0` verwijdert het demo-account en de hint op de loginpagina. `GOOGLE_SITE_VERIFICATION`, `BING_SITE_VERIFICATION`, `PLAUSIBLE_DOMAIN` (SEO, zie hieronder), `MONITOR_REAL_EVERY_TICKS` (default 60). `DEMO_CASES` bepaalt of de zes fictieve demo-zaken (Betmix, Kamex, … AgroSad) worden geladen: **standaard uit bij `NODE_ENV=production`**, aan daarbuiten; `DEMO_CASES=1` forceert aan, `0` uit. Zonder demo-zaken zijn panel, wykup, agent-feed en de admin-zakentabel leeg en start de monitor niet. `BOOKING_URL` (bv. een Calendly/Cal.com-link) maakt van "Umów rozmowę" op `/windykacja` een agenda-knop; zonder die variabele opent hij een e-mail naar kontakt@. Zet `NODE_ENV=production` voor secure cookies.
+
+## Echte zaken (sprawy) — `src/cases.js`
+- Tabel `cases` (nr, debtor, nip, amount, due_date, debtor_email/tel, client_company/email, owner_user_id, phase, tag, source, lead_id, note). Sleutel in de app: `c<id>` — `case_actions`, `comm_log` en `events.case_id` verwijzen ermee. Echte zaken staan in dezelfde lijst `D.claims` als de demo-zaken en hebben dezelfde vorm (`days` is een getter op `due_date`), plus `real: true`.
+- **Aanmaken**: admin vanuit een lead (`/admin/leady` → *Załóż sprawę*, velden voorgevuld uit de lead; de lead krijgt `case_id`) of iedereen handmatig via `/app/nowa`. Bij aanmaken en bewerken wordt de AIScore berekend tegen echte bronnen (MF biała lista; KRZ nog stub).
+- **Toegang**: admin ziet alles; een klant ziet demo-zaken plus zaken met zijn `owner_user_id` of met `client_email` gelijk aan zijn accountadres (dus ook zaken die de admin vóór registratie voor hem aanmaakte).
+- **Fase** volgt de communicatie (e-mail/SMS → *Przypomnienia*, ton Prawniczy → *Eskalacja*, belresultaat → obietnica/raty/eskalacja) en wordt voor echte zaken in de DB bewaard. Acties (collect/sell/close/decline) en communicatie loggen een event op de zaak → tijdlijn in het detailpaneel.
+- **Monitor**: echte zaken worden elke `MONITOR_REAL_EVERY_TICKS` ticks (default 60 ≈ 1 uur) herscoord tegen echte bronnen, ongeacht `DEMO_EVENTS`; verandering van score → event op de zaak.
+
+## Zichtbaarheid op internet (SEO)
+- **Per pagina**: eigen `<title>`, `meta description`, canonical, hreflang PL/EN, Open Graph — via `views/partials/head.ejs` (params `title`, `desc`, `ld`, `altLang`, `noindex`). Panel-, auth-, admin- en foutpagina's krijgen automatisch `noindex`.
+- **Structured data**: Organization + FAQPage (home), FAQPage (wyroki), CollectionPage/Article/BreadcrumbList/FAQPage (baza wiedzy).
+- **Sitemap** (`/sitemap.xml`): alle publieke pagina's + artikelen met `lastmod` en hreflang; `/windykacja` alleen als `WINDYKACJA_OFF` niet aan staat. `SITE_LASTMOD` in `server.js` bijwerken bij inhoudelijke wijzigingen van statische pagina's; artikelen hebben eigen `updated`.
+- **Verificatie & analytics** via Railway-variabelen: `GOOGLE_SITE_VERIFICATION` (Search Console, HTML-tag-methode), `BING_SITE_VERIFICATION` (Bing Webmaster Tools, `msvalidate.01`), `PLAUSIBLE_DOMAIN` (bv. `sprzedamfakture.pl` — cookieloze analytics, geen cookiebanner nodig). `/health` → `seo.verification` / `seo.analytics`.
+- **Na livegang**: sitemap indienen in Search Console én Bing; Google Business Profile aanmaken; artikelen delen op LinkedIn (PL + EN); nieuwe artikelen toevoegen in `src/articles.js` (slug, date/updated, pl/en) — ze komen automatisch in overzicht, sitemap en nav.
 
 ## Beveiliging
 - **Wachtwoorden**: bcrypt, kosten 12; policy min. 10 tekens met kleine/hoofdletter + cijfer.
@@ -109,7 +124,7 @@ Alles wordt gelogd in `comm_log` (PostgreSQL/memory), verschijnt als "Historia k
 
 ## Status / architectuur
 - **PostgreSQL-koppeling actief**: met `DATABASE_URL` (Railway Postgres) worden users, sessies (connect-pg-simple), zaakacties, AIScores, events, leads en communicatielog persistent; schema wordt automatisch aangemaakt. Zonder `DATABASE_URL` draait alles in-memory (demo).
-- **Zaken zijn nog demodata**: het klantpanel (`/app/*`) werkt op de hard-coded zaken in `src/data.js`; er is nog geen model om een lead om te zetten in een echte zaak. In productie staan die demo-zaken uit (`DEMO_CASES`), echte aanvragen leven als leads in `/admin/leady`. In demo-modus wordt de KRZ-status bij herstart vers herberekend uit de bronnen (by design — events blijven wel staan).
+- **Echte zaken**: tabel `cases` + `src/cases.js`; lead → zaak vanuit `/admin/leady`, handmatig via `/app/nowa`. Demo-zaken (`src/data.js`) staan in productie uit (`DEMO_CASES`). In demo-modus wordt de KRZ-status bij herstart vers herberekend uit de bronnen (by design — events blijven wel staan).
 - Rentevoet 14% (NBP 4% + 10 p.p., I półrocze 2026) staat in `src/data.js` (`INTEREST_RATE`) — halfjaarlijks bijwerken.
 
 ## Roadmap-ideeën (nog niet gebouwd)

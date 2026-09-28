@@ -1,4 +1,4 @@
-<% var M = t.app.admin, L = M.leads, fill = t.fill;
+<% var M = t.app.admin, L = M.leads, R = t.app.sprawy.real, fill = t.fill;
    var stTag = function(s) { return (!s || s === 'nowy' || s === 'zaakceptowany') ? 'tag-accent' : (s === 'kontakt' || s === 'oferta') ? 'tag-outline' : 'tag-neutral'; };
    var stTxt = function(s) { return L.statuses[s] || s || L.statuses.nowy; };
    var src = function(l) { return l.source === 'skup-wyrokow' ? L.srcWyrok : L.srcInvoice; };
@@ -74,6 +74,32 @@
         </div>
       </form>
       <% if (sel.updated_at) { %><p class="helper" style="margin:10px 0 0"><%= L.f.updated %>: <%= dateFmt(sel.updated_at) %></p><% } %>
+
+      <hr class="rule">
+      <div class="label"><%= L.caseKicker %></div>
+      <% if (sel.case_id) { %>
+        <p style="margin:0"><a class="btn btn-secondary chan-btn" href="/app/sprawy?sel=<%= sel.case_id %>"><%= L.caseLink %></a></p>
+      <% } else { %>
+        <p class="helper" style="margin:0 0 6px"><%= L.caseHint %></p>
+        <% var isW = sel.source === 'skup-wyrokow'; var parts = String(sel.note || '').split(' · '); var regName = '', dl = '', sygn = '';
+           parts.forEach(function (p) {
+             var m1 = /^dłużnik: (.+)$/.exec(p); if (m1) dl = m1[1];
+             var m2 = /^wyrok (.+)$/.exec(p); if (m2) sygn = m2[1];
+             if (!isW && !regName && p.indexOf('lang=') !== 0 && p.indexOf('VAT:') !== 0) regName = p;
+           }); %>
+        <form class="calc-form flat" method="post" action="/admin/leady/<%= sel.id %>/sprawa">
+          <div class="fg"><label for="c-nr"><%= R.f.nr %></label><input id="c-nr" name="nr" value="<%= isW ? sygn : '' %>"></div>
+          <div class="fg"><label for="c-debtor"><%= R.f.debtor %></label><input id="c-debtor" name="debtor" value="<%= isW ? dl : regName %>" required></div>
+          <div class="fg"><label for="c-nip"><%= R.f.nip %></label><input id="c-nip" name="nip" class="tnum" value="<%= sel.nip || '' %>"></div>
+          <div class="fg"><label for="c-amount"><%= R.f.amount %></label><input id="c-amount" name="amount" class="tnum" inputmode="decimal" value="<%= Number(sel.kwota) || '' %>" required></div>
+          <div class="fg"><label for="c-days"><%= R.f.days %></label><input id="c-days" name="days" type="number" min="0" class="tnum" value="<%= isW ? '' : (sel.dni != null ? sel.dni : '') %>"></div>
+          <div class="fg"><label for="c-due"><%= R.f.due %></label><input id="c-due" name="dueDate" type="date" class="tnum"></div>
+          <div class="fg"><label for="c-client"><%= R.f.client %></label><input id="c-client" name="clientCompany" value="<%= sel.company %>"></div>
+          <div class="fg"><label for="c-cemail"><%= R.f.clientEmail %></label><input id="c-cemail" name="clientEmail" type="email" value="<%= sel.email %>"></div>
+          <div class="fg"><label for="c-note"><%= R.f.note %></label><textarea id="c-note" name="note" rows="2"><%= sel.admin_note || '' %></textarea></div>
+          <button class="btn chan-btn" type="submit"><%= L.caseBtn %></button>
+        </form>
+      <% } %>
 
       <hr class="rule">
       <form method="post" action="/admin/leady/<%= sel.id %>/usun" onsubmit="return confirm('<%= L.delConfirm %>')">

@@ -23,18 +23,22 @@ const db = require('./db');
 
 const MONITOR_INTERVAL_MS = parseInt(process.env.MONITOR_INTERVAL_MS || '60000', 10);
 const DEMO = process.env.DEMO_EVENTS !== '0';
+// Echte zaken (c.real) worden altijd tegen echte bronnen gescoord, maar niet elke tick:
+// de MF-API rate-limit en registers publiceren batchgewijs — default elke 60 ticks (≈ 1 uur).
+const REAL_EVERY_TICKS = Math.max(1, parseInt(process.env.MONITOR_REAL_EVERY_TICKS || '60', 10));
 
 let claimsRef = [];
 let tick = 0;
 let timer = null;
 
 // ── Connectors (productie: echte calls; demo: simulatie) ─────────────────
-async function checkBialaLista(nip) {
+async function checkBialaLista(nip, simulate) {
   // Open MF-API, gratis: /api/search/nip/{nip}?date=YYYY-MM-DD
-  if (DEMO) return { vatActive: true, source: 'MF biała lista (sim)' };
+  if (DEMO && simulate) return { vatActive: true, source: 'MF biała lista (sim)' };
+  const clean = String(nip || '').replace(/[^0-9]/g, '');
+  if (clean.length !== 10) return { vatActive: null, source: 'MF biała lista (brak NIP)' };
   try {
     const date = new Date().toISOString().slice(0, 10);
-    const clean = String(nip).replace(/[^0-9]/g, '');
     const r = await fetch(`https://wl-api.mf.gov.pl/api/search/nip/${clean}?date=${date}`, { signal: AbortSignal.timeout(4000) });
     const j = await r.json();
     const status = j?.result?.subject?.statusVat;
@@ -81,7 +85,7 @@ const RECO_TXT = {
 
 async function computeScore(c) {
   const sim = c.sim || {};
-  const [wl, krz] = await Promise.all([checkBialaLista(c.nip), checkKRZ(c.nip, sim.krz)]);
+  const [wl, krz] = await Promise.all([checkBialaLista(c.nip, !c.real), checkKRZ(c.nip, sim.krz)]);
 
   let score = 100;
   const signals = [];
@@ -148,17 +152,18 @@ async function monitorTick() {
       }).catch(() => {});
     }
   }
-  if (!DEMO) {
-    // Productie: herbereken periodiek en vergelijk; bij wijziging → event.
-    for (const c of claimsRef) {
-      const prev = c.ai ? c.ai.score : null;
-      await scoreClaim(c);
-      if (prev !== null && c.ai.score !== prev) {
-        await db.insertEvent({
-          nip: c.nip, debtor: c.debtor, type: 'AIScore', dedupe: true,
-          title: `Zmiana AIScore: ${prev} → ${c.ai.score}`, source: 'monitor',
-        }).catch(() => {});
-      }
+  // Herscoring en vergelijking; bij wijziging → event op de zaak.
+  // Echte zaken: elke REAL_EVERY_TICKS (echte bronnen). Demo-zaken: alleen bij DEMO_EVENTS=0.
+  for (const c of claimsRef.slice()) {
+    const due = c.real ? tick % REAL_EVERY_TICKS === 0 : !DEMO;
+    if (!due) continue;
+    const prev = c.ai ? c.ai.score : null;
+    await scoreClaim(c).catch(() => {});
+    if (prev !== null && c.ai && c.ai.score !== prev) {
+      await db.insertEvent({
+        nip: c.nip, debtor: c.debtor, type: 'AIScore', dedupe: !c.real, case_id: c.real ? c.id : null,
+        title: `Zmiana AIScore: ${prev} → ${c.ai.score}`, source: 'monitor',
+      }).catch(() => {});
     }
   }
 }
@@ -171,16 +176,17 @@ async function init(claims) {
     if (saved[c.nip] && saved[c.nip].signals) c.ai = saved[c.nip];
     await scoreClaim(c);
   }
-  if (!claims.length) {
-    // Geen dłużnicy (DEMO_CASES=0 en nog geen echte zaken): geen loop, geen systeem-event
-    console.log('AIScore: geen zaken om te monitoren — monitor niet gestart');
-    return;
+  // De loop draait altijd (zaken kunnen tijdens runtime bijkomen); het systeem-event alleen
+  // als er nu al dłużnicy zijn — anders is het ruis in een leeg panel.
+  if (claims.length) {
+    await db.insertEvent({
+      nip: null, debtor: null, type: 'system', dedupe: true,
+      title: `Agent AI: monitoring uruchomiony (${claims.length} dłużników, interwał ${Math.round(MONITOR_INTERVAL_MS / 1000)}s)`,
+      source: 'monitor',
+    }).catch(() => {});
+  } else {
+    console.log('AIScore: nog geen zaken — monitor wacht op de eerste sprawa');
   }
-  await db.insertEvent({
-    nip: null, debtor: null, type: 'system', dedupe: true,
-    title: `Agent AI: monitoring uruchomiony (${claims.length} dłużników, interwał ${Math.round(MONITOR_INTERVAL_MS / 1000)}s)`,
-    source: 'monitor',
-  }).catch(() => {});
   timer = setInterval(() => { monitorTick().catch(() => {}); }, MONITOR_INTERVAL_MS);
   if (timer.unref) timer.unref();
 }

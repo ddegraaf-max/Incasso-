@@ -70,7 +70,7 @@ module.exports = {
     copyright: '© 2026 sprzedamfakture.pl',
 
     common: {
-      navHome: 'Strona główna', navSell: 'Sprzedaj fakturę', navCollection: 'Windykacja', navCalc: 'Kalkulator odsetek', navPanel: 'Panel klienta', navJudgments: 'Skup wyroków', footJudgments: 'skup starych wyroków',
+      navHome: 'Strona główna', navSell: 'Sprzedaj fakturę', navCollection: 'Windykacja', navCalc: 'Kalkulator odsetek', navPanel: 'Panel klienta', navJudgments: 'Skup wyroków', footJudgments: 'skup starych wyroków', navKb: 'Baza wiedzy', footKb: 'baza wiedzy',
       footerModel: 'Nasz model: Ty płacisz {fee} zł za sprawę — odsetki, rekompensatę i koszty pokrywa dłużnik. Albo sprzedajesz fakturę i masz gotówkę w 24 godziny.',
       footCollection: 'windykacja', footCalc: 'kalkulator odsetek', footConcept: 'koncept produktu',
       versionTitle: 'Wersja serwisu · commit', skip: 'Przejdź do treści', tagline: 'Gotówka za fakturę w 24 h',
@@ -232,6 +232,16 @@ module.exports = {
       legal: 'Podstawa prawna: art. 125 i 527 Kodeksu cywilnego, art. 824 § 1 pkt 3 KPC, art. 299 Kodeksu spółek handlowych, art. 509–512 KC (cesja). Treść strony ma charakter informacyjny i nie stanowi porady prawnej ani oferty w rozumieniu art. 66 KC.',
     },
 
+    kb: {
+      metaTitle: 'Baza wiedzy: odsetki, rekompensata, przedawnienie, wezwanie do zapłaty — sprzedamfakture.pl',
+      metaDesc: 'Praktyczne poradniki o należnościach B2B w Polsce: odsetki ustawowe za opóźnienie, rekompensata 40/70/100 €, przedawnienie faktur, wezwanie do zapłaty, wpis do KRD, sprzedaż wierzytelności.',
+      kicker: 'Baza wiedzy', h1: 'Należności B2B — poradniki bez prawniczego żargonu',
+      lead: 'Krótko i konkretnie: co Ci się należy od dłużnika, jak liczyć terminy i co zrobić, gdy faktura leży po terminie. Stan prawny: wrzesień 2026.',
+      readMore: 'Czytaj →', back: '← Wszystkie poradniki', published: 'Aktualizacja', faqH: 'Najczęstsze pytania', relatedH: 'Powiązane poradniki', crumbsHome: 'Strona główna',
+      ctaH: 'Faktura po terminie? Masz dwie drogi.', ctaP: 'Sprzedaj ją i miej gotówkę w 24 godziny albo policz odsetki i wyślij wezwanie — oba narzędzia są bezpłatne.',
+      ctaBtn: 'Wyceń fakturę', ctaBtn2: 'Kalkulator odsetek',
+      disclaimer: 'Artykuł ma charakter informacyjny i nie stanowi porady prawnej. Przepisy i stawki się zmieniają — przed podjęciem kroków sprawdź aktualny stan prawny lub skonsultuj się z prawnikiem.',
+    },
     error: {
       notFoundH: 'Nie znaleziono strony', notFoundP: 'Adres może być błędny albo strona została przeniesiona.',
       errorH: 'Coś poszło nie tak', errorP: 'Spróbuj ponownie za chwilę. Jeśli problem się powtarza, napisz na kontakt@sprzedamfakture.pl.',
@@ -304,7 +314,7 @@ module.exports = {
     copyright: '© 2026 sprzedamfakture.pl',
 
     common: {
-      navHome: 'Home', navSell: 'Sell an invoice', navCollection: 'Debt collection', navCalc: 'Interest calculator', navPanel: 'Client panel', navJudgments: 'Old judgments', footJudgments: 'we buy old judgments',
+      navHome: 'Home', navSell: 'Sell an invoice', navCollection: 'Debt collection', navCalc: 'Interest calculator', navPanel: 'Client panel', navJudgments: 'Old judgments', footJudgments: 'we buy old judgments', navKb: 'Knowledge base', footKb: 'knowledge base',
       footerModel: 'Our model: you pay {fee} zł per case — interest, the recovery fee and costs are borne by the debtor. Or sell the invoice and have cash within 24 hours.',
       footCollection: 'debt collection', footCalc: 'interest calculator', footConcept: 'product concept',
       versionTitle: 'Site version · commit', skip: 'Skip to content', tagline: 'Cash for your invoice in 24 h',
@@ -466,6 +476,16 @@ module.exports = {
       legal: 'Legal basis: arts. 125 and 527 of the Civil Code, art. 824 § 1 pt 3 of the Civil Procedure Code, art. 299 of the Commercial Companies Code, arts. 509–512 of the Civil Code (assignment). This page is information, not legal advice, and does not constitute a binding offer (art. 66 Civil Code).',
     },
 
+    kb: {
+      metaTitle: 'Knowledge base: late-payment interest, recovery fee, limitation, demand letters in Poland — sprzedamfakture.pl',
+      metaDesc: 'Practical guides to B2B receivables in Poland: statutory late-payment interest, the EUR 40/70/100 recovery fee, limitation periods, demand letters, KRD listings and selling receivables.',
+      kicker: 'Knowledge base', h1: 'B2B receivables in Poland — guides without the legal jargon',
+      lead: 'Short and concrete: what a Polish debtor owes you, how to count the deadlines and what to do when an invoice is overdue. Legal position: September 2026.',
+      readMore: 'Read →', back: '← All guides', published: 'Updated', faqH: 'Frequently asked questions', relatedH: 'Related guides', crumbsHome: 'Home',
+      ctaH: 'Overdue invoice? You have two routes.', ctaP: 'Sell it and have cash within 24 hours, or calculate the interest and send a demand — both tools are free.',
+      ctaBtn: 'Get a quote', ctaBtn2: 'Interest calculator',
+      disclaimer: 'This article is for information only and is not legal advice. Rules and rates change — check the current legal position or consult a lawyer before acting.',
+    },
     error: {
       notFoundH: 'Page not found', notFoundP: 'The address may be wrong or the page has moved.',
       errorH: 'Something went wrong', errorP: 'Please try again in a moment. If the problem persists, write to kontakt@sprzedamfakture.pl.',

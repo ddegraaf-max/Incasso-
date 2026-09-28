@@ -1,20 +1,47 @@
-<% var N = t.app.nowa, fill = t.fill; %>
+<% var N = t.app.nowa, R = t.app.sprawy.real, fill = t.fill; var isAdmin = user && user.role === 'admin'; %>
 <%- include('partials/head', { title: t.app.titles.nowa + ' — sprzedamfakture.pl' }) %>
 <%- include('partials/nav') %>
 
-<div class="cols3">
-  <section>
+<div class="two-pane">
+  <div class="pane-left">
+    <% if (typeof flash !== 'undefined' && flash) { %><div class="confirm" style="margin-bottom:16px"><span class="sq"></span><span><%= flash %></span></div><% } %>
+    <div class="kicker"><%= N.manual.kicker %></div>
+    <p class="helper"><%= N.manual.h %></p>
+    <form class="calc-form flat" method="post" action="/app/nowa">
+      <div class="form-grid2">
+        <div class="fg"><label for="n-nr"><%= R.f.nr %></label><input id="n-nr" name="nr" placeholder="FV 2026/09/001"></div>
+        <div class="fg"><label for="n-debtor"><%= R.f.debtor %></label><input id="n-debtor" name="debtor" required></div>
+        <div class="fg"><label for="n-nip"><%= R.f.nip %></label><input id="n-nip" name="nip" class="tnum" inputmode="numeric" placeholder="5260250274"></div>
+        <div class="fg"><label for="n-amount"><%= R.f.amount %></label><input id="n-amount" name="amount" class="tnum" inputmode="decimal" placeholder="12400" required></div>
+        <div class="fg"><label for="n-due"><%= R.f.due %></label><input id="n-due" name="dueDate" type="date" class="tnum"></div>
+        <div class="fg"><label for="n-days"><%= R.f.days %></label><input id="n-days" name="days" type="number" min="0" class="tnum" placeholder="30"></div>
+        <div class="fg"><label for="n-email"><%= R.f.email %></label><input id="n-email" name="email" type="email"></div>
+        <div class="fg"><label for="n-tel"><%= R.f.tel %></label><input id="n-tel" name="tel" placeholder="+48 …"></div>
+        <% if (isAdmin) { %>
+        <div class="fg"><label for="n-client"><%= R.f.client %></label><input id="n-client" name="clientCompany"></div>
+        <div class="fg"><label for="n-cemail"><%= R.f.clientEmail %></label><input id="n-cemail" name="clientEmail" type="email"></div>
+        <% } %>
+      </div>
+      <div class="fg"><label for="n-note"><%= R.f.note %></label><textarea id="n-note" name="note" rows="3"></textarea></div>
+      <button class="btn" type="submit"><%= N.manual.btn %></button>
+      <p class="helper" style="margin:12px 0 0"><%= N.manual.helper %></p>
+    </form>
+  </div>
+
+  <aside class="pane-right">
     <div class="kicker"><%= N.k1 %></div>
     <p class="helper"><%= N.h1 %></p>
-
     <% N.sources.forEach(function(s, i) { %>
     <div class="source-row">
       <div class="sr-head"><span><%= s[0] %></span><span class="tag <%= i === 0 ? 'tag-accent' : 'tag-neutral' %>"><%= s[1] %></span></div>
       <p><%= s[2] %></p>
     </div>
     <% }) %>
-  </section>
+  </aside>
+</div>
 
+<% if (D.DEMO_CASES) { %>
+<div class="cols3" style="padding-top:0">
   <section>
     <div class="kicker"><%= N.k2 %></div>
     <p class="helper"><%= N.h2 %></p>
@@ -35,7 +62,6 @@
   <section>
     <div class="kicker"><%= N.k3 %></div>
     <p class="helper"><%= N.h3 %></p>
-
     <% if (!nowaDone) { %>
       <div class="action-block">
         <h3><%= N.run.h %></h3>
@@ -57,5 +83,6 @@
     <% } %>
   </section>
 </div>
+<% } %>
 
 <%- include('partials/footer') %>

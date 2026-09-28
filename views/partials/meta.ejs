@@ -6,3 +6,11 @@
 <meta property="og:image" content="https://sprzedamfakture.pl/img/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
+<%
+// Zichtbaarheid op internet: verificatie voor Google Search Console / Bing Webmaster Tools en
+// cookieloze analytics (Plausible) — alleen als de Railway-variabelen gezet zijn.
+var _seo = typeof seo !== 'undefined' && seo ? seo : {};
+%><% if (_seo.google) { %><meta name="google-site-verification" content="<%= _seo.google %>">
+<% } %><% if (_seo.bing) { %><meta name="msvalidate.01" content="<%= _seo.bing %>">
+<% } %><% if (_seo.plausible) { %><script defer data-domain="<%= _seo.plausible %>" src="https://plausible.io/js/script.js"></script>
+<% } %>
