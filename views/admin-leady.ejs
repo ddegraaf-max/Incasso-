@@ -87,7 +87,7 @@
       <div class="label" style="margin-top:14px"><%= t.app.mail.history %></div>
       <ul class="timeline">
         <% mails.forEach(function (k) { %>
-        <li><span class="dot"></span><span class="t"><%= k.subject || '—' %> · <%= t.tr(k.status) %></span><span class="d tnum"><%= new Date(k.created_at).toLocaleDateString(t.locale, { day: 'numeric', month: 'short' }) %></span></li>
+        <li><span class="dot"></span><span class="t"><a href="/admin/leady/<%= sel.id %>/mail/<%= k.id %>"><%= k.subject || '—' %></a> · <%= t.tr(k.status) %><% if (k.recipient) { %> · <span class="tnum"><%= k.recipient %></span><% } %></span><span class="d tnum"><%= new Date(k.created_at).toLocaleDateString(t.locale, { day: 'numeric', month: 'short' }) %></span></li>
         <% }) %>
       </ul>
       <% } %>

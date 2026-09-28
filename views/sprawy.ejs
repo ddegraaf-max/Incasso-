@@ -91,7 +91,7 @@
     <div class="label" style="margin-top:16px"><%= S.commsLabel %></div>
     <ul class="timeline">
       <% comms.forEach(function(k) { %>
-      <li><span class="dot"></span><span class="t"><span class="tag tag-outline" style="margin-right:6px"><%= t.tr(k.channel) %></span><%= t.tr(k.outcome || k.subject || k.body.slice(0, 60)) %> · <%= t.tr(k.status) %></span><span class="d tnum"><%= new Date(k.created_at).toLocaleDateString(t.locale, {day:'numeric', month:'short'}) %></span></li>
+      <li><span class="dot"></span><span class="t"><span class="tag tag-outline" style="margin-right:6px"><%= t.tr(k.channel) %></span><% if (k.id && (k.channel === 'email' || k.channel === 'sms')) { %><a href="/app/sprawy/<%= sel.id %>/mail/<%= k.id %>"><%= t.tr(k.outcome || k.subject || k.body.slice(0, 60)) %></a><% } else { %><%= t.tr(k.outcome || k.subject || k.body.slice(0, 60)) %><% } %> · <%= t.tr(k.status) %></span><span class="d tnum"><%= new Date(k.created_at).toLocaleDateString(t.locale, {day:'numeric', month:'short'}) %></span></li>
       <% }) %>
     </ul>
     <% } %>

@@ -81,7 +81,7 @@ var mkUrl = function (over) {
     <div class="label"><%= Mm.history %></div>
     <ul class="timeline">
       <% history.forEach(function (k) { %>
-      <li><span class="dot"></span><span class="t"><%= k.subject || '—' %> · <%= t.tr(k.status) %></span><span class="d tnum"><%= new Date(k.created_at).toLocaleDateString(t.locale, { day: 'numeric', month: 'short' }) %></span></li>
+      <li><span class="dot"></span><span class="t"><a href="<%= base %>/<%= k.id %>"><%= k.subject || t.tr(k.channel) %></a> · <%= t.tr(k.status) %></span><span class="d tnum"><%= new Date(k.created_at).toLocaleDateString(t.locale, { day: 'numeric', month: 'short' }) %></span></li>
       <% }) %>
     </ul>
     <% } %>

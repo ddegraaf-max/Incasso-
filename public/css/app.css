@@ -580,3 +580,6 @@ table.cases .hg-mini { width: 12px; height: 16px; vertical-align: -3px; margin: 
 .ai-box { margin-top: 22px; padding: 18px 20px; border: 1px dashed var(--color-divider); border-radius: var(--radius); background: #fbfaf6; }
 .ai-translation textarea { background: var(--color-accent-100); border-color: #ecdfc0; }
 .ai-notes { margin: 8px 0 0; font-size: 13px; }
+
+/* ── Verstuurd bericht teruglezen ── */
+.mail-body { white-space: pre-wrap; word-break: break-word; font-family: inherit; font-size: 14px; line-height: 1.6; background: #fbfaf6; border: 1px solid var(--color-divider); border-radius: 12px; padding: 18px 20px; margin: 0; }

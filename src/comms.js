@@ -117,7 +117,7 @@ async function sendEmail(c, tone) {
     const r = await Mailer.send({ from: FROM_EMAIL, to: c.email, subject: msg.subject, text: msg.body, replyTo: Mailer.MAIL_NOTIFY || undefined });
     status = r.status;
   }
-  await db.logComm({ case_id: c.id, channel: 'email', tone, subject: msg.subject, body: msg.body, status });
+  await db.logComm({ case_id: c.id, channel: 'email', tone, subject: msg.subject, body: msg.body, status, recipient: c.email || null });
   await db.insertEvent({
     nip: c.nip, debtor: c.debtor, type: 'email', case_id: c.id,
     title: `E-mail (${tone}): ${msg.subject} — ${status}`, source: msg.engine === 'AI' ? 'agent AI + Resend' : 'szablon + Resend',
@@ -150,7 +150,7 @@ async function sendSms(c, tone) {
       status = r.ok ? 'wysłano' : `błąd ${r.status}`;
     } catch { status = 'błąd sieci'; }
   }
-  await db.logComm({ case_id: c.id, channel: 'sms', tone, subject: null, body, status });
+  await db.logComm({ case_id: c.id, channel: 'sms', tone, subject: null, body, status, recipient: c.tel || null });
   await db.insertEvent({
     nip: c.nip, debtor: c.debtor, type: 'sms', case_id: c.id,
     title: `SMS (${tone}) do ${c.tel || '—'} — ${status}`, source: 'SMSAPI.pl',
@@ -167,7 +167,7 @@ async function sendComposed(c, { to, subject, body, tone, audience, lang }) {
   else if (toDebtor && !(LIVE_COMMS || c.real)) status = 'symulacja';
   else if (toDebtor) status = (await Mailer.send({ from: FROM_EMAIL, to, subject, text: body, replyTo: Mailer.MAIL_NOTIFY || undefined })).status;
   else status = (await Mailer.sendPlain({ to, subject, text: body, lang })).status;
-  await db.logComm({ case_id: c.id, channel: 'email', tone: tone || null, subject, body, status });
+  await db.logComm({ case_id: c.id, channel: 'email', tone: tone || null, subject, body, status, recipient: to });
   await db.insertEvent({
     nip: c.nip, debtor: c.debtor, type: 'email', case_id: c.id,
     title: (toDebtor ? 'E-mail' : 'E-mail do klienta') + (tone ? ` (${tone})` : '') + `: ${subject} — ${status}`, source: 'panel klienta',
@@ -179,7 +179,7 @@ async function sendComposed(c, { to, subject, body, tone, audience, lang }) {
 // Composer vanuit een lead: mail aan de aanvrager (klant); log onder sleutel L<id>
 async function sendLeadMail(lead, { to, subject, body, lang }) {
   const r = await Mailer.sendPlain({ to, subject, text: body, lang });
-  await db.logComm({ case_id: 'L' + lead.id, channel: 'email', tone: null, subject, body, status: r.status });
+  await db.logComm({ case_id: 'L' + lead.id, channel: 'email', tone: null, subject, body, status: r.status, recipient: to });
   await db.insertEvent({
     nip: lead.nip || null, debtor: lead.company || null, type: 'email',
     title: `E-mail do klienta (${to}): ${subject} — ${r.status}`, source: 'panel admin',

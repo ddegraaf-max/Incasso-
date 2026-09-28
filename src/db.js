@@ -160,6 +160,7 @@ async function init() {
   await pool.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS forma TEXT');
   await pool.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS case_id TEXT');
   await pool.query('ALTER TABLE events ADD COLUMN IF NOT EXISTS case_id TEXT');
+  await pool.query('ALTER TABLE comm_log ADD COLUMN IF NOT EXISTS recipient TEXT');
   await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'nowy'");
   await pool.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS admin_note TEXT');
   await pool.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ');
@@ -430,14 +431,25 @@ async function purgeDemo({ caseIds = [], nips = [] }) {
 }
 
 // ── Communicatielog ──────────────────────────────────────────────────────
+let memCommId = 1;
 async function logComm(e) {
   const row = { ...e, created_at: new Date() };
-  if (!pool) { mem.comms.unshift(row); mem.comms = mem.comms.slice(0, 500); return row; }
-  await pool.query(
-    'INSERT INTO comm_log (case_id, channel, tone, subject, body, status, outcome) VALUES ($1,$2,$3,$4,$5,$6,$7)',
-    [e.case_id, e.channel, e.tone || null, e.subject || null, e.body || null, e.status || null, e.outcome || null]
+  if (!pool) { row.id = memCommId++; mem.comms.unshift(row); mem.comms = mem.comms.slice(0, 500); return row; }
+  const r = await pool.query(
+    'INSERT INTO comm_log (case_id, channel, tone, subject, body, status, outcome, recipient) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id',
+    [e.case_id, e.channel, e.tone || null, e.subject || null, e.body || null, e.status || null, e.outcome || null, e.recipient || null]
   );
+  row.id = r.rows[0].id;
   return row;
+}
+
+// Eén bericht uit het communicatielog (om terug te lezen); caseKey moet kloppen (toegang)
+async function getComm(id, caseKey) {
+  const n = parseInt(id, 10);
+  if (!Number.isInteger(n)) return null;
+  if (!pool) return mem.comms.find((x) => x.id === n && x.case_id === caseKey) || null;
+  const r = await pool.query('SELECT * FROM comm_log WHERE id=$1 AND case_id=$2', [n, caseKey]);
+  return r.rows[0] || null;
 }
 
 async function listComms(caseId, limit = 10) {
@@ -536,7 +548,7 @@ module.exports = {
   insertEvent, listEvents, listCaseEvents,
   listCases, insertCase, updateCase, deleteCase,
   saveScore, loadScores,
-  logComm, listComms, countComms,
+  logComm, getComm, listComms, countComms,
   saveLead, listLeads, getLead, updateLead, deleteLead, setLeadCase,
   saveLeadFile, listLeadFiles, getLeadFile, countLeadFiles,
   saveLeadReport, getLeadReport, latestReports,

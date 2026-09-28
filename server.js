@@ -351,7 +351,8 @@ async function renderLeadComposer(req, res, lead, over = {}) {
   over = applyJob(req, res, over);
   const tl = over.tl || tplLang(req, Research.parseNote(lead).lang === 'en' ? 'en' : 'pl');
   const tpl = over.tpl !== undefined ? over.tpl : String(req.query.tpl || '');
-  const draft = tpl ? MailTpl.forLead(lead, tpl, tl) : { subject: '', body: '' };
+  let draft = tpl ? MailTpl.forLead(lead, tpl, tl) : { subject: '', body: '' };
+  if (req.query.reuse && over.subject === undefined) { const prev = await db.getComm(req.query.reuse, 'L' + lead.id).catch(() => null); if (prev) draft = { subject: prev.subject || '', body: prev.body || '' }; }
   const history = await db.listComms('L' + lead.id, 10).catch(() => []);
   res.status(over.error ? 400 : 200).render('mail', common({
     page: 'admin', user: req.user, ctx: { label: lead.company + ' · #' + lead.id },
@@ -398,6 +399,18 @@ app.get('/admin/leady/:id/mail', Auth.requireAdmin, async (req, res) => {
   renderLeadComposer(req, res, lead);
 });
 
+// Verstuurde mail van een lead teruglezen
+app.get('/admin/leady/:id/mail/:cid', Auth.requireAdmin, async (req, res, next) => {
+  const lead = await db.getLead(req.params.id).catch(() => null);
+  if (!lead) return res.redirect('/admin/leady');
+  if (!/^\d+$/.test(req.params.cid)) return next();
+  const m = await db.getComm(req.params.cid, 'L' + lead.id).catch(() => null);
+  if (!m) return next();
+  const history = await db.listComms('L' + lead.id, 20).catch(() => []);
+  res.render('mail-view', common({ page: 'admin', user: req.user, ctx: { label: lead.company + ' · #' + lead.id }, m, history, historyBase: '/admin/leady/' + lead.id + '/mail',
+    backUrl: '/admin/leady?sel=' + lead.id, reuseUrl: m.channel === 'email' ? '/admin/leady/' + lead.id + '/mail?reuse=' + m.id : null, fromAddr: Mailer.MAIL_FROM }));
+});
+
 app.post('/admin/leady/:id/mail', Auth.requireAdmin, async (req, res) => {
   const Mm = res.locals.t.app.mail;
   const lead = await db.getLead(req.params.id).catch(() => null);
@@ -422,6 +435,7 @@ async function renderCaseComposer(req, res, c, over = {}) {
   let draft = { subject: '', body: '' };
   if (tpl && aud === 'dluznik' && TONES.includes(tpl)) draft = await Comms.composeEmail(c, tpl).catch(() => ({ subject: '', body: '' }));
   else if (tpl && aud === 'klient') draft = MailTpl.forCase(c, tpl, tl);
+  if (req.query.reuse && over.subject === undefined) { const prev = await db.getComm(req.query.reuse, c.id).catch(() => null); if (prev) draft = { subject: prev.subject || '', body: prev.body || '' }; }
   const templates = aud === 'dluznik' ? TONES.map((k) => ({ key: k, name: res.locals.t.app.tones[k] + ' · PL' })) : MailTpl.list('case', tl, false);
   const history = await db.listComms(c.id, 10).catch(() => []);
   res.status(over.error ? 400 : 200).render('mail', common({
@@ -470,6 +484,20 @@ app.get('/app/sprawy/:id/mail', Auth.requireAuth, async (req, res) => {
   const c = caseById(req.params.id, req.user);
   if (!c) return res.redirect('/app/sprawy');
   renderCaseComposer(req, res, c);
+});
+
+// Verstuurd bericht (e-mail/SMS) van een zaak teruglezen
+app.get('/app/sprawy/:id/mail/:cid', Auth.requireAuth, async (req, res, next) => {
+  const c = caseById(req.params.id, req.user);
+  if (!c) return res.redirect('/app/sprawy');
+  if (!/^\d+$/.test(req.params.cid)) return next();
+  const m = await db.getComm(req.params.cid, c.id).catch(() => null);
+  if (!m) return next();
+  const history = await db.listComms(c.id, 20).catch(() => []);
+  const aud = m.recipient && c.clientEmail && m.recipient === c.clientEmail ? 'klient' : 'dluznik';
+  res.render('mail-view', common({ page: 'app', tab: 'sprawy', user: req.user, ctx: { label: c.nr + ' · ' + c.debtor }, m, history, historyBase: '/app/sprawy/' + c.id + '/mail',
+    backUrl: '/app/sprawy?sel=' + c.id, reuseUrl: m.channel === 'email' ? '/app/sprawy/' + c.id + '/mail?reuse=' + m.id + '&aud=' + aud : null,
+    fromAddr: aud === 'klient' ? Mailer.MAIL_FROM : Comms.FROM_EMAIL, smsFrom: process.env.SMS_FROM || 'SprzedamFV' }));
 });
 
 app.post('/app/sprawy/:id/mail', Auth.requireAuth, async (req, res) => {

@@ -1,0 +1,41 @@
+<%
+// Verstuurde e-mail (of SMS) uit comm_log teruglezen: ontvanger, afzender, datum, status, volledige tekst.
+// Verwacht: ctx {label}, m (rij uit comm_log), backUrl, reuseUrl, fromAddr.
+var Mm = t.app.mail;
+var loc = t.locale || 'pl-PL';
+var when = new Date(m.created_at).toLocaleString(loc, { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+var isMail = m.channel === 'email';
+%>
+<%- include('partials/head', { title: Mm.viewTitle + ' — sprzedamfakture.pl' }) %>
+<%- include('partials/nav') %>
+
+<div class="two-pane">
+  <div class="pane-left">
+    <div class="kicker"><%= Mm.viewTitle %> · <%= ctx.label %></div>
+    <h2 style="font-size:22px; margin:6px 0 14px"><%= m.subject || (isMail ? '—' : 'SMS') %></h2>
+    <div class="field-row"><span class="fk"><%= Mm.to %></span><span><%= m.recipient || '—' %></span></div>
+    <div class="field-row"><span class="fk"><%= Mm.from %></span><span><%= isMail ? fromAddr : (typeof smsFrom !== 'undefined' ? smsFrom : '—') %></span></div>
+    <div class="field-row"><span class="fk"><%= Mm.sentOn %></span><span class="tnum"><%= when %></span></div>
+    <div class="field-row"><span class="fk"><%= Mm.channel %></span><span><span class="tag tag-outline"><%= t.tr(m.channel) %></span><%= m.tone ? ' · ' + (t.app.tones[m.tone] || m.tone) : '' %></span></div>
+    <div class="field-row"><span class="fk"><%= Mm.status %></span><span><span class="tag <%= m.status === 'wysłano' ? 'tag-accent' : 'tag-neutral' %>"><%= t.tr(m.status) %></span></span></div>
+    <% if (m.outcome) { %><div class="field-row"><span class="fk"><%= Mm.outcome %></span><span><%= t.tr(m.outcome) %></span></div><% } %>
+    <hr class="rule">
+    <div class="label"><%= Mm.body %></div>
+    <pre class="mail-body"><%= m.body || '' %></pre>
+    <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-top:18px">
+      <% if (reuseUrl) { %><a class="btn btn-secondary chan-btn" href="<%= reuseUrl %>"><%= Mm.reuse %></a><% } %>
+      <a class="btn btn-ghost chan-btn" href="<%= backUrl %>"><%= Mm.back %></a>
+    </div>
+  </div>
+  <aside class="pane-right">
+    <div class="kicker"><%= Mm.history %></div>
+    <p class="helper"><%= Mm.viewHelp %></p>
+    <ul class="timeline">
+      <% history.forEach(function (k) { %>
+      <li><span class="dot"></span><span class="t"><% if (k.id === m.id) { %><strong><%= k.subject || t.tr(k.channel) %></strong><% } else { %><a href="<%= historyBase %>/<%= k.id %>"><%= k.subject || t.tr(k.channel) %></a><% } %> · <%= t.tr(k.status) %></span><span class="d tnum"><%= new Date(k.created_at).toLocaleDateString(loc, { day: 'numeric', month: 'short' }) %></span></li>
+      <% }) %>
+    </ul>
+  </aside>
+</div>
+
+<%- include('partials/footer') %>
