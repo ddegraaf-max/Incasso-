@@ -38,6 +38,7 @@ var thanks = typeof thanksMsg !== 'undefined' && thanksMsg;
     <tr class="total"><td>Razem do zapłaty na dziś</td><td><%= D.fmtN(k.total) %> zł</td></tr>
   </table>
 
+  <% if (typeof file !== 'undefined' && file) { %><p class="wz-p"><strong><%= L.attachment %>:</strong> <a href="/w/<%= d.token %>/zalacznik" target="_blank" rel="noopener"><%= file.filename %></a> <span class="tnum" style="color:var(--ink-55)">(<%= Math.max(1, Math.round((file.size || 0) / 1024)) %> KB)</span></p><% } %>
   <p class="wz-p">Prosimy o zapłatę w terminie do <strong class="tnum"><%= k.deadline %></strong><% if (d.iban) { %> na rachunek <strong class="tnum"><%= d.iban %></strong><% } %>, z podaniem numeru faktury w tytule przelewu. Odsetki naliczane są w dalszym ciągu, do dnia zapłaty — kwota na tej stronie aktualizuje się codziennie.</p>
   <p class="wz-p">Brak zapłaty w terminie może skutkować skierowaniem sprawy do windykacji, zgłoszeniem dłużnika do biura informacji gospodarczej (KRD / BIG) oraz na drogę postępowania sądowego, którego koszty obciążą dłużnika.</p>
 

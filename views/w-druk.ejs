@@ -46,6 +46,7 @@
     <tr class="total"><td>Razem na dzień <%= today %></td><td><%= D.fmtN(k.total) %> zł</td></tr>
   </table>
 
+  <% if (typeof file !== 'undefined' && file) { %><p>Załącznik: kopia faktury (<%= file.filename %>) — do pobrania pod adresem wezwania.</p><% } %>
   <p>Prosimy o zapłatę w terminie do <strong class="tnum"><%= k.deadline %></strong><% if (d.iban) { %> na rachunek <strong class="tnum"><%= d.iban %></strong><% } %>, z podaniem numeru faktury w tytule przelewu. Odsetki naliczane są w dalszym ciągu, do dnia zapłaty.</p>
   <p>Brak zapłaty w terminie może skutkować skierowaniem sprawy do windykacji, zgłoszeniem dłużnika do biura informacji gospodarczej (KRD / BIG) oraz na drogę postępowania sądowego, którego koszty obciążą dłużnika.</p>
 

@@ -131,10 +131,11 @@ async function init() {
       status TEXT DEFAULT 'wyslane',
       response_note TEXT, promised_date DATE,
       opened_at TIMESTAMPTZ, responded_at TIMESTAMPTZ,
-      facts JSONB, lead_id INT,
+      facts JSONB, lead_id INT, file_id INT,
       created_at TIMESTAMPTZ DEFAULT now()
     );
   `);
+  await pool.query('ALTER TABLE demands ADD COLUMN IF NOT EXISTS file_id INT');
   await pool.query(`
     CREATE TABLE IF NOT EXISTS lead_reports (
       id SERIAL PRIMARY KEY,
@@ -537,7 +538,7 @@ async function deleteCase(id, caseKey) {
 }
 
 // ── Wezwania online (src/demands.js) ─────────────────────────────────────
-const DEMAND_COLS = ['token', 'lang', 'creditor_company', 'creditor_nip', 'creditor_email', 'debtor_company', 'debtor_nip', 'debtor_email', 'invoice_nr', 'amount', 'due_date', 'iban', 'status', 'response_note', 'promised_date', 'opened_at', 'responded_at', 'facts', 'lead_id'];
+const DEMAND_COLS = ['token', 'lang', 'creditor_company', 'creditor_nip', 'creditor_email', 'debtor_company', 'debtor_nip', 'debtor_email', 'invoice_nr', 'amount', 'due_date', 'iban', 'status', 'response_note', 'promised_date', 'opened_at', 'responded_at', 'facts', 'lead_id', 'file_id'];
 let memDemandId = 1;
 async function insertDemand(d) {
   const row = {}; for (const k of DEMAND_COLS) row[k] = d[k] === undefined ? null : d[k];

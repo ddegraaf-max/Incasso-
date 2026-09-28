@@ -129,8 +129,9 @@ function factsSummary(facts) {
   return parts.join(' · ');
 }
 
-async function mailDebtor(d, c) {
+async function mailDebtor(d, c, file) {
   if (!d.debtor_email) return { ok: false, status: 'brak adresata' };
+  const attachments = file && file.data ? [{ filename: file.filename || 'faktura.pdf', content: Buffer.from(file.data).toString('base64') }] : undefined;
   const text = `Szanowni Państwo,
 
 działając w imieniu wierzyciela ${d.creditor_company}, wzywamy do zapłaty należności z faktury ${d.invoice_nr}, której termin płatności (${d.due_date}) minął ${c.days} dni temu.
@@ -140,14 +141,14 @@ Odsetki ustawowe za opóźnienie w transakcjach handlowych (${c.rate}% rocznie, 
 Rekompensata za koszty odzyskiwania należności (art. 10 ustawy z 8.03.2013 r.): ${D.fmtN(c.rekomp)} zł
 Razem na dziś: ${D.fmtN(c.total)} zł${d.iban ? '\nRachunek do zapłaty: ' + d.iban : ''}
 
-Termin zapłaty: ${c.deadline}. Odsetki naliczane są dalej do dnia zapłaty — aktualną kwotę oraz możliwość potwierdzenia zapłaty, zadeklarowania terminu albo zgłoszenia zastrzeżeń znajdą Państwo pod adresem:
+${file ? 'W załączeniu kopia faktury (' + (file.filename || 'faktura') + ') — dostępna też pod adresem ' + c.url + '/zalacznik\n\n' : ''}Termin zapłaty: ${c.deadline}. Odsetki naliczane są dalej do dnia zapłaty — aktualną kwotę oraz możliwość potwierdzenia zapłaty, zadeklarowania terminu albo zgłoszenia zastrzeżeń znajdą Państwo pod adresem:
 ${c.url}
 
 Brak zapłaty w terminie może skutkować skierowaniem sprawy do windykacji, zgłoszeniem do biura informacji gospodarczej oraz na drogę sądową — na koszt dłużnika.
 
 sprzedamfakture.pl — wezwanie wygenerowane na zlecenie wierzyciela
 Odpowiedzi prosimy kierować bezpośrednio do wierzyciela (odpowiedz na tę wiadomość) lub przez stronę wezwania.`;
-  return Mailer.sendPlain({ from: 'sprzedamfakture.pl <' + FROM_EMAIL + '>', to: d.debtor_email, replyTo: d.creditor_email, subject: `Wezwanie do zapłaty — faktura ${d.invoice_nr} (${d.creditor_company})`, text, lang: 'pl' });
+  return Mailer.sendPlain({ from: 'sprzedamfakture.pl <' + FROM_EMAIL + '>', to: d.debtor_email, replyTo: d.creditor_email, subject: `Wezwanie do zapłaty — faktura ${d.invoice_nr} (${d.creditor_company})`, text, lang: 'pl', attachments });
 }
 
 async function mailCreditor(d, c, facts) {

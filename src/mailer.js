@@ -75,8 +75,8 @@ async function send({ to, subject, text, html, replyTo, from, attachments }) {
 function textToHtml(text) {
   return String(text || '').replace(/\r\n/g, '\n').split(/\n{2,}/).map((p) => '<p style="margin:0 0 14px">' + esc(p).replace(/\n/g, '<br>') + '</p>').join('');
 }
-async function sendPlain({ to, subject, text, replyTo, from, lang }) {
-  return send({ to, subject, text, html: layout(textToHtml(text), lang, String(text || '').slice(0, 120)), replyTo: replyTo || MAIL_NOTIFY || undefined, from });
+async function sendPlain({ to, subject, text, replyTo, from, lang, attachments }) {
+  return send({ to, subject, text, html: layout(textToHtml(text), lang, String(text || '').slice(0, 120)), replyTo: replyTo || MAIL_NOTIFY || undefined, from, attachments });
 }
 
 // ── HTML-layout (eenvoudig, inline styles — werkt in elke mailclient) ────

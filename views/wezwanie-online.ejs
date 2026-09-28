@@ -28,6 +28,7 @@ var fe = function (k) { return errors[k] ? '<p class="field-err">' + w.errors[er
     <div class="field-row"><span class="fk"><%= w.ok.link %></span><span><a href="/w/<%= d.token %>" class="tnum" target="_blank" rel="noopener"><%= k.url %></a></span></div>
     <div class="field-row"><span class="fk"><%= w.ok.print %></span><span><a href="/w/<%= d.token %>/druk" target="_blank" rel="noopener"><%= w.ok.printBtn %></a></span></div>
     <div class="field-row"><span class="fk"><%= w.ok.debtorMail %></span><span><%= d.debtor_email ? w.ok.debtorMailSent.replace('{email}', d.debtor_email) : w.ok.debtorMailNone %></span></div>
+    <% if (typeof okFile !== 'undefined' && okFile) { %><div class="field-row"><span class="fk"><%= w.ok.file %></span><span><a href="/w/<%= d.token %>/zalacznik" target="_blank" rel="noopener"><%= okFile.filename %></a></span></div><% } %>
     <div class="field-row"><span class="fk"><%= w.ok.amount %></span><span class="tnum"><%= D.fmtN(k.total) %> zł (<%= D.fmtN(k.amount) %> + <%= D.fmtN(k.odsetki) %> + <%= D.fmtN(k.rekomp) %>)</span></div>
     <% var fs = okFacts; if (fs) { %><div class="field-row"><span class="fk"><%= w.ok.registers %></span><span><%= fs %></span></div><% } %>
     <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:16px">
@@ -43,7 +44,7 @@ var fe = function (k) { return errors[k] ? '<p class="field-err">' + w.errors[er
     <% w.bullets.forEach(function (b) { %><li><%- b %></li><% }) %>
   </ul>
 
-  <form class="calc-form" method="post" action="/wezwanie-online" novalidate>
+  <form class="calc-form" method="post" action="/wezwanie-online" enctype="multipart/form-data" novalidate>
     <input type="text" name="website" tabindex="-1" autocomplete="off" style="position:absolute; left:-9999px" aria-hidden="true">
     <div class="kicker" style="margin-bottom:10px"><%= w.f.creditorKicker %></div>
     <div class="form-grid2">
@@ -63,6 +64,7 @@ var fe = function (k) { return errors[k] ? '<p class="field-err">' + w.errors[er
       <div class="fg"><label for="wz-nr"><%= w.f.invoiceNr %></label><input id="wz-nr" name="invoice_nr" value="<%= form.invoice_nr || '' %>" placeholder="FV 2026/06/089" required><%- fe('invoice_nr') %></div>
       <div class="fg"><label for="wz-am"><%= w.f.amount %></label><input id="wz-am" name="amount" class="tnum" inputmode="decimal" value="<%= form.amount || '' %>" placeholder="12400" required><%- fe('amount') %></div>
       <div class="fg"><label for="wz-du"><%= w.f.due %></label><input id="wz-du" name="due_date" type="date" class="tnum" value="<%= form.due_date || '' %>" required><%- fe('due_date') %></div>
+      <div class="fg"><label for="wz-file"><%= w.f.file %></label><input id="wz-file" name="zalacznik" type="file" accept=".pdf,.jpg,.jpeg,.png,.xml,application/pdf,image/jpeg,image/png,text/xml,application/xml"><%- fe('zalacznik') %><p class="helper" style="margin:6px 0 0"><%= w.f.fileNote %></p></div>
     </div>
     <%- include('partials/turnstile') %>
     <% if (errors.captcha) { %><p class="field-err"><%= w.errors.captcha %></p><% } %>

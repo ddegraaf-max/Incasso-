@@ -783,34 +783,55 @@ function renderDemandForm(req, res, extra = {}) {
 app.get('/wezwanie-online', async (req, res) => {
   if (req.query.ok) {
     const d = await Demands.byToken(req.query.ok).catch(() => null);
-    if (d) return renderDemandForm(req, res, { okDemand: d, okCalc: Demands.compute(d), okFacts: Demands.factsSummary(d.facts) });
+    if (d) return renderDemandForm(req, res, { okDemand: d, okCalc: Demands.compute(d), okFacts: Demands.factsSummary(d.facts), okFile: await demandFile(d) });
   }
   renderDemandForm(req, res);
 });
-app.post('/wezwanie-online', async (req, res) => {
+app.post('/wezwanie-online', zalacznikMw, async (req, res) => {
   const b = req.body || {};
   if (b.website) return res.redirect('/wezwanie-online'); // honeypot
   const ts = await Turnstile.verify(b['cf-turnstile-response'], req.ip);
-  const r = await Demands.create(b, res.locals.lang).catch((e) => { console.error('Wezwanie: aanmaken mislukt —', e.message); return { errors: { creditor_company: 'dCreditor' }, row: b }; });
+  const badFile = req.zalacznikError || (req.file && !ALLOWED_UPLOAD.includes(req.file.mimetype));
+  const r = badFile ? { errors: { zalacznik: 'dFile' }, row: b } : await Demands.create(b, res.locals.lang).catch((e) => { console.error('Wezwanie: aanmaken mislukt —', e.message); return { errors: { creditor_company: 'dCreditor' }, row: b }; });
   const errors = { ...(r.errors || {}) };
   if (!ts.ok) errors.captcha = true;
   if (Object.keys(errors).length || !r.demand) { res.status(400); return renderDemandForm(req, res, { form: r.row || b, errors }); }
   const d = r.demand;
   const k = Demands.compute(d);
-  await Demands.toLead(d, k, res.locals.lang).catch(() => null);
+  const lead = await Demands.toLead(d, k, res.locals.lang).catch(() => null);
+  // bijlage (factuur) bij de lead bewaren en aan de demand koppelen; de dłużnik krijgt hem mee en kan hem via /w/<token>/zalacznik openen
+  let file = null;
+  if (lead && lead.id && req.file && !badFile) {
+    const saved = await db.saveLeadFile(lead.id, req.file).catch((e) => { console.error('Wezwanie: bijlage opslaan mislukt —', e.message); return null; });
+    if (saved) { file = { filename: saved.filename, data: req.file.buffer }; d.file_id = saved.id; await db.updateDemand(d.id, { file_id: saved.id }).catch(() => {}); }
+  }
   const [md, mc] = await Promise.all([
-    Demands.mailDebtor(d, k).catch((e) => ({ status: 'błąd: ' + e.message })),
+    Demands.mailDebtor(d, k, file).catch((e) => ({ status: 'błąd: ' + e.message })),
     Demands.mailCreditor(d, k, r.facts).catch((e) => ({ status: 'błąd: ' + e.message })),
   ]);
   await db.insertEvent({ nip: d.debtor_nip || null, debtor: d.debtor_company, type: 'wezwanie', title: 'Wezwanie online: ' + d.invoice_nr + ' · ' + D.fmt(k.amount) + ' · wierzyciel ' + d.creditor_company + ' · mail: ' + md.status + ' / ' + mc.status, source: 'wezwanie-online' }).catch(() => {});
   res.redirect('/wezwanie-online?ok=' + encodeURIComponent(d.token));
 });
 
+async function demandFile(d) {
+  if (!d.file_id) return null;
+  const f = await db.getLeadFile(d.file_id).catch(() => null);
+  return f ? { id: f.id, filename: f.filename, mimetype: f.mimetype, size: f.size } : null;
+}
 async function renderDemand(req, res, d, extra = {}) {
   const k = Demands.compute(d);
   const qr = await QRCode.toDataURL(k.url, { margin: 0, width: 208 });
-  res.render('w', common({ page: 'w', d, k, qr, ...extra }));
+  const file = await demandFile(d);
+  res.render('w', common({ page: 'w', d, k, qr, file, ...extra }));
 }
+// Bijlage (factuur) van een wezwanie — publiek via het token, net als de brief zelf
+app.get('/w/:token/zalacznik', async (req, res, next) => {
+  const d = await Demands.byToken(req.params.token).catch(() => null);
+  if (!d || !d.file_id) return next();
+  const f = await db.getLeadFile(d.file_id).catch(() => null);
+  if (!f) return next();
+  sendLeadFile(res, f);
+});
 app.get('/w/:token', async (req, res, next) => {
   const d = await Demands.byToken(req.params.token).catch(() => null);
   if (!d) return next();
@@ -837,7 +858,8 @@ app.get('/w/:token/druk', async (req, res, next) => {
   if (!d) return next();
   const k = Demands.compute(d);
   const qr = await QRCode.toDataURL(k.url, { margin: 0, width: 208 });
-  res.render('w-druk', { D, d, k, qr, company: Company.C, version: VER.version, today: new Date().toLocaleDateString('pl-PL'), seo: SEO, lang: 'pl', t: res.locals.t });
+  const file = await demandFile(d);
+  res.render('w-druk', { D, d, k, qr, file, company: Company.C, version: VER.version, today: new Date().toLocaleDateString('pl-PL'), seo: SEO, lang: 'pl', t: res.locals.t });
 });
 
 app.get('/health', async (req, res) => {
