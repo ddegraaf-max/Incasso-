@@ -107,6 +107,10 @@ const pl = {
     history: 'Wysłane e-maile', noResend: 'Brak RESEND_API_KEY — wiadomość zostanie tylko zalogowana (symulacja).', demoSim: 'Sprawa demo: wysyłka do dłużnika tylko w symulacji (LIVE_COMMS=1 wymusza).',
     sent: 'E-mail wysłany do {to}', simulated: 'E-mail zalogowany jako symulacja — {to}', failed: 'Wysyłka nie powiodła się: {status}', missing: 'Uzupełnij adresata, temat i treść.', badTo: 'Nieprawidłowy adres e-mail.',
     composeBtn: 'Napisz e-mail',
+    aiLabel: 'Asystent AI', aiHelp: 'Napisz (może być po niderlandzku), co chcesz przekazać — asystent przygotuje wiadomość w języku szablonu na podstawie zgłoszenia, rejestrów i raportu z wywiadu, wraz z tłumaczeniem na język panelu.',
+    aiInstruction: 'Co ma zawierać wiadomość?', aiPlaceholder: 'np. Złóż ofertę 74% na podstawie raportu, poproś o kopię faktury i korespondencję z dłużnikiem.',
+    aiDraft: 'Przygotuj z raportu (AI)', aiTranslate: 'Przetłumacz obecną treść', aiTranslation: 'Tłumaczenie (nie jest wysyłane)', aiNotes: 'Uwagi asystenta',
+    aiUnavailable: 'Asystent AI niedostępny (brak ANTHROPIC_API_KEY).', aiFailed: 'Asystent AI nie odpowiedział',
   },
   rozmowa: {
     kicker: 'Przygotowanie rozmowy · {nr} · AIScore {score}', meta: '{amount} · {days} po terminie · odsetki {interest} · rekompensata {rekomp}',
@@ -423,6 +427,10 @@ const nl = {
     history: 'Verzonden e-mails', noResend: 'Geen RESEND_API_KEY — het bericht wordt alleen gelogd (simulatie).', demoSim: 'Demozaak: verzending naar de debiteur alleen als simulatie (LIVE_COMMS=1 forceert).',
     sent: 'E-mail verstuurd naar {to}', simulated: 'E-mail gelogd als simulatie — {to}', failed: 'Versturen mislukt: {status}', missing: 'Vul ontvanger, onderwerp en bericht in.', badTo: 'Ongeldig e-mailadres.',
     composeBtn: 'E-mail schrijven',
+    aiLabel: 'AI-assistent', aiHelp: 'Schrijf in het Nederlands wat je wilt zeggen — de assistent maakt de mail in de sjabloontaal (Pools of Engels) op basis van de aanvraag, de registers en het onderzoeksverslag, met een Nederlandse vertaling ernaast.',
+    aiInstruction: 'Wat moet er in de mail staan?', aiPlaceholder: 'bijv. Doe een aanbod van 74% op basis van het verslag, vraag om een kopie van de factuur en de correspondentie met de debiteur.',
+    aiDraft: 'Concept uit verslag (AI)', aiTranslate: 'Vertaal huidige tekst', aiTranslation: 'Nederlandse vertaling (wordt niet verstuurd)', aiNotes: 'Notities van de assistent',
+    aiUnavailable: 'AI-assistent niet beschikbaar (geen ANTHROPIC_API_KEY).', aiFailed: 'De AI-assistent gaf geen antwoord',
   },
   rozmowa: {
     kicker: 'Gespreksvoorbereiding · {nr} · AIScore {score}', meta: '{amount} · {days} na vervaldatum · rente {interest} · forfaitaire vergoeding {rekomp}',
@@ -573,6 +581,10 @@ const en = {
     history: 'Sent e-mails', noResend: 'No RESEND_API_KEY — the message will only be logged (simulation).', demoSim: 'Demo case: sending to the debtor is simulated only (LIVE_COMMS=1 forces it).',
     sent: 'E-mail sent to {to}', simulated: 'E-mail logged as simulation — {to}', failed: 'Sending failed: {status}', missing: 'Fill in recipient, subject and message.', badTo: 'Invalid e-mail address.',
     composeBtn: 'Write e-mail',
+    aiLabel: 'AI assistant', aiHelp: 'Write (in Dutch if you like) what you want to say — the assistant drafts the message in the template language from the request, the registers and the due-diligence report, with a translation into your panel language.',
+    aiInstruction: 'What should the message say?', aiPlaceholder: 'e.g. Make a 74% offer based on the report, ask for a copy of the invoice and the correspondence with the debtor.',
+    aiDraft: 'Draft from report (AI)', aiTranslate: 'Translate current text', aiTranslation: 'Translation (not sent)', aiNotes: 'Assistant notes',
+    aiUnavailable: 'AI assistant unavailable (no ANTHROPIC_API_KEY).', aiFailed: 'AI assistant did not respond',
   },
   rozmowa: {
     kicker: 'Call preparation · {nr} · AIScore {score}', meta: '{amount} · {days} overdue · interest {interest} · recovery fee {rekomp}',

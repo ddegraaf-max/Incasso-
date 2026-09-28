@@ -26,9 +26,27 @@ var mkUrl = function (over) {
       <div class="fg"><label for="m-to"><%= Mm.to %></label><input id="m-to" name="to" type="email" value="<%= to %>" required></div>
       <div class="fg"><label for="m-subject"><%= Mm.subject %></label><input id="m-subject" name="subject" value="<%= subject %>" required maxlength="200"></div>
       <div class="fg"><label for="m-body"><%= Mm.body %></label><textarea id="m-body" name="body" rows="18" required><%= body %></textarea></div>
+      <% if (translation) { %>
+      <div class="fg ai-translation">
+        <label for="m-tr"><%= Mm.aiTranslation %></label>
+        <textarea id="m-tr" rows="12" readonly><%= translation %></textarea>
+        <% if (notes) { %><p class="helper ai-notes"><%= Mm.aiNotes %>: <%= notes %></p><% } %>
+      </div>
+      <% } %>
       <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center">
         <button class="btn" type="submit"><%= Mm.send %></button>
         <a class="btn btn-ghost chan-btn" href="<%= backUrl %>"><%= Mm.cancel %></a>
+      </div>
+
+      <div class="ai-box">
+        <div class="label"><%= Mm.aiLabel %></div>
+        <p class="helper" style="margin:0 0 10px"><%= Mm.aiHelp %></p>
+        <div class="fg"><label for="m-instr"><%= Mm.aiInstruction %></label><textarea id="m-instr" name="instruction" rows="3" placeholder="<%= Mm.aiPlaceholder %>"><%= instruction %></textarea></div>
+        <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center">
+          <button class="btn btn-secondary chan-btn" type="submit" formaction="<%= action %>/ai" name="mode" value="draft" formnovalidate <%= aiOk ? '' : 'disabled' %>><%= Mm.aiDraft %></button>
+          <button class="btn btn-ghost chan-btn" type="submit" formaction="<%= action %>/ai" name="mode" value="translate" formnovalidate <%= aiOk ? '' : 'disabled' %>><%= Mm.aiTranslate %></button>
+          <% if (!aiOk) { %><span class="helper" style="margin:0"><%= Mm.aiUnavailable %></span><% } %>
+        </div>
       </div>
       <p class="helper" style="margin:12px 0 0"><%= Mm.from %>: <span class="tnum"><%= fromAddr %></span> · <%= Mm.replyTo %>: <span class="tnum"><%= replyTo || '—' %></span></p>
       <% if (!mailOk) { %><p class="field-err" style="margin-top:6px"><%= Mm.noResend %></p><% } else if (!live) { %><p class="field-err" style="margin-top:6px"><%= Mm.demoSim %></p><% } %>

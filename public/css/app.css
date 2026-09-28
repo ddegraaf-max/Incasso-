@@ -575,3 +575,8 @@ body.sf .footer-company { max-width: 1424px; margin: -8px auto 0; }
 .research-busy .hg-mini { margin-top: 1px; }
 table.cases .hg-mini { width: 12px; height: 16px; vertical-align: -3px; margin: 0 0 0 4px; }
 @media (prefers-reduced-motion: reduce) { .hg-mini { animation: none; } }
+
+/* ── Composer: AI-assistent en vertaling ── */
+.ai-box { margin-top: 22px; padding: 18px 20px; border: 1px dashed var(--color-divider); border-radius: var(--radius); background: #fbfaf6; }
+.ai-translation textarea { background: var(--color-accent-100); border-color: #ecdfc0; }
+.ai-notes { margin: 8px 0 0; font-size: 13px; }
