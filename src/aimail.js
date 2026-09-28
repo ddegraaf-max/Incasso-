@@ -25,6 +25,17 @@ const SCHEMA = {
 
 function available() { return !!client || FAKE; }
 
+// API-fout → herkenbare code voor de UI: limit (uitgavenlimiet van het Anthropic-account bereikt),
+// rate (te veel verzoeken), auth (sleutel ongeldig); anders de oorspronkelijke fout.
+function mapApiError(e) {
+  const msg = (e && e.message) || String(e);
+  const m = /regain access on ([0-9]{4}-[0-9]{2}-[0-9]{2}(?: at [0-9:]+ UTC)?)/.exec(msg);
+  if (m || /usage limits?/i.test(msg)) { const err = new Error('limit'); err.code = 'limit'; err.until = m ? m[1] : ''; return err; }
+  if (e && e.status === 429) { const err = new Error('rate'); err.code = 'rate'; return err; }
+  if (e && (e.status === 401 || e.status === 403)) { const err = new Error('auth'); err.code = 'auth'; return err; }
+  return e;
+}
+
 function parseJson(text) {
   try { return JSON.parse(text); } catch { /* val terug op het eerste JSON-object in de tekst */ }
   const m = /\{[\s\S]*\}/.exec(text || '');
@@ -44,8 +55,11 @@ async function call(system, user) {
   try {
     resp = await client.messages.create({ ...params, output_config: { format: { type: 'json_schema', schema: SCHEMA } } });
   } catch (e) {
-    if (e instanceof Anthropic.BadRequestError) resp = await client.messages.create(params); // oudere API zonder structured outputs
-    else throw e;
+    const mapped = mapApiError(e);
+    if (mapped.code) throw mapped;
+    if (e instanceof Anthropic.BadRequestError) {
+      try { resp = await client.messages.create(params); } catch (e2) { throw mapApiError(e2); } // oudere API zonder structured outputs
+    } else throw e;
   }
   if (resp.stop_reason === 'refusal') throw new Error('geweigerd door het model');
   const text = (resp.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('');
@@ -62,7 +76,11 @@ function startJob(fn, state) {
   const id = require('crypto').randomUUID();
   const job = { status: 'pending', state, result: null, error: null, createdAt: Date.now() };
   jobs.set(id, job);
-  Promise.resolve().then(fn).then((r) => { job.status = 'done'; job.result = r; }).catch((e) => { job.status = 'error'; job.error = (e && (e.message || String(e))).slice(0, 300); console.error('[aimail] fout —', job.error); });
+  Promise.resolve().then(fn).then((r) => { job.status = 'done'; job.result = r; }).catch((e) => {
+    const m = mapApiError(e);
+    job.status = 'error'; job.errorCode = m.code || null; job.errorUntil = m.until || ''; job.error = (m.message || String(m)).slice(0, 300);
+    console.error('[aimail] fout —', job.errorCode || '', job.error);
+  });
   return id;
 }
 function getJob(id) { return id ? jobs.get(String(id)) || null : null; }
@@ -105,4 +123,4 @@ async function translate({ subject, body, from, to }) {
   return call(system, user);
 }
 
-module.exports = { available, draft, translate, startJob, getJob, finishJob, MODEL };
+module.exports = { available, draft, translate, startJob, getJob, finishJob, mapApiError, MODEL };

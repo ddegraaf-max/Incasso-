@@ -112,6 +112,7 @@ const pl = {
     aiDraft: 'Przygotuj z raportu (AI)', aiTranslate: 'Przetłumacz obecną treść', aiTranslation: 'Tłumaczenie (nie jest wysyłane)', aiNotes: 'Uwagi asystenta',
     aiUnavailable: 'Asystent AI niedostępny (brak ANTHROPIC_API_KEY).', aiFailed: 'Asystent AI nie odpowiedział',
     aiPending: 'Asystent pisze wiadomość na podstawie raportu — to trwa 30–60 sekund. Strona odświeży się sama.', aiPendingTranslate: 'Asystent tłumaczy treść — to trwa 10–30 sekund. Strona odświeży się sama.', aiBusy: 'W toku…',
+    aiLimit: 'Osiągnięto miesięczny limit wydatków konta Anthropic — asystent AI i raporty są wstrzymane do {until}. Podnieś limit w Anthropic Console (Settings → Limits) albo poczekaj.', aiRate: 'Zbyt wiele zapytań do Anthropic — spróbuj za minutę.', aiAuth: 'Klucz ANTHROPIC_API_KEY został odrzucony — sprawdź go w Railway.',
     aiNothing: 'Brak treści do przetłumaczenia — najpierw przygotuj koncept albo wpisz wiadomość.', aiExpired: 'Wynik asystenta nie jest już dostępny — spróbuj ponownie.',
   },
   rozmowa: {
@@ -434,6 +435,7 @@ const nl = {
     aiDraft: 'Concept uit verslag (AI)', aiTranslate: 'Vertaal huidige tekst', aiTranslation: 'Nederlandse vertaling (wordt niet verstuurd)', aiNotes: 'Notities van de assistent',
     aiUnavailable: 'AI-assistent niet beschikbaar (geen ANTHROPIC_API_KEY).', aiFailed: 'De AI-assistent gaf geen antwoord',
     aiPending: 'De assistent schrijft de mail op basis van het verslag — dit duurt 30 tot 60 seconden. De pagina vernieuwt zichzelf.', aiPendingTranslate: 'De assistent vertaalt de tekst — dit duurt 10 tot 30 seconden. De pagina vernieuwt zichzelf.', aiBusy: 'Bezig…',
+    aiLimit: 'Het maandelijkse uitgavenlimiet van je Anthropic-account is bereikt — AI-assistent en onderzoeksverslagen staan stil tot {until}. Verhoog het limiet in de Anthropic Console (Settings → Limits) of wacht tot die datum.', aiRate: 'Te veel verzoeken aan Anthropic — probeer het over een minuut opnieuw.', aiAuth: 'De ANTHROPIC_API_KEY is geweigerd — controleer de sleutel in Railway.',
     aiNothing: 'Er is nog geen tekst om te vertalen — maak eerst een concept of typ een bericht.', aiExpired: 'Het resultaat van de assistent is niet meer beschikbaar — probeer het opnieuw.',
   },
   rozmowa: {
@@ -590,6 +592,7 @@ const en = {
     aiDraft: 'Draft from report (AI)', aiTranslate: 'Translate current text', aiTranslation: 'Translation (not sent)', aiNotes: 'Assistant notes',
     aiUnavailable: 'AI assistant unavailable (no ANTHROPIC_API_KEY).', aiFailed: 'AI assistant did not respond',
     aiPending: 'The assistant is writing the message from the report — this takes 30–60 seconds. The page refreshes itself.', aiPendingTranslate: 'The assistant is translating the text — this takes 10–30 seconds. The page refreshes itself.', aiBusy: 'In progress…',
+    aiLimit: 'The monthly spend limit of the Anthropic account has been reached — the AI assistant and reports are paused until {until}. Raise the limit in the Anthropic Console (Settings → Limits) or wait.', aiRate: 'Too many requests to Anthropic — try again in a minute.', aiAuth: 'The ANTHROPIC_API_KEY was rejected — check it in Railway.',
     aiNothing: 'Nothing to translate yet — draft a message first or type one.', aiExpired: 'The assistant result is no longer available — please try again.',
   },
   rozmowa: {

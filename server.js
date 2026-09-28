@@ -335,7 +335,11 @@ function applyJob(req, res, over) {
   const st = job.state || {};
   const base = { ...over, ...st };
   if (job.status === 'pending') return { ...base, aiPending: true, aiMode: st.mode || 'draft' };
-  if (job.status === 'error') { AiMail.finishJob(id); return { ...base, error: Mm.aiFailed + ': ' + job.error }; }
+  if (job.status === 'error') {
+    AiMail.finishJob(id);
+    const msg = job.errorCode === 'limit' ? Mm.aiLimit.replace('{until}', job.errorUntil || '—') : job.errorCode === 'rate' ? Mm.aiRate : job.errorCode === 'auth' ? Mm.aiAuth : Mm.aiFailed + ': ' + job.error;
+    return { ...base, error: msg };
+  }
   AiMail.finishJob(id);
   const r = job.result || {};
   if (st.mode === 'translate') return { ...base, translation: r.translation || '', notes: '' };

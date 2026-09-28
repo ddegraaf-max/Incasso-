@@ -243,7 +243,13 @@ async function runForLead(lead, opts = {}) {
     const facts = await collectFacts(lead);
     let ai;
     try { ai = await aiReport(facts, lang); }
-    catch (e) { ai = { text: null, sources: [], model: MODEL, error: (e && (e.message || String(e))).slice(0, 300) }; console.error('Research: AI-verslag mislukt —', ai.error); }
+    catch (e) {
+      const msg = (e && e.message) || String(e);
+      const lim = /regain access on ([0-9]{4}-[0-9]{2}-[0-9]{2}(?: at [0-9:]+ UTC)?)/.exec(msg);
+      const friendly = lim || /usage limits?/i.test(msg) ? 'Anthropic usage limit reached' + (lim ? ' — access resumes ' + lim[1] : '') : (e && e.status === 429 ? 'Anthropic rate limit — try again in a minute' : msg.slice(0, 300));
+      ai = { text: null, sources: [], model: MODEL, error: friendly };
+      console.error('Research: AI-verslag mislukt —', friendly);
+    }
     const row = {
       lead_id: id, lang, model: ai.model || null,
       status: ai.text ? 'ok' : (ai.note === 'no_key' ? 'no_ai' : 'error'),
