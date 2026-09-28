@@ -5,7 +5,7 @@
 // Alle velden via Railway-variabelen, zodat ze zonder deploy te wijzigen zijn. Lege velden worden
 // niet getoond; `complete()` zegt of de kernset (adres, KvK, BTW) is ingevuld — zie /health → company.
 const C = {
-  name: process.env.COMPANY_NAME || 'Creditline Montage BV',
+  name: process.env.COMPANY_NAME || 'Creditline BV',
   brand: 'sprzedamfakture.pl',
   street: process.env.COMPANY_STREET || 'Torenlaan 5B',
   city: process.env.COMPANY_CITY || '1402 AT Bussum',
@@ -13,7 +13,7 @@ const C = {
   kvk: process.env.COMPANY_KVK || '59683198',
   vat: process.env.COMPANY_VAT || 'NL853603108B01', // BTW-id (= NIP UE)
   email: process.env.COMPANY_EMAIL || 'kontakt@sprzedamfakture.pl',
-  phone: process.env.COMPANY_PHONE || '',     // bewust leeg: contact uitsluitend per e-mail
+  phone: process.env.COMPANY_PHONE || '',     // bewust leeg: niet telefonisch bereikbaar — alles schriftelijk (bewijs)
   rep: process.env.COMPANY_REP || '',         // vertegenwoordiger / bestuurder (optioneel)
   extra: process.env.COMPANY_EXTRA || '',     // vrije regel, bv. Poolse entiteit of NIP (optioneel)
 };

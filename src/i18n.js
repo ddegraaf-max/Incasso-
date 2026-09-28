@@ -57,7 +57,7 @@ module.exports = {
       ['8,5%', 'tylko tyle firm nie ma żadnych zaległości — rok wcześniej było to 14,6%.', '2'],
     ],
     closingH: 'Przestań darmowo kredytować swoich kontrahentów.',
-    ctaCall: 'Umów rozmowę', ctaPanel: 'Wypróbuj panel', ctaSell: 'Sprzedaj fakturę — wycena od razu',
+    ctaCall: 'Napisz do nas', ctaPanel: 'Wypróbuj panel', ctaSell: 'Sprzedaj fakturę — wycena od razu',
     srcKicker: 'Źródła',
     sources: [
       'Atradius, B2B Payment Practices Trends: Poland, 2025.',
@@ -144,7 +144,7 @@ module.exports = {
         ],
       },
       form: {
-        kicker: 'Sprzedaj fakturę', company: 'Twoja firma', nip: 'NIP dłużnika', amount: 'Kwota faktury (zł)', days: 'Dni po terminie', email: 'E-mail', tel: 'Telefon',
+        kicker: 'Sprzedaj fakturę', company: 'Twoja firma', nip: 'NIP dłużnika', amount: 'Kwota faktury (zł)', days: 'Dni po terminie', email: 'E-mail', tel: 'Telefon (opcjonalnie)',
         forma: 'Forma prawna dłużnika', formaPh: '— wybierz —',
         formaNote: 'Kupujemy wierzytelności wobec firm o dowolnej formie prawnej — od JDG po S.A.',
         zalacznik: 'Załącznik — faktura (opcjonalnie)', zalacznikNote: 'PDF, JPG, PNG lub XML, maks. 8 MB. Trafia bezpośrednio do naszego zespołu.',
@@ -209,7 +209,7 @@ module.exports = {
       ],
       form: {
         kicker: 'Zgłoś wyrok do bezpłatnej wyceny',
-        company: 'Twoja firma (wierzyciel)', email: 'E-mail', tel: 'Telefon',
+        company: 'Twoja firma (wierzyciel)', email: 'E-mail', tel: 'Telefon (opcjonalnie)',
         sygnatura: 'Sygnatura akt', sygnaturaPh: 'np. VI GNc 1234/19',
         sad: 'Sąd, który wydał orzeczenie', sadPh: 'np. Sąd Rejonowy dla m.st. Warszawy',
         dataWyroku: 'Data wyroku / nakazu zapłaty',
@@ -302,7 +302,7 @@ module.exports = {
       ['8.5%', 'of companies are entirely free of overdue receivables — down from 14.6% a year earlier.', '2'],
     ],
     closingH: 'Stop financing your clients for free.',
-    ctaCall: 'Book a call', ctaPanel: 'Try the panel', ctaSell: 'Sell an invoice — instant quote',
+    ctaCall: 'Write to us', ctaPanel: 'Try the panel', ctaSell: 'Sell an invoice — instant quote',
     srcKicker: 'Sources',
     sources: [
       'Atradius, B2B Payment Practices Trends: Poland, 2025.',
@@ -389,7 +389,7 @@ module.exports = {
         ],
       },
       form: {
-        kicker: 'Sell an invoice', company: 'Your company', nip: 'Debtor\'s NIP', amount: 'Invoice amount (PLN)', days: 'Days overdue', email: 'E-mail', tel: 'Phone',
+        kicker: 'Sell an invoice', company: 'Your company', nip: 'Debtor\'s NIP', amount: 'Invoice amount (PLN)', days: 'Days overdue', email: 'E-mail', tel: 'Phone (optional)',
         forma: 'Debtor\'s legal form', formaPh: '— select —',
         formaNote: 'We buy claims against businesses of any legal form — from sole traders to joint-stock companies.',
         zalacznik: 'Attachment — the invoice (optional)', zalacznikNote: 'PDF, JPG, PNG or XML, max 8 MB. Goes straight to our team.',
@@ -454,7 +454,7 @@ module.exports = {
       ],
       form: {
         kicker: 'Submit a judgment for a free assessment',
-        company: 'Your company (the creditor)', email: 'E-mail', tel: 'Phone',
+        company: 'Your company (the creditor)', email: 'E-mail', tel: 'Phone (optional)',
         sygnatura: 'Case number (sygnatura akt)', sygnaturaPh: 'e.g. VI GNc 1234/19',
         sad: 'Court that issued the ruling', sadPh: 'e.g. District Court for Warsaw',
         dataWyroku: 'Date of the judgment / payment order',

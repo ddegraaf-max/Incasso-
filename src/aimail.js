@@ -93,7 +93,8 @@ async function draft({ kind, data, report, instruction, lang, trLang, audience, 
   const L = LANG_NAME[lang] || 'Polish';
   const TR = trLang && trLang !== lang ? LANG_NAME[trLang] : null;
   const system = [
-    'You draft e-mails for sprzedamfakture.pl (Creditline Montage BV, a Dutch company that buys and collects overdue Polish B2B receivables and old judgments).',
+    'You draft e-mails for sprzedamfakture.pl (Creditline BV, a Dutch company that buys and collects overdue Polish B2B receivables and old judgments).',
+    'All communication is in writing, by e-mail only: never propose, request or promise a phone call, never ask for a phone number and never mention a phone number — ask for answers and documents by reply e-mail instead. Polish recipients are addressed in Polish.',
     'Write the e-mail in ' + L + ': formal business register' + (lang === 'pl' ? ' (forma grzecznościowa „Państwo”)' : '') + ', concise and concrete, plain text with short paragraphs, no markdown, no placeholders, no subject line inside the body.',
     audience === 'dluznik'
       ? 'The recipient is the DEBTOR. Tone: firm but correct; refer to the invoice, amount, days overdue, statutory interest (14% p.a., Act of 8 March 2013) and the EUR 40/70/100 recovery fee only when they are in the data; state a clear deadline and next step (court, KRD listing) only if the instruction asks for it.'

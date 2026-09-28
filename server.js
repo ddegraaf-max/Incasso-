@@ -620,7 +620,7 @@ app.post('/sprzedaj', zalacznikMw, async (req, res) => {
   if (!(kw > 0) || kw > 1e9) errors.kwota = msg.amount;
   if (!(dn > 0) || dn > 3650) errors.dni = msg.days;
   if (!EMAIL_RE.test(form.email)) errors.email = msg.email;
-  if (form.tel.replace(/\D/g, '').length < 7) errors.tel = msg.tel;
+  if (form.tel && form.tel.replace(/\D/g, '').length < 7) errors.tel = msg.tel; // telefoon optioneel: contact gaat per e-mail
   if (req.zalacznikError || (req.file && !ALLOWED_UPLOAD.includes(req.file.mimetype))) errors.zalacznik = msg.zalacznik;
   if (!ts.ok) errors.captcha = msg.captcha;
   if (Object.keys(errors).length) {
@@ -690,7 +690,7 @@ app.post('/skup-wyrokow', zalacznikMw, async (req, res) => {
   const errors = {};
   if (!form.company) errors.company = msg.company;
   if (!EMAIL_RE.test(form.email)) errors.email = msg.email;
-  if (form.tel.replace(/\D/g, '').length < 7) errors.tel = msg.tel;
+  if (form.tel && form.tel.replace(/\D/g, '').length < 7) errors.tel = msg.tel; // telefoon optioneel: contact gaat per e-mail
   if (req.zalacznikError || (req.file && !ALLOWED_UPLOAD.includes(req.file.mimetype))) errors.zalacznik = msg.zalacznik;
   if (!form.sygnatura) errors.sygnatura = msg.sygnatura;
   if (!(kw > 0) || kw > 1e9) errors.kwota = msg.amount;

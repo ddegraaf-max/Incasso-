@@ -51,12 +51,17 @@ Po analizie niestety nie możemy złożyć oferty wykupu tej wierzytelności. Ni
 Jeżeli sytuacja dłużnika się zmieni albo pojawią się nowe dokumenty, prosimy o kontakt.
 
 {podpis}` },
-    kontakt: { name: 'Prośba o kontakt', subject: 'W sprawie Państwa zgłoszenia — {company}', body:
+    kontakt: { name: 'Prośba o wyjaśnienia', subject: 'W sprawie Państwa zgłoszenia — {company}', body:
 `Dzień dobry,
 
-nawiązując do zgłoszenia faktury na kwotę {kwota} wobec dłużnika {dluznik}: mamy kilka pytań, które najszybciej wyjaśnimy w krótkiej rozmowie.
+nawiązując do zgłoszenia faktury na kwotę {kwota} wobec dłużnika {dluznik}, prosimy o odpowiedź na kilka pytań — wystarczy odpowiedzieć na tę wiadomość:
 
-Proszę o odpowiedź z dogodnym terminem i numerem telefonu — oddzwonimy.
+1. Czy dłużnik kwestionował fakturę lub jej część (jeśli tak — z jakiego powodu)?
+2. Czy otrzymali Państwo od dłużnika jakąkolwiek obietnicę zapłaty lub propozycję rat?
+3. Czy umowa z dłużnikiem zawiera zakaz cesji?
+4. Czy faktura była już przekazana innej firmie windykacyjnej albo do sądu?
+
+Całą korespondencję prowadzimy pisemnie — dzięki temu każde ustalenie jest udokumentowane.
 
 {podpis}` },
     wyrok: { name: 'Oferta — skup wyroku', subject: 'Oferta skupu wyroku — {sygnatura}', body:
@@ -125,12 +130,17 @@ After review we are unfortunately unable to make an offer to buy this receivable
 Should the debtor's situation change or new documents become available, please contact us.
 
 {podpis}` },
-    kontakt: { name: 'Request for a call', subject: 'Regarding your request — {company}', body:
+    kontakt: { name: 'Request for clarification', subject: 'Regarding your request — {company}', body:
 `Dear Sir or Madam,
 
-regarding your invoice of {kwota} against the debtor {dluznik}: we have a few questions that are easiest to clarify in a short call.
+regarding your invoice of {kwota} against the debtor {dluznik}, we have a few questions — simply reply to this e-mail:
 
-Please reply with a convenient time and a phone number — we will call you.
+1. Has the debtor disputed the invoice or part of it (if so, on what grounds)?
+2. Have you received any promise to pay or instalment proposal from the debtor?
+3. Does the contract with the debtor contain a non-assignment clause?
+4. Has the invoice already been handed to another collection agency or to court?
+
+We handle all correspondence in writing, so every agreement is documented.
 
 {podpis}` },
     wyrok: { name: 'Offer — judgment buy-out', subject: 'Offer for your judgment — {sygnatura}', body:
