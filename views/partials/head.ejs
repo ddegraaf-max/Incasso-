@@ -10,8 +10,9 @@ var _page = typeof page !== 'undefined' ? page : '';
 var _noindex = typeof noindex !== 'undefined' ? !!noindex : ['auth', 'app', 'admin', 'error', 'przerwa'].indexOf(_page) !== -1;
 var _alt = typeof altLang !== 'undefined' ? !!altLang : true;
 var _ld = typeof ld !== 'undefined' && ld ? (Array.isArray(ld) ? ld : [ld]) : [];
+var _htmlLang = (['app', 'admin', 'auth'].indexOf(_page) !== -1 && typeof panelLang !== 'undefined') ? panelLang : lang;
 %><!DOCTYPE html>
-<html lang="<%= lang %>">
+<html lang="<%= _htmlLang %>">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">

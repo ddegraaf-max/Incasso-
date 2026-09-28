@@ -1,7 +1,8 @@
-// sprzedamfakture.pl — teksten klantpanel (PL/EN)
+// sprzedamfakture.pl — teksten klantpanel (PL/EN/NL)
 // Gebruik in views: t.app.<sectie>.<key>, t.app.days(n), t.locale, t.tr(dynamischeTekst)
 // t.tr vertaalt demodata/statussen (fasen, tijdlijn, feed, AI-signalen) — PL is identiteit,
-// EN via woordenboek + regels. Teksten richting de dłużnik (e-mail/SMS/belscript) blijven PL.
+// EN en NL via woordenboek + regels. Teksten richting de dłużnik (e-mail/SMS/belscript) blijven PL.
+// NL is alleen een paneltaal (voor de beheerder): de publieke site blijft PL/EN — zie server.js.
 
 const pl = {
   locale: 'pl-PL',
@@ -212,21 +213,228 @@ const FRAGMENTS = [
   // echte zaken
   ['Sprawa założona z leada', 'Case opened from lead'], ['Sprawa założona ręcznie', 'Case opened manually'], ['Dane sprawy zaktualizowane', 'Case details updated'],
   ['Zlecono windykację', 'Collection ordered'], ['Oferta wykupu przyjęta', 'Buy-out offer accepted'], ['Sprawa zamknięta i odpisana', 'Case closed and written off'],
-  ['brak NIP', 'no NIP'], ['sprawa', 'case'],
+  ['brak NIP', 'no NIP'], ['Nowe zgłoszenie skupu wyroku:', 'New judgment buy-out request:'], ['Oferta wykupu odrzucona przez klienta', 'Buy-out offer declined by client'],
+  ['panel klienta', 'client panel'], ['Agent AI:', 'AI agent:'], ['sprawa', 'case'],
 ];
 
-function trEn(s) {
-  if (s == null) return s;
-  const str = String(s);
-  if (DICT[str] !== undefined) return DICT[str];
-  let out = str;
-  for (const [re, rep] of RULES) if (re.test(out)) { out = out.replace(re, rep); break; }
-  for (const [a, b] of FRAGMENTS) out = out.split(a).join(b);
-  // datums: "13 lip", "maj–cze", "dziś 12:14"
-  out = out.replace(/\b(sty|lut|mar|kwi|maj|cze|lip|sie|wrz|paź|lis|gru)\b/g, (m) => MONTHS[m] || m);
-  out = out.replace(/\bza (\d+) dni\b/g, 'in $1 days').replace(/\b(\d+) dni\b/g, '$1 days');
-  return out;
+// Vertaler voor dynamische PL-teksten: exact woordenboek → regels met getallen → losse fragmenten → maanden/dagen
+function makeTr({ dict, rules, fragments, months, za, dni }) {
+  return function tr(s) {
+    if (s == null) return s;
+    const str = String(s);
+    if (dict[str] !== undefined) return dict[str];
+    let out = str;
+    for (const [re, rep] of rules) if (re.test(out)) { out = out.replace(re, rep); break; }
+    for (const [a, b] of fragments) out = out.split(a).join(b);
+    // datums: "13 lip", "maj–cze", "dziś 12:14"
+    out = out.replace(/\b(sty|lut|mar|kwi|maj|cze|lip|sie|wrz|paź|lis|gru)\b/g, (m) => months[m] || m);
+    out = out.replace(/\bza (\d+) dni\b/g, za).replace(/\b(\d+) dni\b/g, dni);
+    return out;
+  };
 }
+const trEn = makeTr({ dict: DICT, rules: RULES, fragments: FRAGMENTS, months: MONTHS, za: 'in $1 days', dni: '$1 days' });
+
+// ── NL (paneltaal voor de beheerder) ─────────────────────────────────────
+const DICT_NL = {
+  'Nowa · analiza AI': 'Nieuw · AI-analyse', 'Monitoring': 'Monitoring', 'Przypomnienia': 'Herinneringen', 'Negocjacje AI': 'AI-onderhandeling',
+  'Eskalacja': 'Escalatie', 'Rekomendacja: sprzedaż': 'Aanbeveling: verkopen', 'Harmonogram rat': 'Betalingsregeling',
+  'email': 'e-mail', 'sms': 'SMS', 'telefon': 'telefoon', 'symulacja': 'simulatie', 'wysłano': 'verzonden', 'zarejestrowano': 'geregistreerd', 'błąd': 'fout',
+  'Faktura zaimportowana z KSeF': 'Factuur geïmporteerd uit KSeF', 'Scoring B · prognoza 91% w 21 dni': 'Score B · prognose 91% binnen 21 dagen',
+  'Pierwsze przypomnienie e-mail': 'Eerste e-mailherinnering', 'Scoring dłużnika: ryzyko niskie': 'Debiteurscore: laag risico',
+  'Uprzejme przypomnienie e-mail': 'Vriendelijke e-mailherinnering', 'Zaplanowano telefon AI': 'AI-telefoontje ingepland',
+  'Przypomnienie e-mail — odczytane': 'E-mailherinnering — gelezen', 'SMS do działu księgowości': 'SMS naar de boekhouding',
+  'Nota odsetkowa w przygotowaniu': 'Rentenota in voorbereiding', 'Dwa przypomnienia — bez wpłaty': 'Twee herinneringen — geen betaling',
+  'Rozmowa AI: dłużnik proponuje raty': 'AI-gesprek: debiteur stelt termijnen voor', 'Agent analizuje harmonogram rat': 'Agent beoordeelt de betalingsregeling',
+  'Trzy przypomnienia — bez reakcji': 'Drie herinneringen — geen reactie', 'Rozmowa AI z księgowością dłużnika': 'AI-gesprek met de boekhouding van de debiteur',
+  'Nota: rekompensata + odsetki': 'Nota: forfaitaire vergoeding + rente', 'Zapowiedź wpisu do KRD': 'Aankondiging KRD-registratie',
+  'Pełna ścieżka polubowna — bez wpłaty': 'Volledig minnelijk traject — geen betaling', 'Scoring: ryzyko niewypłacalności wysokie': 'Score: hoog insolventierisico',
+  'Agent rekomenduje sprzedaż wierzytelności': 'Agent adviseert de vordering te verkopen',
+  'Wysłano uprzejme przypomnienie e-mail — otwarte po 11 minutach': 'Vriendelijke e-mailherinnering verzonden — na 11 minuten geopend',
+  'Rozmowa AI: dłużnik potwierdza raty 3× — harmonogram wysłany do akceptacji': 'AI-gesprek: debiteur bevestigt 3 termijnen — regeling ter goedkeuring verzonden',
+  'Wystawiono notę obciążeniową: rekompensata 300 zł + odsetki 597 zł': 'Debetnota uitgegeven: 300 zł forfaitaire vergoeding + 597 zł rente',
+  'Scoring zaktualizowany: ryzyko wysokie — rekomendacja sprzedaży wierzytelności': 'Score bijgewerkt: hoog risico — advies om de vordering te verkopen',
+  'Nowa faktura z KSeF — sprawa założona automatycznie, scoring B': 'Nieuwe factuur uit KSeF — zaak automatisch geopend, score B',
+  'Ostatnie wezwanie przed wpisem do KRD — czeka na Twoją zgodę': 'Laatste aanmaning vóór KRD-registratie — wacht op jouw akkoord',
+  'Dłużnik · odpowiedź · 30 cze': 'Debiteur · antwoord · 30 jun', 'Agent AI · rozmowa tel. · 30 cze': 'AI-agent · telefoongesprek · 30 jun',
+  'Agent AI · e-mail · 18 cze': 'AI-agent · e-mail · 18 jun', 'Agent AI · nota · 8 lip': 'AI-agent · nota · 8 jul',
+  'Dzień dobry, uprzejmie przypominamy o fakturze FV 2026/06/089 na 12 400 zł. Czy możemy liczyć na wpłatę w tym tygodniu?': 'Goedemorgen, een vriendelijke herinnering aan factuur FV 2026/06/089 van 12 400 zł. Kunnen we deze week op betaling rekenen?',
+  'Termin płatności FV 2026/06/089 (12 400 zł) minął 44 dni temu. Wzywamy do zapłaty w ciągu 7 dni — po tym terminie naliczymy rekompensatę i zgłosimy wpis do KRD.': 'De vervaldatum van FV 2026/06/089 (12 400 zł) is 44 dagen verstreken. Wij manen aan tot betaling binnen 7 dagen — daarna rekenen wij de forfaitaire vergoeding en melden wij de registratie bij KRD.',
+  'Na podstawie art. 4a i 7 ustawy z 8.03.2013 r. wzywamy do zapłaty FV 2026/06/089 wraz z odsetkami ustawowymi za opóźnienie (14% rocznie) oraz rekompensatą ok. 300 zł.': 'Op grond van art. 4a en 7 van de wet van 8 maart 2013 manen wij aan tot betaling van FV 2026/06/089 met wettelijke vertragingsrente (14% per jaar) en een forfaitaire vergoeding van ca. 300 zł.',
+  'Mamy przejściowe problemy z płynnością. Czy możliwe jest rozłożenie na raty?': 'Wij hebben tijdelijke liquiditeitsproblemen. Is een betalingsregeling mogelijk?',
+  'Uzgodniono 3 raty po 4 133 zł, pierwsza do 15 lipca. Harmonogram wysłany do podpisu — uznanie długu przerywa bieg przedawnienia.': '3 termijnen van 4 133 zł afgesproken, de eerste vóór 15 juli. Regeling ter ondertekening verzonden — erkenning van de schuld onderbreekt de verjaring.',
+  'Pierwsza rata nie wpłynęła. Wystawiono notę: rekompensata 300 zł + odsetki 597 zł. Za 6 dni zapowiedź wpisu do KRD — czeka na Twoją zgodę.': 'De eerste termijn is niet ontvangen. Nota uitgegeven: 300 zł forfaitaire vergoeding + 597 zł rente. Over 6 dagen aankondiging KRD-registratie — wacht op jouw akkoord.',
+  'KRZ: postępowanie upadłościowe': 'KRZ: faillissementsprocedure', 'KRZ: otwarta restrukturyzacja': 'KRZ: herstructurering geopend',
+  'KRZ: umorzona egzekucja (bezskuteczna)': 'KRZ: executie gestaakt (vruchteloos)', 'KRZ: brak wpisów': 'KRZ: geen registraties',
+  'MF: podatnik VAT nieaktywny': 'MF: btw-plichtige niet actief', 'MF: czynny podatnik VAT': 'MF: actieve btw-plichtige',
+  'KRS: firma młodsza niż 2 lata': 'KRS: bedrijf jonger dan 2 jaar', 'Koncentracja: kwota ≥ 50 tys. zł': 'Concentratie: bedrag ≥ 50.000 zł',
+  'Ścieżka polubowna — wysokie prawdopodobieństwo odzyskania.': 'Minnelijk traject — hoge kans op incasso.',
+  'Ryzyko podwyższone — rekomendacja: sprzedaż wierzytelności.': 'Verhoogd risico — advies: vordering verkopen.',
+  'Sprawa praktycznie nieściągalna — rekomendacja: zamknięcie i odpis.': 'Praktisch oninbaar — advies: sluiten en afboeken.',
+};
+const MONTHS_NL = { sty: 'jan', lut: 'feb', mar: 'mrt', kwi: 'apr', maj: 'mei', cze: 'jun', lip: 'jul', sie: 'aug', wrz: 'sep', 'paź': 'okt', lis: 'nov', gru: 'dec' };
+const RULES_NL = [
+  [/^(\d+) dni po terminie$/, '$1 dagen na vervaldatum'],
+  [/^Historia: płaci śr\. (\d+) dni po terminie$/, 'Historie: betaalt gem. $1 dagen te laat'],
+  [/^za (\d+) dni$/, 'over $1 dagen'],
+  [/^Nowy lead sprzedamfakture\.pl: (.*) · (\d+) dni · wstępnie (\d+)%(.*)$/, 'Nieuwe lead sprzedamfakture.pl: $1 · $2 dagen · indicatief $3%$4'],
+  [/^Rozmowa telefoniczna: (.*)$/, 'Telefoongesprek: $1'],
+];
+const FRAGMENTS_NL = [
+  ['Przypomnienie o płatności — faktura', 'Betalingsherinnering — factuur'], ['Wezwanie do zapłaty — faktura', 'Aanmaning — factuur'],
+  ['Ostateczne przedsądowe wezwanie do zapłaty —', 'Laatste aanmaning vóór dagvaarding —'], ['dni po terminie', 'dagen na vervaldatum'],
+  ['(Uprzejmy)', '(Vriendelijk)'], ['(Stanowczy)', '(Stellig)'], ['(Prawniczy)', '(Juridisch)'], [') do +', ') naar +'],
+  ['— symulacja', '— simulatie'], ['— wysłano', '— verzonden'], ['— błąd', '— fout'], ['Rozmowa telefoniczna:', 'Telefoongesprek:'],
+  ['monitoring uruchomiony', 'monitoring gestart'], ['dłużników, interwał', 'debiteuren, interval'], ['rozmowa własna', 'eigen gesprek'], ['szablon + Resend', 'sjabloon + Resend'],
+  ['Nowe obwieszczenie: otwarcie postępowania restrukturyzacyjnego', 'Nieuwe publicatie: herstructureringsprocedure geopend'],
+  ['Wzmianka w MSiG: zwołanie zgromadzenia wierzycieli kontrahenta', 'Vermelding in MSiG: schuldeisersvergadering bijeengeroepen'],
+  ['Nowe obwieszczenie: ogłoszenie upadłości', 'Nieuwe publicatie: faillissement uitgesproken'], ['Zmiana AIScore:', 'Wijziging AIScore:'],
+  ['MF biała lista', 'MF witte lijst'], ['(niedostępna)', '(niet beschikbaar)'],
+  ['postępowanie upadłościowe', 'faillissementsprocedure'], ['otwarta restrukturyzacja', 'herstructurering geopend'], ['umorzona egzekucja', 'executie gestaakt'],
+  ['brak wpisów', 'geen registraties'], ['podatnik VAT nieaktywny', 'btw-plichtige niet actief'], ['czynny podatnik VAT', 'actieve btw-plichtige'],
+  ['AIScore przeliczony', 'AIScore herberekend'], ['rekomendacja: zamknięcie', 'advies: sluiten'], ['rekomendacja: sprzedaż', 'advies: verkopen'],
+  ['Obietnica zapłaty', 'Betalingsbelofte'], ['Uzgodniono raty', 'Betalingsregeling afgesproken'], ['Faktura sporna', 'Factuur betwist'], ['Odmowa zapłaty', 'Weigert te betalen'], ['Brak kontaktu', 'Geen contact'],
+  ['mail: wysłano', 'mail: verzonden'], ['mail: symulacja', 'mail: simulatie'], ['/ wysłano', '/ verzonden'], ['/ symulacja', '/ simulatie'],
+  ['brak MAIL_NOTIFY', 'MAIL_NOTIFY niet ingesteld'], ['brak adresata', 'geen ontvanger'], ['błąd sieci', 'netwerkfout'], ['błąd ', 'fout '], ['błąd:', 'fout:'],
+  ['termin:', 'datum:'], ['dziś', 'vandaag'], ['jutro', 'morgen'],
+  ['Sprawa założona z leada', 'Zaak aangemaakt uit lead'], ['Sprawa założona ręcznie', 'Zaak handmatig aangemaakt'], ['Dane sprawy zaktualizowane', 'Zaakgegevens bijgewerkt'],
+  ['Zlecono windykację', 'Incasso opgedragen'], ['Oferta wykupu przyjęta', 'Opkoopaanbod geaccepteerd'], ['Oferta wykupu odrzucona przez klienta', 'Opkoopaanbod afgewezen door klant'],
+  ['Sprawa zamknięta i odpisana', 'Zaak gesloten en afgeboekt'], ['brak NIP', 'geen NIP'], ['Nowe zgłoszenie skupu wyroku:', 'Nieuwe aanvraag opkoop vonnis:'],
+  ['panel klienta', 'klantenpanel'], ['Agent AI:', 'AI-agent:'], ['sprawa', 'zaak'],
+];
+const trNl = makeTr({ dict: DICT_NL, rules: RULES_NL, fragments: FRAGMENTS_NL, months: MONTHS_NL, za: 'over $1 dagen', dni: '$1 dagen' });
+
+const nl = {
+  locale: 'nl-NL',
+  days: (n) => n + (n === 1 ? ' dag' : ' dagen'),
+  tr: trNl,
+  nav: { admin: 'Admin', leads: 'Leads', panel: 'Panel', logout: 'Uitloggen', tabs: { sprawy: 'Zaken', nowa: 'Nieuwe zaak', agent: 'AI-agent', wykup: 'Opkoop' } },
+  titles: { login: 'Inloggen', register: 'Registreren', twofa: 'Verificatie', twofaSetup: '2FA instellen', sprawy: 'Zaken', nowa: 'Nieuwe zaak', agent: 'AI-agent', wykup: 'Opkoop van vorderingen', rozmowa: 'Gesprek', admin: 'Admin', leads: 'Leads' },
+  tones: { Uprzejmy: 'Vriendelijk', Stanowczy: 'Stellig', Prawniczy: 'Juridisch' },
+  formaLabels: { spzoo: 'Sp. z o.o. (bv)', sa: 'S.A. (nv)', psa: 'P.S.A.', 'inna-op': 'andere rechtspersoon', jdg: 'eenmanszaak (JDG)', sc: 'spółka cywilna', osobowa: 'personenvennootschap' },
+  outcomes: { obietnica: 'Betalingsbelofte', raty: 'Betalingsregeling afgesproken', sporna: 'Factuur betwist', odmowa: 'Weigert te betalen', brak: 'Geen contact' },
+  msg: {
+    tooMany: 'Te veel mislukte pogingen. Probeer het over 15 minuten opnieuw.', badCreds: 'Onjuist e-mailadres of wachtwoord.', sessionErr: 'Sessiefout — probeer het opnieuw.',
+    fillCompanyEmail: 'Vul bedrijfsnaam en e-mailadres in.', exists: 'Er bestaat al een account met dit adres. Log in.',
+    pwLen: 'Het wachtwoord moet minimaal 10 tekens lang zijn.', pwChars: 'Het wachtwoord moet een kleine letter, een hoofdletter en een cijfer bevatten.', pwMismatch: 'De wachtwoorden zijn niet gelijk.',
+    badCodeRetry: 'Ongeldige code — probeer het opnieuw.', tooManyCodes: 'Te veel pogingen. Probeer het over 15 minuten opnieuw.', badCode: 'Ongeldige code.',
+    flashEmail: 'E-mail', flashSms: 'SMS', flashCall: 'Gesprek',
+    captcha: 'De botcontrole is mislukt — probeer het opnieuw.',
+  },
+  login: {
+    kicker: 'Klantenpanel', h: 'Inloggen', helper: 'Toegang tot zaken, de AI-agent en opkoopaanbiedingen.', email: 'E-mail', password: 'Wachtwoord', btn: 'Inloggen',
+    noAccount: 'Nog geen account?', register: 'Bedrijf registreren',
+    note: 'Beveiligde login: gehashte wachtwoorden (bcrypt), tweestapsverificatie (TOTP), blokkade na 5 mislukte pogingen.',
+    demoTitle: 'Demo-account', demoText: 'Om te testen, zonder 2FA:', demoFill: 'Demogegevens invullen',
+  },
+  register: {
+    kicker: 'Nieuw account', h: 'Bedrijf registreren',
+    helper: 'Na registratie stel je tweestapsverificatie in (een app zoals Google Authenticator) — verplicht ter bescherming van je vorderingen.',
+    company: 'Bedrijfsnaam', nip: 'NIP (optioneel)', email: 'E-mail', password: 'Wachtwoord (min. 10 tekens, kleine en hoofdletter, cijfer)', password2: 'Herhaal wachtwoord',
+    btn: 'Account aanmaken', have: 'Al een account?', login: 'Inloggen',
+  },
+  twofa: {
+    kicker: 'Tweestapsverificatie', h: 'Voer de code in', helper: 'Open je authenticator-app en voer de actuele 6-cijferige code in.',
+    code: 'Code uit de app', btn: 'Verifiëren', cancel: 'Annuleren en uitloggen',
+  },
+  twofaSetup: {
+    kicker: 'Tweestapsverificatie', h: '2FA instellen',
+    helper: 'Scan de QR-code in je authenticator-app (Google Authenticator, Microsoft Authenticator, Aegis) en voer daarna de 6-cijferige code in om te bevestigen.',
+    qrAlt: 'TOTP QR-code', manual: 'Handmatige sleutel (als scannen niet lukt)', code: 'Code uit de app', btn: 'Bevestigen en 2FA inschakelen',
+  },
+  sprawy: {
+    stats: { portfolio: 'Portefeuille na vervaldatum', active: 'Actieve zaken', amicable: 'Minnelijk afgerond', avgTime: 'Gem. incassotijd', avgTimeVal: '18 dagen' },
+    importKsef: 'Importeren uit KSeF', upload: 'XML / PDF uploaden',
+    kicker: 'Zaken', helper: 'De AI-agent leest elke geïmporteerde factuur en opent zelf de zaak. Klik op een rij om de acties van de agent te zien.',
+    th: { invoice: 'Factuur', debtor: 'Debiteur', amount: 'Bedrag', overdue: 'Na vervaldatum', agent: 'AI-agent' },
+    caseKicker: 'Zaak {nr} · AIScore {score} · klasse {grade}', meta: '{days} na vervaldatum · opgebouwde rente: {interest}',
+    aiLabel: 'AIScore — analyse van openbare bronnen', grade: 'klasse {grade}',
+    channelsLabel: 'Acties van de agent — kanalen', emailBtn: 'E-mail', smsBtn: 'SMS', callBtn: 'Bellen — script',
+    channelsHelper: 'E-mail en SMS genereert de AI-agent in de gekozen toon (in het Pools, de taal van de debiteur); bellen doe je zelf — met script en registratie van het resultaat.',
+    commsLabel: 'Communicatiegeschiedenis', actionsLabel: 'Acties van de AI-agent',
+    close: { h: 'Zaak sluiten — vordering oninbaar', p: 'AIScore {score}: de KRZ-registraties wijzen op geen reële kans op incasso. Afboeken maakt het verlies fiscaal aftrekbaar (art. 16 lid 1 pkt 25 CIT) in plaats van geld bij te leggen op incasso.', btn: 'Sluiten en afboeken' },
+    collect: { h: 'Incasso — jij betaalt alleen de servicevergoeding', p: 'Rente 14%, forfaitaire vergoeding {rekomp} zł en kosten komen voor rekening van de debiteur. Het geïncasseerde bedrag gaat volledig naar jou.', btn: 'Incasso opdragen — {fee} zł' },
+    sell: { h: 'Of verkoop de vordering', p: 'Waardering AI-agent: {pct}% van de waarde. Uitbetaling in 24 uur, het risico gaat over op ons.', btn: 'Aanbod accepteren — {amount}' },
+    done: { collect: 'Incasso opgedragen — de AI-agent heeft de zaak overgenomen.', close: 'Zaak gesloten — vordering afgeboekt (AI-aanbeveling).', sell: 'Aanbod geaccepteerd — uitbetaling binnen 24 uur.' },
+    empty: 'Geen zaken. Maak de eerste aan onder „Nieuwe zaak” — of wacht op een lead uit het formulier.', emptyDetail: 'Geen zaak geselecteerd.',
+    real: {
+      clientLabel: 'Schuldeiser', timelineEmpty: 'Nog geen gebeurtenissen — hier verschijnt de geschiedenis van de zaak.',
+      edit: 'Zaakgegevens bewerken', del: 'Zaak verwijderen', delConfirm: 'Zaak inclusief volledige geschiedenis verwijderen? Dit kan niet ongedaan worden gemaakt.',
+      noContact: 'Vul e-mail of telefoon van de debiteur in (Zaakgegevens bewerken) om berichten te kunnen sturen.',
+      saved: 'Zaakgegevens opgeslagen', deleted: 'Zaak verwijderd', created: 'Zaak aangemaakt — de AI-agent heeft de AIScore berekend', noAccess: 'Geen toegang tot deze zaak',
+      f: { nr: 'Factuurnr. / zaaknummer', debtor: 'Debiteur (naam)', nip: 'NIP debiteur', amount: 'Bedrag (zł)', due: 'Vervaldatum', days: 'Dagen na vervaldatum (i.p.v. datum)', email: 'E-mail debiteur', tel: 'Telefoon debiteur', note: 'Notitie', client: 'Schuldeiser (bedrijf van de klant)', clientEmail: 'E-mail klant' },
+      save: 'Opslaan',
+      errors: { caseDebtor: 'Vul de naam van de debiteur in.', caseAmount: 'Vul een bedrag groter dan 0 in.', caseDue: 'Vul een vervaldatum in of het aantal dagen na vervaldatum.', caseEmail: 'Ongeldig e-mailadres van de debiteur.', caseNip: 'Een NIP heeft 10 cijfers.' },
+    },
+  },
+  nowa: {
+    k1: '01 · Bron', h1: 'Drie manieren om een zaak te openen — kies wat jou past.',
+    sources: [
+      ['KSeF — synchronisatie', 'Auto', 'Elke factuur na vervaldatum verschijnt hier automatisch.'],
+      ['XML- / PDF-bestand', 'Handmatig', 'Sleep de factuur hierheen — de AI-agent leest de gegevens en opent de zaak.'],
+      ['E-mail', 'Doorsturen', 'Stuur de factuur door naar sprawy@sprzedamfakture.pl — de agent doet de rest.'],
+    ],
+    k2: '02 · AI-analyse', h2: 'Voorbeeld: zo leest de agent een zojuist geïmporteerde factuur.',
+    fields: { debtor: 'Debiteur', nip: 'NIP', amount: 'Bedrag', due: 'Vervaldatum', dueVal: '12 jul · 5 dagen na vervaldatum' },
+    signals: ['KRD / BIG: geen registraties, KRS actief', 'Historie: betaalt gemiddeld 12 dagen te laat', 'AIScore 83 · klasse B · prognose 91% geïncasseerd binnen 21 dagen'],
+    k3: '03 · Beslissing', h3: 'Aanbeveling van de agent: minnelijk traject — hoge kans op snelle betaling.',
+    run: { h: 'AI-agent starten', p: 'Monitoring, herinneringen, onderhandeling en escalatie — rente 14%, forfaitaire vergoeding 300 zł en kosten voor rekening van de debiteur.', btn: 'Starten — {fee} zł' },
+    sell: { h: 'Of direct verkopen', p: 'Waardering AI-agent: 86% van de waarde. Uitbetaling in 24 uur, het risico gaat over op ons.', btn: 'Aanbod accepteren — 20 124 zł' },
+    done: { collect: 'AI-agent gestart — eerste herinnering morgen om 9:00.', sell: 'Aanbod geaccepteerd — cessie ter ondertekening, uitbetaling in 24 uur.' },
+    manual: { kicker: 'Zaak aanmaken', h: 'Vul de factuurgegevens in — de AI-agent berekent direct de AIScore, controleert de btw-witte lijst en opent de zaak.', btn: 'Zaak aanmaken', helper: 'Contactgegevens van de debiteur kun je later in de zaak aanvullen. Import uit KSeF en uit bestand — in voorbereiding.' },
+  },
+  agent: {
+    monKicker: 'Monitoring — openbare bronnen live',
+    monHelper: 'De agent controleert doorlopend KRZ, MSiG en de btw-witte lijst voor elke debiteur in de database. Nieuwe publicatie = gebeurtenis + herberekening van de AIScore.',
+    noEvents: 'Geen gebeurtenissen — monitoring actief.', todayKicker: 'Vandaag — werk van de agent', noFeed: 'Geen acties van de agent vandaag.',
+    negKickerEmpty: 'Onderhandelingen', noThread: 'Geen lopende onderhandeling — de thread verschijnt bij de eerste zaak.',
+    todayHelper: 'Elke actie vastgelegd, elke stap zichtbaar — belangrijke beslissingen altijd met jouw akkoord.',
+    negKicker: 'Onderhandelingen — FV 2026/06/089 · TransLog Polska S.A.', toneLabel: 'Toon van de agent', rulesLabel: 'Regels van de agent',
+    rules: ['Communicatietoon: {tone}', 'Contact: werkdagen 8:00–18:00, PL / EN', 'KRD-registratie en dagvaarding: altijd met jouw akkoord', 'Elke stap vastgelegd in de zaakgeschiedenis'],
+  },
+  wykup: {
+    kicker: 'Opkoop van vorderingen',
+    intro: 'De AI-agent waardeert elke vordering live — op basis van de debiteurscore, betaalhistorie en fase van de zaak. Je accepteert het aanbod, tekent de cessie online en hebt het geld binnen 24 uur. Het insolventierisico gaat over op ons.',
+    th: { invoice: 'Factuur', debtor: 'Debiteur', amount: 'Bedrag', aiscore: 'AIScore', offer: 'AI-aanbod' },
+    sold: 'Verkocht · uitbetaling binnen 24 u', accept: 'Accepteren', decline: 'Afwijzen',
+    declined: 'Aanbod afgewezen · incasso loopt door', acceptAnyway: 'Toch accepteren', empty: 'Geen vorderingen voor opkoop.',
+    note: 'De cessie omvat hoofdsom en rente. De forfaitaire vergoeding (170/300/430 zł) is wettelijk niet overdraagbaar — bij service-incasso vordert de agent die in jouw naam.',
+  },
+  rozmowa: {
+    kicker: 'Gespreksvoorbereiding · {nr} · AIScore {score}', meta: '{amount} · {days} na vervaldatum · rente {interest} · forfaitaire vergoeding {rekomp}',
+    goal: 'Doel van het gesprek', opening: 'Opening', args: 'Argumenten', objections: 'Reacties op smoesjes', closing: 'Afsluiting', scriptNote: 'Het script is in het Pools — de taal van de debiteur.',
+    resultKicker: 'Na het gesprek — resultaat vastleggen', resultHelper: 'Het resultaat komt in de zaakgeschiedenis en stuurt de agent (volgende stappen, toon, escalatie).',
+    outcome: 'Resultaat', promised: 'Toegezegde datum (optioneel)', note: 'Notitie', notePh: 'Met wie gesproken, wat afgesproken…', save: 'Resultaat opslaan', back: '← Terug naar de zaak',
+  },
+  admin: {
+    stats: { clients: 'Klanten', cases: 'Zaken', collections: 'Incasso-opdrachten', bought: 'Opgekocht' },
+    usersKicker: 'Gebruikers', usersHelper: 'Klant- en beheerdersaccounts. In-memory opslag — na een herstart blijven alleen de seed-accounts (productie: PostgreSQL).',
+    th: { company: 'Bedrijf', email: 'E-mail', nip: 'NIP', role: 'Rol', twofa: '2FA', invoice: 'Factuur', amount: 'Bedrag', status: 'Status' },
+    on: 'Ingeschakeld', off: 'Geen', casesKicker: 'Zaken — status van acties', stCollect: 'Incasso', stSold: 'Verkocht', stClosed: 'Gesloten', stDeclined: 'Aanbod afgewezen',
+    leadsLabel: 'Leads — aanvragen uit de formulieren', allLeads: 'Alle leads en statussen →', noLeads: 'Geen leads.', leadLine: '{kwota} · {dni} dagen · indicatief {pct}%', leadNip: 'NIP debiteur: {nip}',
+    eventsLabel: 'Monitoringgebeurtenissen', system: 'systeem', secLabel: 'Beveiliging',
+    sec: ['Wachtwoorden: bcrypt (kosten 12)', '2FA: TOTP, verplicht voor admin en nieuwe accounts', 'Blokkade: 5 mislukte pogingen → 15 minuten', 'Sessies: httpOnly, sameSite=lax'],
+    integrLabel: 'Integraties', integrOn: 'Actief', integrOff: 'Geen', notSet: 'niet ingesteld',
+    integr: { resend: 'Resend — e-mail uit formulieren', from: 'Afzender', notify: 'Leadmeldingen →', live: 'Verzending naar debiteuren (LIVE_COMMS)', sms: 'SMSAPI — SMS', ai: 'Anthropic — AI-teksten', db: 'PostgreSQL', turnstile: 'Cloudflare Turnstile — botbescherming op formulieren' },
+    testMail: 'Test-e-mail versturen', testMailResult: 'Test-e-mail', testMailHint: 'Stuurt een bericht naar het MAIL_NOTIFY-adres via Resend.',
+    usersHelperDb: 'Klant- en beheerdersaccounts — opgeslagen in PostgreSQL.',
+    noCases: 'Geen zaken — demodata staat uit (DEMO_CASES=0).',
+    demoBtn: 'Sporen van demodata uit de database verwijderen', demoHint: 'Verwijdert monitoringgebeurtenissen, communicatie, scores en acties van de fictieve demozaken. Leads blijven staan.',
+    demoConfirm: 'Alle sporen van demodata uit de database verwijderen? Leads blijven staan.',
+    demoDone: 'Demodata verwijderd — gebeurtenissen: {events}, communicatie: {comms}, scores: {scores}, acties: {actions}',
+    leads: {
+      kicker: 'Leads', helper: 'Alle aanvragen uit de formulieren „Factuur verkopen” en „Opkoop vonnissen”. Klik op een rij, zet een status, voeg een notitie toe of verwijder een testaanvraag.',
+      th: { date: 'Datum', source: 'Bron', company: 'Bedrijf', amount: 'Bedrag', status: 'Status' }, srcInvoice: 'factuur', srcWyrok: 'vonnis',
+      f: { email: 'E-mail', tel: 'Telefoon', nip: 'NIP debiteur', forma: 'Rechtsvorm debiteur', dni: 'Dagen na vervaldatum', pct: 'Indicatief aanbod', note: 'Details van de aanvraag', updated: 'Bijgewerkt' },
+      statusLabel: 'Status', noteLabel: 'Interne notitie', notePh: 'Afspraken, volgende stappen…', save: 'Opslaan', mailBtn: 'E-mail schrijven',
+      del: 'Aanvraag verwijderen', delConfirm: 'Deze aanvraag definitief verwijderen?', saved: 'Lead #{id} opgeslagen', deleted: 'Lead #{id} verwijderd', notFound: 'Lead niet gevonden.',
+      empty: 'Geen leads.', emptyDetail: 'Kies een lead uit de lijst.', attachHint: 'De bijlage (factuur / vonnis) zit alleen in de notificatiemail naar MAIL_NOTIFY.',
+      statuses: { nowy: 'Nieuw', kontakt: 'In contact', oferta: 'Aanbod verstuurd', zaakceptowany: 'Geaccepteerd', odrzucony: 'Afgewezen', spam: 'Spam / test' },
+      caseKicker: 'Zaak', caseBtn: 'Zaak aanmaken uit deze lead', caseLink: 'Naar de zaak →',
+      caseHint: 'Velden vooraf ingevuld uit de lead — controleer debiteur en vervaldatum. Contactgegevens van de debiteur vul je in de zaak aan.',
+      caseCreated: 'Zaak aangemaakt uit lead #{id}',
+    },
+  },
+};
 
 const en = {
   locale: 'en-GB',
@@ -367,4 +575,4 @@ function fill(tpl, vars) {
   return String(tpl).replace(/\{(\w+)\}/g, (m, k) => (vars && vars[k] !== undefined ? vars[k] : m));
 }
 
-module.exports = { pl, en, fill };
+module.exports = { pl, en, nl, fill };

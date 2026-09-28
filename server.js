@@ -11,6 +11,7 @@ const Mailer = require('./src/mailer');
 const Turnstile = require('./src/turnstile');
 const Cases = require('./src/cases');
 const Articles = require('./src/articles');
+const Company = require('./src/company');
 const pgSession = require('connect-pg-simple')(session);
 const compression = require('compression');
 const VER = require('./src/version');
@@ -39,19 +40,28 @@ app.use((req, res, next) => {
 });
 app.use(express.static(path.join(__dirname, 'public'), { maxAge: '7d' }));
 
-// ── Taal (PL/EN): ?lang=… zet een cookie (1 jaar); anders cookie; anders PL ──
-const LANGS = ['pl', 'en'];
+// ── Taal: ?lang=… zet een cookie (1 jaar); anders cookie; anders PL ──
+// Publieke site: PL/EN. Panel bovendien NL (voor de beheerder): met cookie lang=nl blijven de publieke
+// pagina's Pools, maar t.app/t.tr/t.locale komen uit het Nederlandse woordenboek. ADMIN_LANG (default nl)
+// wordt bij elke admin-login als paneltaal gezet; leeg = niets afdwingen.
+const LANGS = ['pl', 'en', 'nl'];
+const LANG_COOKIE = { maxAge: 365 * 24 * 3600 * 1000, sameSite: 'lax', httpOnly: true, secure: process.env.NODE_ENV === 'production' };
+const ADMIN_LANG = process.env.ADMIN_LANG === undefined ? 'nl' : process.env.ADMIN_LANG;
+const appI18n = require('./src/i18n-app');
+const T_NL = { ...i18n.pl, app: appI18n.nl, locale: appI18n.nl.locale, tr: appI18n.nl.tr };
 app.use((req, res, next) => {
   let lang;
   if (typeof req.query.lang === 'string' && LANGS.includes(req.query.lang)) {
     lang = req.query.lang;
-    res.cookie('lang', lang, { maxAge: 365 * 24 * 3600 * 1000, sameSite: 'lax', httpOnly: true, secure: process.env.NODE_ENV === 'production' });
+    res.cookie('lang', lang, LANG_COOKIE);
   } else {
-    const m = /(?:^|;\s*)lang=(pl|en)(?:;|$)/.exec(req.headers.cookie || '');
+    const m = /(?:^|;\s*)lang=(pl|en|nl)(?:;|$)/.exec(req.headers.cookie || '');
     lang = m ? m[1] : 'pl';
   }
-  res.locals.lang = lang;
-  res.locals.t = i18n[lang];
+  res.locals.panelLang = lang;                 // taal van het panel (pl/en/nl)
+  const siteLang = lang === 'nl' ? 'pl' : lang; // publieke site kent geen NL
+  res.locals.lang = siteLang;
+  res.locals.t = lang === 'nl' ? T_NL : i18n[siteLang];
   res.locals.langUrl = (l) => {
     const isGet = req.method === 'GET';
     const q = new URLSearchParams(isGet ? req.query : {});
@@ -68,6 +78,8 @@ app.use((req, res, next) => {
   res.locals.site = SITE;
   res.locals.canonicalPath = req.path.length > 1 ? req.path.replace(/\/+$/, '') : '/';
   res.locals.seo = SEO;
+  res.locals.company = Company.C;
+  res.locals.companyLd = Company.jsonLd(SITE);
   next();
 });
 app.use(express.urlencoded({ extended: true }));
@@ -152,6 +164,7 @@ app.post('/login', (req, res) => {
   req.session.regenerate((err) => {
     if (err) return fail(res.locals.t.app.msg.sessionErr);
     req.session.userId = user.id;
+    if (user.role === 'admin' && ADMIN_LANG && LANGS.includes(ADMIN_LANG)) res.cookie('lang', ADMIN_LANG, LANG_COOKIE);
     // Admin zonder 2FA → verplichte setup; klant met 2FA → verificatie
     if (user.totpConfirmed) {
       req.session.pending2fa = true;
@@ -513,7 +526,7 @@ app.get('/health', async (req, res) => {
   res.set('Cache-Control', 'no-store');
   const m = Mailer.status();
   const dbs = await db.stats().catch((e) => ({ connected: false, error: e.message }));
-  res.json({ ok: true, name: 'sprzedamfakture.pl', version: VER.version, commit: VER.commit, startedAt: VER.startedAt, uptimeSec: Math.round(process.uptime()), db: db.hasDb(), dbStats: dbs, mail: m.resend ? 'resend' : 'simulation', mailFrom: m.from, mailNotify: !!m.notify, mailProblems: m.problems, liveComms: m.liveComms, smsapi: m.smsapi, anthropic: m.anthropic, turnstile: Turnstile.enabled(), turnstileProblems: Turnstile.problems(), cases: D.claims.filter((c) => c.real).length, demoCases: D.DEMO_CASES, articles: Articles.ARTICLES.length, seo: { verification: !!(SEO.google || SEO.bing), analytics: !!SEO.plausible } });
+  res.json({ ok: true, name: 'sprzedamfakture.pl', version: VER.version, commit: VER.commit, startedAt: VER.startedAt, uptimeSec: Math.round(process.uptime()), db: db.hasDb(), dbStats: dbs, mail: m.resend ? 'resend' : 'simulation', mailFrom: m.from, mailNotify: !!m.notify, mailProblems: m.problems, liveComms: m.liveComms, smsapi: m.smsapi, anthropic: m.anthropic, turnstile: Turnstile.enabled(), turnstileProblems: Turnstile.problems(), cases: D.claims.filter((c) => c.real).length, demoCases: D.DEMO_CASES, articles: Articles.ARTICLES.length, company: Company.complete(), seo: { verification: !!(SEO.google || SEO.bing), analytics: !!SEO.plausible } });
 });
 
 const SITE = 'https://sprzedamfakture.pl';

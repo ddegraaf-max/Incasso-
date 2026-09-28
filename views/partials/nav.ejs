@@ -18,8 +18,9 @@
       <a href="/baza-wiedzy"><%= t.common.navKb %></a>
       <a href="/login"><%= t.common.navPanel %></a>
     <% } %>
+    <% var pnl = (page === 'app' || page === 'admin' || page === 'auth'); var pLang = typeof panelLang !== 'undefined' ? panelLang : lang; var actL = pnl ? pLang : lang; %>
     <span class="lang-switch">
-      <a href="<%= langUrl('pl') %>" class="<%= lang === 'pl' ? 'active' : '' %>" hreflang="pl">PL</a><span class="sep">·</span><a href="<%= langUrl('en') %>" class="<%= lang === 'en' ? 'active' : '' %>" hreflang="en">EN</a>
+      <a href="<%= langUrl('pl') %>" class="<%= actL === 'pl' ? 'active' : '' %>" hreflang="pl">PL</a><span class="sep">·</span><a href="<%= langUrl('en') %>" class="<%= actL === 'en' ? 'active' : '' %>" hreflang="en">EN</a><% if (pnl && ((user && user.role === 'admin') || pLang === 'nl')) { %><span class="sep">·</span><a href="<%= langUrl('nl') %>" class="<%= actL === 'nl' ? 'active' : '' %>" hreflang="nl">NL</a><% } %>
     </span>
   </span>
 </nav>

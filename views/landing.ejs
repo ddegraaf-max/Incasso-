@@ -156,9 +156,10 @@
   <ol>
     <% t.sources.forEach(function(s) { %><li><%= s %></li><% }) %>
   </ol>
-  <div class="cr"><%= t.copyright %> · kontakt@sprzedamfakture.pl · <a href="/"><%= t.navSell %></a> · <a href="/kalkulator"><%= t.navCalc %></a> · <span class="ver tnum" title="<%= t.common.versionTitle %>">v<%= version %><%= commit ? ' · ' + commit : '' %></span></div>
+  <div class="cr"><%= t.copyright %> · <%= company.email %> · <a href="/"><%= t.navSell %></a> · <a href="/kalkulator"><%= t.navCalc %></a> · <span class="ver tnum" title="<%= t.common.versionTitle %>">v<%= version %><%= commit ? ' · ' + commit : '' %></span></div>
   </div>
 </footer>
+<%- include('partials/company') %>
 
 </div>
 <script src="/js/motion.js?v=<%= version %>" defer></script>

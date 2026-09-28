@@ -1,0 +1,15 @@
+<%
+// Bedrijfsgegevens van de exploitant (src/company.js) — onder de footer van elke pagina.
+var cc = t.common.company, co = company;
+var country = cc.countries[co.country] || co.country;
+var addr = [co.street, co.city, country].filter(Boolean).join(', ');
+%><div class="footer-company">
+  <span><%= cc.operator.replace('{brand}', co.brand) %> <strong><%= co.name %></strong></span>
+  <% if (addr) { %><span>· <%= cc.address %>: <%= addr %></span><% } %>
+  <% if (co.kvk) { %><span>· <%= cc.kvk %>: <span class="tnum"><%= co.kvk %></span></span><% } %>
+  <% if (co.vat) { %><span>· <%= cc.vat %>: <span class="tnum"><%= co.vat %></span></span><% } %>
+  <% if (co.rep) { %><span>· <%= cc.rep %>: <%= co.rep %></span><% } %>
+  <span>· <%= cc.email %>: <a href="mailto:<%= co.email %>"><%= co.email %></a></span>
+  <% if (co.phone) { %><span>· <%= cc.phone %>: <a class="tnum" href="tel:<%= String(co.phone).replace(/[^+\d]/g, '') %>"><%= co.phone %></a></span><% } %>
+  <% if (co.extra) { %><span>· <%= co.extra %></span><% } %>
+</div>

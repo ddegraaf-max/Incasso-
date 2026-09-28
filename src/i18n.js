@@ -71,6 +71,7 @@ module.exports = {
 
     common: {
       navHome: 'Strona główna', navSell: 'Sprzedaj fakturę', navCollection: 'Windykacja', navCalc: 'Kalkulator odsetek', navPanel: 'Panel klienta', navJudgments: 'Skup wyroków', footJudgments: 'skup starych wyroków', navKb: 'Baza wiedzy', footKb: 'baza wiedzy',
+      company: { operator: 'Serwis {brand} prowadzi', address: 'Adres', kvk: 'Nr rejestru handlowego (KvK)', vat: 'NIP UE / VAT', email: 'E-mail', phone: 'Telefon', rep: 'Reprezentacja', countries: { NL: 'Holandia', PL: 'Polska', DE: 'Niemcy', BE: 'Belgia' } },
       footerModel: 'Nasz model: Ty płacisz {fee} zł za sprawę — odsetki, rekompensatę i koszty pokrywa dłużnik. Albo sprzedajesz fakturę i masz gotówkę w 24 godziny.',
       footCollection: 'windykacja', footCalc: 'kalkulator odsetek', footConcept: 'koncept produktu',
       versionTitle: 'Wersja serwisu · commit', skip: 'Przejdź do treści', tagline: 'Gotówka za fakturę w 24 h',
@@ -315,6 +316,7 @@ module.exports = {
 
     common: {
       navHome: 'Home', navSell: 'Sell an invoice', navCollection: 'Debt collection', navCalc: 'Interest calculator', navPanel: 'Client panel', navJudgments: 'Old judgments', footJudgments: 'we buy old judgments', navKb: 'Knowledge base', footKb: 'knowledge base',
+      company: { operator: '{brand} is operated by', address: 'Address', kvk: 'Chamber of Commerce (KvK) no.', vat: 'VAT ID', email: 'E-mail', phone: 'Phone', rep: 'Represented by', countries: { NL: 'the Netherlands', PL: 'Poland', DE: 'Germany', BE: 'Belgium' } },
       footerModel: 'Our model: you pay {fee} zł per case — interest, the recovery fee and costs are borne by the debtor. Or sell the invoice and have cash within 24 hours.',
       footCollection: 'debt collection', footCalc: 'interest calculator', footConcept: 'product concept',
       versionTitle: 'Site version · commit', skip: 'Skip to content', tagline: 'Cash for your invoice in 24 h',
