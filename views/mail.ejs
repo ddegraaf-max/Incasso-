@@ -42,12 +42,14 @@ var mkUrl = function (over) {
         <div class="label"><%= Mm.aiLabel %></div>
         <p class="helper" style="margin:0 0 10px"><%= Mm.aiHelp %></p>
         <div class="fg"><label for="m-instr"><%= Mm.aiInstruction %></label><textarea id="m-instr" name="instruction" rows="3" placeholder="<%= Mm.aiPlaceholder %>"><%= instruction %></textarea></div>
-        <% if (aiPending) { %><p class="research-busy" role="status"><%- include('partials/hourglass', { id: 'ai' }) %><span><%= Mm.aiPending %></span></p><% } %>
+        <% var busyDraft = aiPending && aiMode !== 'translate', busyTr = aiPending && aiMode === 'translate'; %>
+        <% if (aiPending) { %><p class="research-busy" role="status" id="ai-status"><%- include('partials/hourglass', { id: 'ai' }) %><span><%= busyTr ? Mm.aiPendingTranslate : Mm.aiPending %></span></p><% } else { %><p class="research-busy" role="status" id="ai-status" hidden><%- include('partials/hourglass', { id: 'ai' }) %><span data-draft="<%= Mm.aiPending %>" data-translate="<%= Mm.aiPendingTranslate %>"></span></p><% } %>
         <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center">
-          <button class="btn btn-secondary chan-btn" type="submit" formaction="<%= action %>/ai" name="mode" value="draft" formnovalidate <% if (!aiOk || aiPending) { %>disabled<% } %> <% if (aiPending) { %>aria-busy="true"<% } %>><% if (aiPending) { %><%- include('partials/hourglass', { id: 'aib' }) %><%= Mm.aiBusy %><% } else { %><%= Mm.aiDraft %><% } %></button>
-          <button class="btn btn-ghost chan-btn" type="submit" formaction="<%= action %>/ai" name="mode" value="translate" formnovalidate <% if (!aiOk || aiPending) { %>disabled<% } %>><%= Mm.aiTranslate %></button>
+          <button class="btn btn-secondary chan-btn ai-btn" type="submit" formaction="<%= action %>/ai" name="mode" value="draft" formnovalidate data-busy="<%= Mm.aiBusy %>" <% if (!aiOk || aiPending) { %>disabled<% } %> <% if (busyDraft) { %>aria-busy="true"<% } %>><% if (busyDraft) { %><%- include('partials/hourglass', { id: 'aib' }) %><%= Mm.aiBusy %><% } else { %><%= Mm.aiDraft %><% } %></button>
+          <button class="btn btn-ghost chan-btn ai-btn" type="submit" formaction="<%= action %>/ai" name="mode" value="translate" formnovalidate data-busy="<%= Mm.aiBusy %>" <% if (!aiOk || aiPending) { %>disabled<% } %> <% if (busyTr) { %>aria-busy="true"<% } %>><% if (busyTr) { %><%- include('partials/hourglass', { id: 'ait' }) %><%= Mm.aiBusy %><% } else { %><%= Mm.aiTranslate %><% } %></button>
           <% if (!aiOk) { %><span class="helper" style="margin:0"><%= Mm.aiUnavailable %></span><% } %>
         </div>
+        <template id="hg-tpl"><%- include('partials/hourglass', { id: 'click' }) %></template>
       </div>
       <p class="helper" style="margin:12px 0 0"><%= Mm.from %>: <span class="tnum"><%= fromAddr %></span> · <%= Mm.replyTo %>: <span class="tnum"><%= replyTo || '—' %></span></p>
       <% if (!mailOk) { %><p class="field-err" style="margin-top:6px"><%= Mm.noResend %></p><% } else if (!live) { %><p class="field-err" style="margin-top:6px"><%= Mm.demoSim %></p><% } %>
@@ -86,4 +88,25 @@ var mkUrl = function (over) {
   </aside>
 </div>
 
+<script>
+// Zandloper meteen bij de klik (vóór de server antwoordt): knop krijgt zandloper + "Bezig…",
+// statusregel verschijnt; de knop blijft ingeschakeld zodat mode meegaat met het formulier.
+(function () {
+  var tpl = document.getElementById('hg-tpl');
+  var status = document.getElementById('ai-status');
+  document.querySelectorAll('button.ai-btn').forEach(function (b) {
+    b.addEventListener('click', function () {
+      if (b.disabled || !tpl) return;
+      b.innerHTML = tpl.innerHTML + (b.getAttribute('data-busy') || '…');
+      b.setAttribute('aria-busy', 'true');
+      document.querySelectorAll('button.ai-btn').forEach(function (o) { if (o !== b) o.style.opacity = '0.5'; });
+      if (status) {
+        var span = status.querySelector('span');
+        if (span && !span.textContent) span.textContent = span.getAttribute(b.value === 'translate' ? 'data-translate' : 'data-draft') || '';
+        status.hidden = false;
+      }
+    });
+  });
+})();
+</script>
 <%- include('partials/footer') %>

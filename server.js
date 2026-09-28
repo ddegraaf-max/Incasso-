@@ -334,7 +334,7 @@ function applyJob(req, res, over) {
   if (!job) return { ...over, error: Mm.aiExpired };
   const st = job.state || {};
   const base = { ...over, ...st };
-  if (job.status === 'pending') return { ...base, aiPending: true };
+  if (job.status === 'pending') return { ...base, aiPending: true, aiMode: st.mode || 'draft' };
   if (job.status === 'error') { AiMail.finishJob(id); return { ...base, error: Mm.aiFailed + ': ' + job.error }; }
   AiMail.finishJob(id);
   const r = job.result || {};
@@ -354,7 +354,7 @@ async function renderLeadComposer(req, res, lead, over = {}) {
     action: '/admin/leady/' + lead.id + '/mail', backUrl: '/admin/leady?sel=' + lead.id, base: '/admin/leady/' + lead.id + '/mail',
     to: over.to !== undefined ? over.to : (lead.email || ''), subject: over.subject !== undefined ? over.subject : draft.subject, body: over.body !== undefined ? over.body : draft.body,
     tpl, tl, aud: 'klient', audiences: [], templates: MailTpl.list('lead', tl, lead.source === 'skup-wyrokow'), history,
-    instruction: over.instruction || '', translation: over.translation || '', notes: over.notes || '', aiOk: AiMail.available(), aiPending: !!over.aiPending,
+    instruction: over.instruction || '', translation: over.translation || '', notes: over.notes || '', aiOk: AiMail.available(), aiPending: !!over.aiPending, aiMode: over.aiMode || 'draft',
     error: over.error || null, fromAddr: Mailer.MAIL_FROM, replyTo: Mailer.MAIL_NOTIFY, mailOk: Mailer.configured(), live: true,
   }));
 }
@@ -425,7 +425,7 @@ async function renderCaseComposer(req, res, c, over = {}) {
     action: '/app/sprawy/' + c.id + '/mail', backUrl: '/app/sprawy?sel=' + c.id, base: '/app/sprawy/' + c.id + '/mail',
     to: over.to !== undefined ? over.to : (aud === 'klient' ? (c.clientEmail || '') : (c.email || '')), subject: over.subject !== undefined ? over.subject : draft.subject, body: over.body !== undefined ? over.body : draft.body,
     tpl, tl, aud, audiences, templates, history,
-    instruction: over.instruction || '', translation: over.translation || '', notes: over.notes || '', aiOk: AiMail.available(), aiPending: !!over.aiPending,
+    instruction: over.instruction || '', translation: over.translation || '', notes: over.notes || '', aiOk: AiMail.available(), aiPending: !!over.aiPending, aiMode: over.aiMode || 'draft',
     error: over.error || null, fromAddr: aud === 'klient' ? Mailer.MAIL_FROM : Comms.FROM_EMAIL, replyTo: Mailer.MAIL_NOTIFY, mailOk: Mailer.configured(), live: aud === 'klient' || c.real || Comms.LIVE_COMMS,
   }));
 }

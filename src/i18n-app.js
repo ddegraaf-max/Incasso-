@@ -111,7 +111,7 @@ const pl = {
     aiInstruction: 'Co ma zawierać wiadomość?', aiPlaceholder: 'np. Złóż ofertę 74% na podstawie raportu, poproś o kopię faktury i korespondencję z dłużnikiem.',
     aiDraft: 'Przygotuj z raportu (AI)', aiTranslate: 'Przetłumacz obecną treść', aiTranslation: 'Tłumaczenie (nie jest wysyłane)', aiNotes: 'Uwagi asystenta',
     aiUnavailable: 'Asystent AI niedostępny (brak ANTHROPIC_API_KEY).', aiFailed: 'Asystent AI nie odpowiedział',
-    aiPending: 'Asystent pisze wiadomość na podstawie raportu — to trwa 30–60 sekund. Strona odświeży się sama.', aiBusy: 'W toku…',
+    aiPending: 'Asystent pisze wiadomość na podstawie raportu — to trwa 30–60 sekund. Strona odświeży się sama.', aiPendingTranslate: 'Asystent tłumaczy treść — to trwa 10–30 sekund. Strona odświeży się sama.', aiBusy: 'W toku…',
     aiNothing: 'Brak treści do przetłumaczenia — najpierw przygotuj koncept albo wpisz wiadomość.', aiExpired: 'Wynik asystenta nie jest już dostępny — spróbuj ponownie.',
   },
   rozmowa: {
@@ -433,7 +433,7 @@ const nl = {
     aiInstruction: 'Wat moet er in de mail staan?', aiPlaceholder: 'bijv. Doe een aanbod van 74% op basis van het verslag, vraag om een kopie van de factuur en de correspondentie met de debiteur.',
     aiDraft: 'Concept uit verslag (AI)', aiTranslate: 'Vertaal huidige tekst', aiTranslation: 'Nederlandse vertaling (wordt niet verstuurd)', aiNotes: 'Notities van de assistent',
     aiUnavailable: 'AI-assistent niet beschikbaar (geen ANTHROPIC_API_KEY).', aiFailed: 'De AI-assistent gaf geen antwoord',
-    aiPending: 'De assistent schrijft de mail op basis van het verslag — dit duurt 30 tot 60 seconden. De pagina vernieuwt zichzelf.', aiBusy: 'Bezig…',
+    aiPending: 'De assistent schrijft de mail op basis van het verslag — dit duurt 30 tot 60 seconden. De pagina vernieuwt zichzelf.', aiPendingTranslate: 'De assistent vertaalt de tekst — dit duurt 10 tot 30 seconden. De pagina vernieuwt zichzelf.', aiBusy: 'Bezig…',
     aiNothing: 'Er is nog geen tekst om te vertalen — maak eerst een concept of typ een bericht.', aiExpired: 'Het resultaat van de assistent is niet meer beschikbaar — probeer het opnieuw.',
   },
   rozmowa: {
@@ -589,7 +589,7 @@ const en = {
     aiInstruction: 'What should the message say?', aiPlaceholder: 'e.g. Make a 74% offer based on the report, ask for a copy of the invoice and the correspondence with the debtor.',
     aiDraft: 'Draft from report (AI)', aiTranslate: 'Translate current text', aiTranslation: 'Translation (not sent)', aiNotes: 'Assistant notes',
     aiUnavailable: 'AI assistant unavailable (no ANTHROPIC_API_KEY).', aiFailed: 'AI assistant did not respond',
-    aiPending: 'The assistant is writing the message from the report — this takes 30–60 seconds. The page refreshes itself.', aiBusy: 'In progress…',
+    aiPending: 'The assistant is writing the message from the report — this takes 30–60 seconds. The page refreshes itself.', aiPendingTranslate: 'The assistant is translating the text — this takes 10–30 seconds. The page refreshes itself.', aiBusy: 'In progress…',
     aiNothing: 'Nothing to translate yet — draft a message first or type one.', aiExpired: 'The assistant result is no longer available — please try again.',
   },
   rozmowa: {
