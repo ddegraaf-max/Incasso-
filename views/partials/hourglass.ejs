@@ -1,0 +1,12 @@
+<%
+// Mini-zandloper (animatie via .hg-mini in app.css). Param: id — uniek per include op één pagina
+// (clipPath-id's mogen niet dubbel voorkomen).
+var _hid = typeof id !== 'undefined' ? String(id) : 'x';
+%><svg class="hg-mini" viewBox="0 0 160 220" aria-hidden="true" focusable="false">
+  <clipPath id="hgm-top-<%= _hid %>"><path d="M42 18c0 38 21 59 33 75 3 4 7 4 10 0 12-16 33-37 33-75z"/></clipPath>
+  <clipPath id="hgm-bot-<%= _hid %>"><path d="M42 206c0-38 21-59 33-75 3-4 7-4 10 0 12 16 33 37 33 75z"/></clipPath>
+  <rect class="hg-sand" x="40" width="80" clip-path="url(#hgm-top-<%= _hid %>)" y="58" height="53"/>
+  <rect class="hg-sand" x="40" width="80" clip-path="url(#hgm-bot-<%= _hid %>)" y="168" height="38"/>
+  <line class="hg-stream" x1="80" y1="110" x2="80" y2="200"/>
+  <path class="hg-frame" d="M30 12h100M30 208h100M40 16c0 40 22 62 34 78 4 5 4 9 0 14-12 16-34 38-34 76M120 16c0 40-22 62-34 78-4 5-4 9 0 14 12 16 34 38 34 76" fill="none"/>
+</svg>

@@ -312,7 +312,8 @@ app.get('/admin/leady', Auth.requireAdmin, async (req, res) => {
   const report = sel ? await db.getLeadReport(sel.id).catch(() => null) : null;
   const reportMap = await db.latestReports().catch(() => ({}));
   const researchPending = sel ? Research.isPending(sel.id) : false;
-  res.render('admin-leady', common({ page: 'admin', user: req.user, leads, sel, files, fileCounts, report, reportMap, researchPending, LEAD_STATUSES, flash: req.query.msg || null }));
+  const pendingIds = leads.filter((l) => Research.isPending(l.id)).map((l) => l.id);
+  res.render('admin-leady', common({ page: 'admin', user: req.user, leads, sel, files, fileCounts, report, reportMap, researchPending, pendingIds, LEAD_STATUSES, flash: req.query.msg || null }));
 });
 
 // Onderzoeksverslag (opnieuw) opstellen — draait op de achtergrond, de pagina vernieuwt zichzelf

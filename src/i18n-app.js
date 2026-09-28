@@ -135,7 +135,7 @@ const pl = {
       caseCreated: 'Sprawa założona z leada #{id}',
       filesLabel: 'Załączniki', noFiles: 'Brak zapisanego załącznika. Zgłoszenia sprzed 28.09.2026 mają załącznik wyłącznie w e-mailu powiadamiającym (MAIL_NOTIFY).',
       research: {
-        label: 'Raport z wywiadu', run: 'Przygotuj raport', redo: 'Przygotuj ponownie', started: 'Raport w przygotowaniu — odśwież stronę za 1–3 minuty',
+        label: 'Raport z wywiadu', run: 'Przygotuj raport', redo: 'Przygotuj ponownie', busy: 'W toku…', started: 'Raport w przygotowaniu — odśwież stronę za 1–3 minuty',
         pending: 'Raport w przygotowaniu: rejestry, strona WWW i wyszukiwanie w internecie. Trwa 1–3 minuty; strona odświeży się sama.',
         none: 'Brak raportu. Kliknij „Przygotuj raport” — dla nowych zgłoszeń dzieje się to automatycznie.',
         meta: 'Przygotowano {date} · model {model} · wyszukiwań: {searches}', noAi: 'Wywiad AI niedostępny (brak ANTHROPIC_API_KEY): powyżej tylko dane rejestrowe.', failed: 'Raport AI nie powiódł się', sources: 'Źródła',
@@ -443,7 +443,7 @@ const nl = {
       caseCreated: 'Zaak aangemaakt uit lead #{id}',
       filesLabel: 'Bijlagen', noFiles: 'Geen opgeslagen bijlage. Aanvragen van vóór 28-09-2026 hebben de bijlage alleen in de notificatiemail (MAIL_NOTIFY).',
       research: {
-        label: 'Onderzoeksverslag', run: 'Verslag opstellen', redo: 'Opnieuw opstellen', started: 'Het verslag wordt opgesteld — vernieuw de pagina over 1 tot 3 minuten',
+        label: 'Onderzoeksverslag', run: 'Verslag opstellen', redo: 'Opnieuw opstellen', busy: 'Bezig…', started: 'Het verslag wordt opgesteld — vernieuw de pagina over 1 tot 3 minuten',
         pending: 'Het verslag wordt opgesteld: registers, website en webonderzoek. Dit duurt 1 tot 3 minuten; deze pagina vernieuwt zichzelf.',
         none: 'Nog geen verslag. Klik op „Verslag opstellen” — bij nieuwe aanvragen gebeurt dit automatisch.',
         meta: 'Opgesteld {date} · model {model} · zoekopdrachten: {searches}', noAi: 'AI-webonderzoek niet beschikbaar (geen ANTHROPIC_API_KEY): hierboven alleen de registergegevens.', failed: 'AI-verslag mislukt', sources: 'Bronnen',
@@ -586,7 +586,7 @@ const en = {
       caseCreated: 'Case opened from lead #{id}',
       filesLabel: 'Attachments', noFiles: 'No stored attachment. Requests from before 28 Sep 2026 have their attachment only in the notification e-mail (MAIL_NOTIFY).',
       research: {
-        label: 'Due-diligence report', run: 'Prepare report', redo: 'Prepare again', started: 'Report in progress — refresh the page in 1–3 minutes',
+        label: 'Due-diligence report', run: 'Prepare report', redo: 'Prepare again', busy: 'In progress…', started: 'Report in progress — refresh the page in 1–3 minutes',
         pending: 'Report in progress: registers, website and web research. Takes 1–3 minutes; this page refreshes itself.',
         none: 'No report yet. Click “Prepare report” — new requests get one automatically.',
         meta: 'Prepared {date} · model {model} · searches: {searches}', noAi: 'AI web research unavailable (no ANTHROPIC_API_KEY): register data only above.', failed: 'AI report failed', sources: 'Sources',

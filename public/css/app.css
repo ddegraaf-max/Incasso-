@@ -562,3 +562,16 @@ body.sf .footer-company { max-width: 1424px; margin: -8px auto 0; }
 .src-list { list-style: none; padding: 0; margin: 0; font-size: 12.5px; }
 .src-list li { padding: 4px 0; border-top: 1px solid var(--color-divider); }
 .src-list li:first-child { border-top: 0; }
+
+/* ── Mini-zandloper: verslag in de maak (zelfde tekening als de pauzepagina, kleiner en draaiend) ── */
+.hg-mini { display: inline-block; width: 18px; height: 25px; vertical-align: -7px; margin-right: 8px; flex: none; animation: hg-flip 2.6s ease-in-out infinite; transform-origin: 50% 50%; }
+.hg-mini .hg-frame { stroke: var(--navy); stroke-width: 9; fill: none; }
+.hg-mini .hg-stream { stroke-width: 7; stroke-dasharray: 5 9; }
+@keyframes hg-flip { 0%, 72% { transform: rotate(0deg); } 88%, 100% { transform: rotate(180deg); } }
+.btn .hg-mini { width: 13px; height: 18px; vertical-align: -4px; margin-right: 7px; }
+.btn .hg-mini .hg-frame { stroke: currentColor; }
+.btn[aria-busy="true"] { opacity: 0.85; cursor: progress; }
+.research-busy { display: flex; align-items: flex-start; gap: 10px; font-size: 13.5px; color: var(--ink-70); margin: 0 0 12px; max-width: 60ch; }
+.research-busy .hg-mini { margin-top: 1px; }
+table.cases .hg-mini { width: 12px; height: 16px; vertical-align: -3px; margin: 0 0 0 4px; }
+@media (prefers-reduced-motion: reduce) { .hg-mini { animation: none; } }

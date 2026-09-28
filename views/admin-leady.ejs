@@ -22,7 +22,7 @@
         <tr class="row <%= sel && l.id === sel.id ? 'selected' : '' %>" onclick="location.href='/admin/leady?sel=<%= l.id %>'">
           <td class="tnum"><%= new Date(l.created_at).toLocaleDateString(t.locale, { day: 'numeric', month: 'short' }) %></td>
           <td><span class="tag tag-outline"><%= src(l) %></span></td>
-          <td><%= l.company %><% if (fileCounts && fileCounts[l.id]) { %> <span title="<%= L.filesLabel %>">📎</span><% } %><% if (reportMap && reportMap[l.id]) { %> <span title="<%= L.research.label %>">🔎</span><% } %></td>
+          <td><%= l.company %><% if (fileCounts && fileCounts[l.id]) { %> <span title="<%= L.filesLabel %>">📎</span><% } %><% if (pendingIds && pendingIds.indexOf(l.id) !== -1) { %> <%- include('partials/hourglass', { id: 'row' + l.id }) %><% } else if (reportMap && reportMap[l.id]) { %> <span title="<%= L.research.label %>">🔎</span><% } %></td>
           <td class="num tnum"><%= D.fmt(Number(l.kwota) || 0) %></td>
           <td><span class="tag <%= stTag(l.status) %>"><%= stTxt(l.status) %></span></td>
         </tr>
@@ -86,9 +86,9 @@
 
       <hr class="rule">
       <div class="label" style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:center"><span><%= L.research.label %></span>
-        <form method="post" action="/admin/leady/<%= sel.id %>/raport" style="margin:0"><button class="btn btn-secondary chan-btn" type="submit" <%= researchPending ? 'disabled' : '' %>><%= report ? L.research.redo : L.research.run %></button></form>
+        <form method="post" action="/admin/leady/<%= sel.id %>/raport" style="margin:0"><button class="btn btn-secondary chan-btn" type="submit" <% if (researchPending) { %>disabled aria-busy="true"<% } %>><% if (researchPending) { %><%- include('partials/hourglass', { id: 'btn' }) %><%= L.research.busy %><% } else { %><%= report ? L.research.redo : L.research.run %><% } %></button></form>
       </div>
-      <% if (researchPending) { %><p class="helper" style="margin:0 0 10px"><%= L.research.pending %></p><% } %>
+      <% if (researchPending) { %><p class="research-busy" role="status"><%- include('partials/hourglass', { id: 'txt' }) %><span><%= L.research.pending %></span></p><% } %>
       <% if (report) { %>
         <%- include('partials/research', { report: report }) %>
       <% } else if (!researchPending) { %>
