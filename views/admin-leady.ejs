@@ -4,7 +4,7 @@
    var src = function(l) { return l.source === 'skup-wyrokow' ? L.srcWyrok : L.srcInvoice; };
    var dateFmt = function(d) { return new Date(d).toLocaleString(t.locale, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }); };
 %>
-<%- include('partials/head', { title: t.app.titles.leads + ' — sprzedamfakture.pl' }) %>
+<%- include('partials/head', { title: t.app.titles.leads + ' — sprzedamfakture.pl', autoRefresh: (typeof researchPending !== 'undefined' && researchPending) ? 12 : 0 }) %>
 <%- include('partials/nav') %>
 
 <div class="two-pane">
@@ -22,7 +22,7 @@
         <tr class="row <%= sel && l.id === sel.id ? 'selected' : '' %>" onclick="location.href='/admin/leady?sel=<%= l.id %>'">
           <td class="tnum"><%= new Date(l.created_at).toLocaleDateString(t.locale, { day: 'numeric', month: 'short' }) %></td>
           <td><span class="tag tag-outline"><%= src(l) %></span></td>
-          <td><%= l.company %><% if (fileCounts && fileCounts[l.id]) { %> <span title="<%= L.filesLabel %>">📎</span><% } %></td>
+          <td><%= l.company %><% if (fileCounts && fileCounts[l.id]) { %> <span title="<%= L.filesLabel %>">📎</span><% } %><% if (reportMap && reportMap[l.id]) { %> <span title="<%= L.research.label %>">🔎</span><% } %></td>
           <td class="num tnum"><%= D.fmt(Number(l.kwota) || 0) %></td>
           <td><span class="tag <%= stTag(l.status) %>"><%= stTxt(l.status) %></span></td>
         </tr>
@@ -85,12 +85,24 @@
       <% if (sel.updated_at) { %><p class="helper" style="margin:10px 0 0"><%= L.f.updated %>: <%= dateFmt(sel.updated_at) %></p><% } %>
 
       <hr class="rule">
+      <div class="label" style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:center"><span><%= L.research.label %></span>
+        <form method="post" action="/admin/leady/<%= sel.id %>/raport" style="margin:0"><button class="btn btn-secondary chan-btn" type="submit" <%= researchPending ? 'disabled' : '' %>><%= report ? L.research.redo : L.research.run %></button></form>
+      </div>
+      <% if (researchPending) { %><p class="helper" style="margin:0 0 10px"><%= L.research.pending %></p><% } %>
+      <% if (report) { %>
+        <%- include('partials/research', { report: report }) %>
+      <% } else if (!researchPending) { %>
+        <p class="helper" style="margin:0"><%= L.research.none %></p>
+      <% } %>
+
+      <hr class="rule">
       <div class="label"><%= L.caseKicker %></div>
       <% if (sel.case_id) { %>
         <p style="margin:0"><a class="btn btn-secondary chan-btn" href="/app/sprawy?sel=<%= sel.case_id %>"><%= L.caseLink %></a></p>
       <% } else { %>
         <p class="helper" style="margin:0 0 6px"><%= L.caseHint %></p>
-        <% var isW = sel.source === 'skup-wyrokow'; var parts = String(sel.note || '').split(' · '); var regName = '', dl = '', sygn = '';
+        <% var kd = (report && report.facts && report.facts.debtor) || {}; var mfName = (kd.mf && kd.mf.found && kd.mf.name) || ''; var krsMail = (kd.krs && kd.krs.found && kd.krs.email) || '';
+           var isW = sel.source === 'skup-wyrokow'; var parts = String(sel.note || '').split(' · '); var regName = '', dl = '', sygn = '';
            parts.forEach(function (p) {
              var m1 = /^dłużnik: (.+)$/.exec(p); if (m1) dl = m1[1];
              var m2 = /^wyrok (.+)$/.exec(p); if (m2) sygn = m2[1];
@@ -98,7 +110,9 @@
            }); %>
         <form class="calc-form flat" method="post" action="/admin/leady/<%= sel.id %>/sprawa">
           <div class="fg"><label for="c-nr"><%= R.f.nr %></label><input id="c-nr" name="nr" value="<%= isW ? sygn : '' %>"></div>
-          <div class="fg"><label for="c-debtor"><%= R.f.debtor %></label><input id="c-debtor" name="debtor" value="<%= isW ? dl : regName %>" required></div>
+          <div class="fg"><label for="c-debtor"><%= R.f.debtor %></label><input id="c-debtor" name="debtor" value="<%= isW ? (dl || mfName) : (regName || mfName) %>" required></div>
+          <div class="fg"><label for="c-email"><%= R.f.email %></label><input id="c-email" name="email" type="email" value="<%= krsMail %>"></div>
+          <div class="fg"><label for="c-tel"><%= R.f.tel %></label><input id="c-tel" name="tel"></div>
           <div class="fg"><label for="c-nip"><%= R.f.nip %></label><input id="c-nip" name="nip" class="tnum" value="<%= sel.nip || '' %>"></div>
           <div class="fg"><label for="c-amount"><%= R.f.amount %></label><input id="c-amount" name="amount" class="tnum" inputmode="decimal" value="<%= Number(sel.kwota) || '' %>" required></div>
           <div class="fg"><label for="c-days"><%= R.f.days %></label><input id="c-days" name="days" type="number" min="0" class="tnum" value="<%= isW ? '' : (sel.dni != null ? sel.dni : '') %>"></div>

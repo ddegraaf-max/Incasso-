@@ -1,0 +1,59 @@
+<%
+// Onderzoeksverslag van een lead: registergegevens (MF/KRS/website) + AI-verslag + bronnen.
+// Verwacht: report (rij uit lead_reports), t, md. Gebruikt in admin-leady.ejs en sprawy.ejs.
+var RS = t.app.admin.leads.research, F = report.facts || {}, DB = F.debtor || {}, CL = F.client || {};
+var mf = DB.mf, krs = DB.krs;
+var loc = t.locale || 'pl-PL';
+var dateFmtR = function (d) { return new Date(d).toLocaleString(loc, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }); };
+var usage = report.usage || {};
+%>
+<p class="helper" style="margin:0 0 10px"><%= RS.meta.replace('{date}', dateFmtR(report.created_at)).replace('{model}', report.model || '—').replace('{searches}', usage.searches != null ? usage.searches : '—') %></p>
+
+<div class="label"><%= RS.debtor %></div>
+<% if (mf && mf.found) { %>
+  <div class="field-row"><span class="fk"><%= RS.f.name %></span><span><%= mf.name %></span></div>
+  <div class="field-row"><span class="fk"><%= RS.f.vat %></span><span><span class="tag <%= mf.statusVat === 'Czynny' && !mf.vatRemoved ? 'tag-accent' : 'tag-neutral' %>"><%= mf.statusVat || '—' %></span><%= mf.vatRemoved ? ' · wykreślony ' + mf.removalDate : '' %></span></div>
+  <div class="field-row"><span class="fk"><%= RS.f.ids %></span><span class="tnum"><%= mf.nip %> / <%= mf.regon || '—' %> / <%= mf.krs || '—' %></span></div>
+  <div class="field-row"><span class="fk"><%= RS.f.address %></span><span><%= mf.address || '—' %></span></div>
+  <div class="field-row"><span class="fk"><%= RS.f.regDate %></span><span class="tnum"><%= mf.registrationLegalDate || '—' %></span></div>
+  <% if (mf.representatives && mf.representatives.length) { %><div class="field-row"><span class="fk"><%= RS.f.reps %></span><span><%= mf.representatives.join(', ') %></span></div><% } %>
+  <div class="field-row"><span class="fk"><%= RS.f.accounts %></span><span class="tnum"><%= mf.accounts %></span></div>
+<% } else if (mf) { %>
+  <p class="helper" style="margin:0 0 8px"><%= RS.mfNotFound.replace('{nip}', mf.nip) %></p>
+<% } else { %>
+  <p class="helper" style="margin:0 0 8px"><%= RS.noNip %></p>
+<% } %>
+<% if (krs && krs.found) { %>
+  <div class="field-row"><span class="fk"><%= RS.f.form %></span><span><%= krs.form || '—' %></span></div>
+  <% if (krs.capital) { %><div class="field-row"><span class="fk"><%= RS.f.capital %></span><span class="tnum"><%= krs.capital %></span></div><% } %>
+  <% if (krs.board && krs.board.length) { %><div class="field-row"><span class="fk"><%= RS.f.board %></span><span><%= krs.board.join('; ') %></span></div><% } %>
+  <% if (krs.pkd) { %><div class="field-row"><span class="fk"><%= RS.f.pkd %></span><span><%= krs.pkd %></span></div><% } %>
+  <div class="field-row"><span class="fk"><%= RS.f.krsDate %></span><span class="tnum"><%= krs.registered || '—' %> · <%= RS.f.lastEntry %>: <%= krs.lastEntry || '—' %></span></div>
+  <% if (krs.email || krs.website) { %><div class="field-row"><span class="fk"><%= RS.f.contact %></span><span><% if (krs.email) { %><a href="mailto:<%= krs.email %>"><%= krs.email %></a><% } %><%= krs.email && krs.website ? ' · ' : '' %><% if (krs.website) { %><a href="<%= /^https?:/.test(krs.website) ? krs.website : 'https://' + krs.website %>" target="_blank" rel="noopener nofollow"><%= krs.website %></a><% } %></span></div><% } %>
+  <div class="field-row"><span class="fk"><%= RS.f.flags %></span><span><% if (krs.flags && krs.flags.length) { %><span class="field-err" style="margin:0"><%= krs.flags.join(' · ') %></span><% } else { %><%= RS.flagsNone %><% } %></span></div>
+  <% if (DB.site && DB.site.ok && DB.site.title) { %><div class="field-row"><span class="fk"><%= RS.f.site %></span><span><a href="<%= DB.site.url %>" target="_blank" rel="noopener nofollow"><%= DB.site.host %></a> — <%= DB.site.title %></span></div><% } %>
+<% } else if (mf && mf.found && !mf.krs) { %>
+  <p class="helper" style="margin:6px 0 0"><%= RS.krsNone %></p>
+<% } %>
+
+<div class="label" style="margin-top:14px"><%= RS.client %></div>
+<div class="field-row"><span class="fk"><%= RS.f.company %></span><span><%= CL.company || '—' %></span></div>
+<div class="field-row"><span class="fk"><%= RS.f.email %></span><span><%= CL.email || '—' %></span></div>
+<% if (CL.domain) { %>
+  <div class="field-row"><span class="fk"><%= RS.f.site %></span><span><% if (CL.site && CL.site.ok) { %><a href="<%= CL.site.url %>" target="_blank" rel="noopener nofollow"><%= CL.domain %></a><%= CL.site.title ? ' — ' + CL.site.title : '' %><% } else { %><%= CL.domain %> (<%= RS.unreachable %>)<% } %></span></div>
+  <% if (CL.site && CL.site.description) { %><div class="field-row"><span class="fk"><%= RS.f.siteDesc %></span><span><%= CL.site.description %></span></div><% } %>
+<% } else { %>
+  <div class="field-row"><span class="fk"><%= RS.f.site %></span><span><%= RS.freeMail %></span></div>
+<% } %>
+
+<% if (report.report) { %>
+  <div class="md-report"><%- md(report.report) %></div>
+<% } else if (report.status === 'no_ai') { %>
+  <p class="helper" style="margin-top:12px"><%= RS.noAi %></p>
+<% } else { %>
+  <p class="field-err" style="margin-top:12px"><%= RS.failed %><%= report.error ? ': ' + report.error : '' %></p>
+<% } %>
+<% if (report.sources && report.sources.length) { %>
+  <div class="label" style="margin-top:12px"><%= RS.sources %></div>
+  <ul class="src-list"><% report.sources.forEach(function (s) { %><li><a href="<%= s.url %>" target="_blank" rel="noopener nofollow"><%= s.title || s.url %></a></li><% }) %></ul>
+<% } %>

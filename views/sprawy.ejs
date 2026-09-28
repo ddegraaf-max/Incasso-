@@ -50,6 +50,11 @@
     <p class="meta"><%= R.f.nip %>: <span class="tnum"><%= sel.nip || '—' %></span> · <%= R.f.due %>: <span class="tnum"><%= sel.dueDate || '—' %></span><% if (user.role === 'admin' && (sel.clientCompany || sel.clientEmail)) { %> · <%= R.clientLabel %>: <%= sel.clientCompany || '' %><%= sel.clientEmail ? ' (' + sel.clientEmail + ')' : '' %><% } %></p>
     <% if (sel.note) { %><p class="meta"><%= R.f.note %>: <%= sel.note %></p><% } %>
     <% if (typeof files !== 'undefined' && files && files.length) { %><p class="meta"><%= R.files %>: <% files.forEach(function (f, i) { %><%= i ? ' · ' : '' %><a href="/app/sprawy/<%= sel.id %>/zalacznik/<%= f.id %>" target="_blank" rel="noopener"><%= f.filename %></a><% }) %></p><% } %>
+    <% if (typeof report !== 'undefined' && report) { %>
+    <details class="case-edit" style="margin-top:8px"><summary class="btn btn-ghost chan-btn"><%= R.research %></summary>
+      <div style="margin-top:10px"><%- include('partials/research', { report: report }) %></div>
+    </details>
+    <% } %>
     <% } %>
 
     <hr class="rule">

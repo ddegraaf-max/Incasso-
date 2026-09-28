@@ -12,6 +12,8 @@ const Turnstile = require('./src/turnstile');
 const Cases = require('./src/cases');
 const Articles = require('./src/articles');
 const Company = require('./src/company');
+const Research = require('./src/research');
+const MD = require('./src/md');
 const pgSession = require('connect-pg-simple')(session);
 const compression = require('compression');
 const VER = require('./src/version');
@@ -80,6 +82,7 @@ app.use((req, res, next) => {
   res.locals.seo = SEO;
   res.locals.company = Company.C;
   res.locals.companyLd = Company.jsonLd(SITE);
+  res.locals.md = MD.render;
   next();
 });
 app.use(express.urlencoded({ extended: true }));
@@ -306,7 +309,19 @@ app.get('/admin/leady', Auth.requireAdmin, async (req, res) => {
   const sel = leads.find((l) => l.id === selId) || leads[0] || null;
   const files = sel ? await db.listLeadFiles(sel.id).catch(() => []) : [];
   const fileCounts = await db.countLeadFiles().catch(() => ({}));
-  res.render('admin-leady', common({ page: 'admin', user: req.user, leads, sel, files, fileCounts, LEAD_STATUSES, flash: req.query.msg || null }));
+  const report = sel ? await db.getLeadReport(sel.id).catch(() => null) : null;
+  const reportMap = await db.latestReports().catch(() => ({}));
+  const researchPending = sel ? Research.isPending(sel.id) : false;
+  res.render('admin-leady', common({ page: 'admin', user: req.user, leads, sel, files, fileCounts, report, reportMap, researchPending, LEAD_STATUSES, flash: req.query.msg || null }));
+});
+
+// Onderzoeksverslag (opnieuw) opstellen — draait op de achtergrond, de pagina vernieuwt zichzelf
+app.post('/admin/leady/:id/raport', Auth.requireAdmin, async (req, res) => {
+  const L = res.locals.t.app.admin.leads;
+  const lead = await db.getLead(req.params.id).catch(() => null);
+  if (!lead) return res.redirect('/admin/leady?msg=' + encodeURIComponent(L.notFound));
+  Research.runForLead(lead, { lang: Research.LANG }).catch((e) => console.error('Research:', e.message));
+  res.redirect('/admin/leady?sel=' + encodeURIComponent(lead.id) + '&msg=' + encodeURIComponent(L.research.started));
 });
 
 // Bijlage van een lead openen (admin)
@@ -446,6 +461,7 @@ app.post('/sprzedaj', zalacznikMw, async (req, res) => {
   if (reg) lead.rejestr = reg.line;
   const savedLead = await db.saveLead({ ...lead, oferta_pct: est.pct, note: 'lang=' + res.locals.lang + (lead.rejestr ? ' · ' + lead.rejestr : '') }).catch(() => null);
   await storeLeadFile(savedLead, req);
+  if (Research.AUTO && savedLead) Research.runForLead(savedLead).catch((e) => console.error('Research:', e.message));
   // e-mails: notificatie naar MAIL_NOTIFY + bevestiging aan de klant (PL/EN); fouten blokkeren het formulier niet
   const [notify, confirm] = await Promise.all([
     Mailer.leadNotify(lead, est, res.locals.lang, errors.zalacznik ? null : req.file).catch((e) => ({ status: 'błąd: ' + e.message })),
@@ -525,6 +541,7 @@ app.post('/skup-wyrokow', zalacznikMw, async (req, res) => {
       .filter(Boolean).join(' · ').slice(0, 900) + ' · lang=' + res.locals.lang,
   }).catch(() => null);
   await storeLeadFile(savedLead, req);
+  if (Research.AUTO && savedLead) Research.runForLead(savedLead).catch((e) => console.error('Research:', e.message));
   const [notify, confirm] = await Promise.all([
     Mailer.wyrokNotify(lead, res.locals.lang, req.zalacznikError ? null : req.file).catch((e) => ({ status: 'błąd: ' + e.message })),
     Mailer.wyrokConfirm(lead, res.locals.lang).catch((e) => ({ status: 'błąd: ' + e.message })),
@@ -551,7 +568,7 @@ app.get('/health', async (req, res) => {
   res.set('Cache-Control', 'no-store');
   const m = Mailer.status();
   const dbs = await db.stats().catch((e) => ({ connected: false, error: e.message }));
-  res.json({ ok: true, name: 'sprzedamfakture.pl', version: VER.version, commit: VER.commit, startedAt: VER.startedAt, uptimeSec: Math.round(process.uptime()), db: db.hasDb(), dbStats: dbs, mail: m.resend ? 'resend' : 'simulation', mailFrom: m.from, mailNotify: !!m.notify, mailProblems: m.problems, liveComms: m.liveComms, smsapi: m.smsapi, anthropic: m.anthropic, turnstile: Turnstile.enabled(), turnstileProblems: Turnstile.problems(), cases: D.claims.filter((c) => c.real).length, demoCases: D.DEMO_CASES, articles: Articles.ARTICLES.length, company: Company.complete(), seo: { verification: !!(SEO.google || SEO.bing), analytics: !!SEO.plausible } });
+  res.json({ ok: true, name: 'sprzedamfakture.pl', version: VER.version, commit: VER.commit, startedAt: VER.startedAt, uptimeSec: Math.round(process.uptime()), db: db.hasDb(), dbStats: dbs, mail: m.resend ? 'resend' : 'simulation', mailFrom: m.from, mailNotify: !!m.notify, mailProblems: m.problems, liveComms: m.liveComms, smsapi: m.smsapi, anthropic: m.anthropic, turnstile: Turnstile.enabled(), turnstileProblems: Turnstile.problems(), cases: D.claims.filter((c) => c.real).length, demoCases: D.DEMO_CASES, articles: Articles.ARTICLES.length, company: Company.complete(), research: Research.status(), seo: { verification: !!(SEO.google || SEO.bing), analytics: !!SEO.plausible } });
 });
 
 const SITE = 'https://sprzedamfakture.pl';
@@ -584,12 +601,13 @@ app.get('/app/sprawy', Auth.requireAuth, async (req, res) => {
   const comms = sel ? await db.listComms(sel.id, 6).catch(() => []) : [];
   const timeline = sel && sel.real ? await db.listCaseEvents(sel.id, 40).catch(() => []) : [];
   const files = sel && sel.real && sel.leadId ? await db.listLeadFiles(sel.leadId).catch(() => []) : [];
+  const report = sel && sel.real && sel.leadId ? await db.getLeadReport(sel.leadId).catch(() => null) : null;
   const flash = req.query.msg || null;
   const stats = {
     portfolio: claims.reduce((s, c) => s + c.amount, 0),
     active: claims.length,
   };
-  res.render('sprawy', common({ user: req.user, page: 'app', tab: 'sprawy', claims, sel, done, stats, comms, timeline, files, flash }));
+  res.render('sprawy', common({ user: req.user, page: 'app', tab: 'sprawy', claims, sel, done, stats, comms, timeline, files, report, flash }));
 });
 
 // Bijlage uit de aanvraag openen vanuit de zaak (admin of eigenaar van de zaak)

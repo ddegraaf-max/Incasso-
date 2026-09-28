@@ -16,7 +16,8 @@ var _htmlLang = (['app', 'admin', 'auth'].indexOf(_page) !== -1 && typeof panelL
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title><%= _title %></title>
+<% if (typeof autoRefresh !== 'undefined' && autoRefresh) { %><meta http-equiv="refresh" content="<%= autoRefresh %>">
+<% } %><title><%= _title %></title>
 <meta name="description" content="<%= _desc %>">
 <% if (_noindex) { %>
 <meta name="robots" content="noindex, nofollow">

@@ -14,6 +14,7 @@ const mem = {
   comms: [],     // communicatielog
   leads: [],     // sprzedamfakture-leads
   files: [],     // bijlagen bij leads (buffer in geheugen)
+  reports: [],   // onderzoeksverslagen per lead (nieuwste eerst)
   cases: [],     // echte zaken (nieuwste eerst)
 };
 
@@ -115,6 +116,21 @@ async function init() {
       mimetype TEXT,
       size INT,
       data BYTEA,
+      created_at TIMESTAMPTZ DEFAULT now()
+    );
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS lead_reports (
+      id SERIAL PRIMARY KEY,
+      lead_id INT NOT NULL,
+      lang TEXT,
+      model TEXT,
+      status TEXT,
+      facts JSONB,
+      report TEXT,
+      sources JSONB,
+      error TEXT,
+      usage JSONB,
       created_at TIMESTAMPTZ DEFAULT now()
     );
   `);
@@ -296,6 +312,37 @@ async function getLeadFile(id) {
   return r.rows[0] || null;
 }
 
+// ── Onderzoeksverslagen per lead (src/research.js) ───────────────────────
+let memReportId = 1;
+async function saveLeadReport(r) {
+  const row = { ...r, created_at: new Date() };
+  if (!pool) { row.id = memReportId++; mem.reports.unshift(row); return row; }
+  const q = await pool.query(
+    'INSERT INTO lead_reports (lead_id, lang, model, status, facts, report, sources, error, usage) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id, created_at',
+    [r.lead_id, r.lang || null, r.model || null, r.status || null, JSON.stringify(r.facts || {}), r.report || null, JSON.stringify(r.sources || []), r.error || null, JSON.stringify(r.usage || null)]
+  );
+  row.id = q.rows[0].id; row.created_at = q.rows[0].created_at;
+  return row;
+}
+
+// Nieuwste verslag van een lead
+async function getLeadReport(leadId) {
+  const n = parseInt(leadId, 10);
+  if (!Number.isInteger(n)) return null;
+  if (!pool) return mem.reports.find((x) => x.lead_id === n) || null;
+  const r = await pool.query('SELECT * FROM lead_reports WHERE lead_id=$1 ORDER BY created_at DESC LIMIT 1', [n]);
+  return r.rows[0] || null;
+}
+
+// { lead_id: status } van het nieuwste verslag — voor het icoon in de leadlijst
+async function latestReports() {
+  const out = {};
+  if (!pool) { for (const x of mem.reports) if (!(x.lead_id in out)) out[x.lead_id] = x.status; return out; }
+  const r = await pool.query('SELECT DISTINCT ON (lead_id) lead_id, status FROM lead_reports ORDER BY lead_id, created_at DESC');
+  r.rows.forEach((x) => { out[x.lead_id] = x.status; });
+  return out;
+}
+
 // { lead_id: aantal } — voor het paperclip-icoon in de leadlijst
 async function countLeadFiles() {
   const out = {};
@@ -346,9 +393,11 @@ async function deleteLead(id) {
     const before = mem.leads.length;
     mem.leads = mem.leads.filter((x) => x.id !== n);
     mem.files = mem.files.filter((f) => f.lead_id !== n);
+    mem.reports = mem.reports.filter((x) => x.lead_id !== n);
     return mem.leads.length < before;
   }
   await pool.query('DELETE FROM lead_files WHERE lead_id=$1', [n]);
+  await pool.query('DELETE FROM lead_reports WHERE lead_id=$1', [n]);
   const r = await pool.query('DELETE FROM leads WHERE id=$1', [n]);
   return r.rowCount > 0;
 }
@@ -488,5 +537,6 @@ module.exports = {
   logComm, listComms, countComms,
   saveLead, listLeads, getLead, updateLead, deleteLead, setLeadCase,
   saveLeadFile, listLeadFiles, getLeadFile, countLeadFiles,
+  saveLeadReport, getLeadReport, latestReports,
   purgeDemo,
 };

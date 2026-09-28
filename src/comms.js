@@ -9,6 +9,8 @@ const db = require('./db');
 const D = require('./data');
 
 const Mailer = require('./mailer');
+let Anthropic = null;
+try { const m = require('@anthropic-ai/sdk'); Anthropic = m.default || m; } catch { Anthropic = null; }
 const LIVE_COMMS = process.env.LIVE_COMMS === '1';
 const SMSAPI_TOKEN = process.env.SMSAPI_TOKEN || '';
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || '';
@@ -69,28 +71,19 @@ function callScript(c, f) {
   };
 }
 
+const anthropic = ANTHROPIC_KEY && Anthropic ? new Anthropic({ apiKey: ANTHROPIC_KEY, timeout: 60000, maxRetries: 1 }) : null;
 async function aiGenerate(prompt, fallback) {
-  if (!ANTHROPIC_KEY) return fallback;
+  if (!anthropic) return fallback;
   try {
-    const r = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': ANTHROPIC_KEY,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-opus-5', max_tokens: 4000,
-        output_config: { effort: 'low' },
-        messages: [{ role: 'user', content: prompt }],
-      }),
-      signal: AbortSignal.timeout(45000),
+    const r = await anthropic.messages.create({
+      model: 'claude-opus-5', max_tokens: 4000,
+      output_config: { effort: 'low' },
+      messages: [{ role: 'user', content: prompt }],
     });
-    const j = await r.json();
-    if (!r.ok) { console.error('[ai] Anthropic', r.status, (j.error && j.error.message) || ''); return fallback; }
-    const txt = (j.content || []).map((b) => b.text || '').join('').trim();
+    if (r.stop_reason === 'refusal') return fallback;
+    const txt = (r.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
     return txt || fallback;
-  } catch { return fallback; }
+  } catch (e) { console.error('[ai] Anthropic', e.status || '', e.message); return fallback; }
 }
 
 async function composeEmail(c, tone) {
