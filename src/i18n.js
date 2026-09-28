@@ -123,6 +123,7 @@ module.exports = {
         p: 'Tytuły wykonawcze — także po umorzonej egzekucji — skupujemy osobno, zwykle za 10–40% wartości nominalnej. Wyrok przedawnia się dopiero po 6 latach, więc nowa egzekucja wciąż może się opłacić.',
         cta: 'Sprawdź skup wyroków',
       },
+      kbTeaser: { kicker: 'Baza wiedzy', h: 'Zanim sprzedasz fakturę — sprawdź, co Ci się należy', more: 'Czytaj →', all: 'Wszystkie poradniki' },
       why: {
         kicker: 'Dlaczego warto sprzedać',
         items: [
@@ -368,6 +369,7 @@ module.exports = {
         p: 'Enforceable titles — including after discontinued enforcement — are priced separately, typically at 10–40% of nominal value. A judgment only becomes time-barred after 6 years, so a fresh enforcement attempt can still pay off.',
         cta: 'Explore judgment purchase',
       },
+      kbTeaser: { kicker: 'Knowledge base', h: 'Before you sell — know what you are owed', more: 'Read →', all: 'All guides' },
       why: {
         kicker: 'Why sell',
         items: [

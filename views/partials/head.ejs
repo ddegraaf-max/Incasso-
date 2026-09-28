@@ -35,10 +35,8 @@ var _htmlLang = (['app', 'admin', 'auth'].indexOf(_page) !== -1 && typeof panelL
 <meta name="twitter:card" content="summary_large_image">
 <% } %>
 <%- include('meta') %>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Manrope:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Manrope:wght@400;500;600;700;800&display=swap">
+<link rel="preload" as="font" type="font/woff2" href="/fonts/fraunces-latin.woff2" crossorigin>
+<link rel="preload" as="font" type="font/woff2" href="/fonts/manrope-latin.woff2" crossorigin>
 <link rel="stylesheet" href="/css/app.css?v=<%= version %>">
 <% _ld.forEach(function (o) { %><script type="application/ld+json"><%- JSON.stringify(o).replace(/</g, '\\u003c') %></script>
 <% }) %></head>

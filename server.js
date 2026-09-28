@@ -573,6 +573,8 @@ app.post('/admin/leady/:id', Auth.requireAdmin, async (req, res) => {
 // ── Marketing ────────────────────────────────────────────────────────────
 
 // Strona główna: sprzedaż faktur (instant wycena + leadformulier)
+// Kennisbank-teaser op de homepage: het commerciële artikel + twee praktische
+const HOME_KB = ['skup-faktur-jak-dziala-ile-kosztuje', 'odsetki-za-opoznienie-w-transakcjach-handlowych', 'przedawnienie-faktury-b2b'];
 function renderHome(req, res, extra = {}) {
   const kwota = parseFloat(String(req.query.kwota || '').replace(/\s/g, '').replace(',', '.')) || null;
   const dni = parseInt(req.query.dni, 10) || null;
@@ -582,6 +584,7 @@ function renderHome(req, res, extra = {}) {
     q: { kwota: req.query.kwota || '', dni: req.query.dni || '' },
     leadOk: req.query.lead === 'ok',
     form: {}, errors: {},
+    kbArticles: HOME_KB.map((s) => Articles.bySlug(s)).filter(Boolean),
     ...extra,
   }));
 }

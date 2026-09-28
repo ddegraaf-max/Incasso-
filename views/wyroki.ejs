@@ -5,9 +5,15 @@ var w = t.wyroki, h = t.home, c = t.common;
 var errors = (typeof errors !== 'undefined' && errors) ? errors : {};
 var form = (typeof form !== 'undefined' && form) ? form : {};
 var hasErr = Object.keys(errors).length > 0;
-var ld = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: w.faqLd.map(function (i) {
-  return { '@type': 'Question', name: i[0], acceptedAnswer: { '@type': 'Answer', text: i[1] } };
-}) };
+var ld = [
+  { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: w.faqLd.map(function (i) {
+    return { '@type': 'Question', name: i[0], acceptedAnswer: { '@type': 'Answer', text: i[1] } };
+  }) },
+  { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+    { '@type': 'ListItem', position: 1, name: lang === 'en' ? 'Home' : 'Strona główna', item: 'https://sprzedamfakture.pl/' },
+    { '@type': 'ListItem', position: 2, name: w.kicker, item: 'https://sprzedamfakture.pl/skup-wyrokow' },
+  ] },
+];
 %><%- include('partials/head', { title: w.metaTitle, desc: w.metaDesc, ld: ld }) %>
 <%- include('partials/nav') %>
 

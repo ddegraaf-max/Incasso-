@@ -11,7 +11,7 @@
     var ctx = canvas.getContext('2d');
     var hero = canvas.parentElement;
     var W, H, pts = [];
-    var N = 46, MAXD = 150;
+    var N = window.innerWidth < 700 ? 22 : 46, MAXD = 150;
 
     function resize() {
       W = canvas.width = hero.offsetWidth;
@@ -55,7 +55,9 @@
       }
       requestAnimationFrame(frame);
     }
-    resize(); seed(); frame();
+    // Start pas na de eerste weergave (LCP): de animatie mag de hoofdthread niet bezetten bij het laden
+    var start = function () { resize(); seed(); frame(); };
+    if ('requestIdleCallback' in window) window.requestIdleCallback(start, { timeout: 2500 }); else setTimeout(start, 900);
     window.addEventListener('resize', function () { resize(); seed(); });
     new IntersectionObserver(function (es) {
       var vis = es[0].isIntersecting;

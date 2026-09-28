@@ -494,6 +494,9 @@ const ARTICLES = [
   },
 ];
 
+// Deel 2 (commercieel + praktisch) vooraan: skup faktur, kontrahent sprawdzić, nota odsetkowa
+ARTICLES.unshift(...require('./articles-2'));
+
 function bySlug(slug) { return ARTICLES.find((a) => a.slug === slug) || null; }
 
 module.exports = { ARTICLES, bySlug };

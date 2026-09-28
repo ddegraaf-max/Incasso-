@@ -5,6 +5,9 @@ var form = (typeof form !== 'undefined' && form) ? form : {};
 var hasErr = Object.keys(errors).length > 0;
 var ld = [
   companyLd,
+  { '@context': 'https://schema.org', '@type': 'Service', name: lang === 'en' ? 'Invoice purchase and B2B debt collection in Poland' : 'Skup faktur i wykup wierzytelności B2B', serviceType: lang === 'en' ? 'Purchase of receivables' : 'Wykup wierzytelności',
+    provider: { '@type': 'Organization', name: 'sprzedamfakture.pl', url: 'https://sprzedamfakture.pl/' }, areaServed: { '@type': 'Country', name: 'Poland' }, url: 'https://sprzedamfakture.pl/', description: h.metaDesc, inLanguage: lang,
+    offers: { '@type': 'Offer', priceCurrency: 'PLN', description: lang === 'en' ? 'Payout within 24 hours of signing the assignment; price as a percentage of face value after a free valuation.' : 'Wypłata w 24 godziny od podpisania cesji; cena jako procent wartości nominalnej po bezpłatnej wycenie.' } },
   { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: h.faq.items.filter(function (i) { return !(windykacjaOff && i[1].indexOf('/windykacja') !== -1); }).map(function (i) {
       return { '@type': 'Question', name: i[0], acceptedAnswer: { '@type': 'Answer', text: i[1].replace(/<[^>]+>/g, '').replace('{fee}', SERVICE_FEE) } };
     }) },
@@ -25,10 +28,8 @@ var ld = [
 <meta property="og:url" content="https://sprzedamfakture.pl/">
 <meta property="og:locale" content="<%= lang === 'en' ? 'en_GB' : 'pl_PL' %>">
 <%- include('partials/meta') %>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Manrope:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Manrope:wght@400;500;600;700;800&display=swap">
+<link rel="preload" as="font" type="font/woff2" href="/fonts/fraunces-latin.woff2" crossorigin>
+<link rel="preload" as="font" type="font/woff2" href="/fonts/manrope-latin.woff2" crossorigin>
 <link rel="stylesheet" href="/css/app.css?v=<%= version %>">
 <script type="application/ld+json"><%- JSON.stringify(ld).replace(/</g, '\\u003c') %></script>
 </head>
@@ -168,6 +169,19 @@ var ld = [
     </div>
     <a class="btn btn-gold" href="/skup-wyrokow"><%= h.wyrokTeaser.cta %></a>
   </div>
+</section>
+<% } %>
+
+<% if (h.kbTeaser && typeof kbArticles !== 'undefined' && kbArticles.length) { %>
+<section class="kb-teaser-wrap" id="baza-wiedzy">
+  <div class="kicker"><%= h.kbTeaser.kicker %></div>
+  <h2><%= h.kbTeaser.h %></h2>
+  <div class="kb-list">
+    <% kbArticles.forEach(function (a) { var x = a[lang === 'en' ? 'en' : 'pl']; %>
+    <a class="kb-card" href="/baza-wiedzy/<%= a.slug %>"><h3><%= x.seoTitle || x.title %></h3><p><%= x.desc %></p><span class="kb-more"><%= h.kbTeaser.more %></span></a>
+    <% }) %>
+  </div>
+  <p style="margin:18px 0 0"><a class="btn btn-secondary" href="/baza-wiedzy"><%= h.kbTeaser.all %></a></p>
 </section>
 <% } %>
 
