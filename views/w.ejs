@@ -1,0 +1,79 @@
+<%
+// /w/<token> — het "levende" wezwanie: bedrag van vandaag, reactieknoppen voor de dłużnik, QR voor print.
+// De brief zelf is altijd Pools (taal van de dłużnik); de UI-hints volgen t.wz.letter (PL/EN).
+var w = t.wz, L = w.letter;
+var st = d.status || 'wyslane';
+var answered = ['obietnica', 'zaplacone', 'spor'].indexOf(st) !== -1;
+var thanks = typeof thanksMsg !== 'undefined' && thanksMsg;
+%><%- include('partials/head', { title: 'Wezwanie do zapłaty — ' + d.invoice_nr, desc: L.metaDesc, noindex: true, altLang: false }) %>
+<div class="wz-doc">
+  <div class="wz-head">
+    <%- include('partials/logo', { asLink: true, href: '/', tagline: false }) %>
+    <div class="wz-meta tnum">
+      <div><%= L.issued %>: <%= k.issued %></div>
+      <div><%= L.ref %>: <%= d.token %></div>
+    </div>
+  </div>
+
+  <% if (thanks) { %><div class="confirm" style="margin:0 0 18px"><span class="sq"></span><span><%= thanks %></span></div><% } %>
+
+  <div class="wz-status">
+    <span class="tag <%= st === 'zaplacone' ? 'tag-accent' : (st === 'spor' ? 'tag-outline' : 'tag-neutral') %>"><%= L.status[st] || st %></span>
+    <% if (st === 'obietnica' && d.promised_date) { %><span class="tnum"> · <%= L.promisedOn %> <%= d.promised_date %></span><% } %>
+    <span class="tnum wz-live" title="<%= L.liveTitle %>"> · <%= L.live %></span>
+  </div>
+
+  <div class="wz-parties">
+    <div><div class="label"><%= L.creditor %></div><div class="wz-party"><%= d.creditor_company %><% if (d.creditor_nip) { %><br><span class="tnum">NIP <%= d.creditor_nip %></span><% } %></div></div>
+    <div><div class="label"><%= L.debtor %></div><div class="wz-party"><%= d.debtor_company %><% if (d.debtor_nip) { %><br><span class="tnum">NIP <%= d.debtor_nip %></span><% } %></div></div>
+  </div>
+
+  <h1>Wezwanie do zapłaty</h1>
+  <p class="wz-p">Działając w imieniu wierzyciela <strong><%= d.creditor_company %></strong>, na podstawie art. 4a, 7 i 10 ustawy z dnia 8 marca 2013 r. o przeciwdziałaniu nadmiernym opóźnieniom w transakcjach handlowych, wzywamy do zapłaty należności wynikającej z faktury <strong class="tnum"><%= d.invoice_nr %></strong>, której termin płatności (<span class="tnum"><%= d.due_date %></span>) upłynął <strong class="tnum"><%= k.days %></strong> dni temu.</p>
+
+  <table class="wz-table tnum">
+    <tr><td>Należność główna (faktura <%= d.invoice_nr %>)</td><td><%= D.fmtN(k.amount) %> zł</td></tr>
+    <tr><td>Odsetki ustawowe za opóźnienie (<%= k.rate %>% × <%= k.days %> dni, na dziś)</td><td><%= D.fmtN(k.odsetki) %> zł</td></tr>
+    <tr><td>Rekompensata za koszty odzyskiwania należności (art. 10)</td><td><%= D.fmtN(k.rekomp) %> zł</td></tr>
+    <tr class="total"><td>Razem do zapłaty na dziś</td><td><%= D.fmtN(k.total) %> zł</td></tr>
+  </table>
+
+  <p class="wz-p">Prosimy o zapłatę w terminie do <strong class="tnum"><%= k.deadline %></strong><% if (d.iban) { %> na rachunek <strong class="tnum"><%= d.iban %></strong><% } %>, z podaniem numeru faktury w tytule przelewu. Odsetki naliczane są w dalszym ciągu, do dnia zapłaty — kwota na tej stronie aktualizuje się codziennie.</p>
+  <p class="wz-p">Brak zapłaty w terminie może skutkować skierowaniem sprawy do windykacji, zgłoszeniem dłużnika do biura informacji gospodarczej (KRD / BIG) oraz na drogę postępowania sądowego, którego koszty obciążą dłużnika.</p>
+
+  <div class="wz-respond no-print" id="odpowiedz">
+    <div class="label"><%= L.respondH %></div>
+    <p class="helper" style="margin:0 0 12px"><%= answered ? L.respondDone : L.respondP %></p>
+    <% if (!answered) { %>
+    <form method="post" action="/w/<%= d.token %>/odpowiedz" class="calc-form flat wz-form">
+      <input type="text" name="website" tabindex="-1" autocomplete="off" style="position:absolute; left:-9999px" aria-hidden="true">
+      <div class="wz-choices">
+        <label class="wz-choice"><input type="radio" name="action" value="paid" required> <span><strong><%= L.paid %></strong><br><small><%= L.paidHint %></small></span></label>
+        <label class="wz-choice"><input type="radio" name="action" value="promise"> <span><strong><%= L.promise %></strong><br><small><%= L.promiseHint %></small></span></label>
+        <label class="wz-choice"><input type="radio" name="action" value="dispute"> <span><strong><%= L.dispute %></strong><br><small><%= L.disputeHint %></small></span></label>
+      </div>
+      <div class="form-grid2" style="margin-top:12px">
+        <div class="fg"><label for="wz-date"><%= L.date %></label><input id="wz-date" name="date" type="date" class="tnum"></div>
+        <div class="fg"><label for="wz-note"><%= L.note %></label><textarea id="wz-note" name="note" rows="3" placeholder="<%= L.notePh %>"></textarea></div>
+      </div>
+      <% if (typeof respondError !== 'undefined' && respondError) { %><p class="field-err"><%= respondError %></p><% } %>
+      <button class="btn" type="submit"><%= L.send %></button>
+      <p class="helper" style="margin:10px 0 0"><%= L.sendNote %></p>
+    </form>
+    <% } %>
+  </div>
+
+  <div class="wz-foot">
+    <div class="wz-qr"><img src="<%= qr %>" alt="QR" width="96" height="96"><div class="tnum" style="font-size:11px; color:var(--ink-55); margin-top:4px"><%= k.url.replace(/^https?:\/\//, '') %></div></div>
+    <div class="wz-foot-txt">
+      <p><%= L.footer %></p>
+      <p class="tnum"><%= company.name %> · <%= company.street %>, <%= company.city %> · KvK <%= company.kvk %> · VAT <%= company.vat %> · <a href="mailto:<%= company.email %>"><%= company.email %></a></p>
+      <div class="no-print" style="display:flex; gap:12px; flex-wrap:wrap; margin-top:10px">
+        <a class="btn btn-secondary chan-btn" href="/w/<%= d.token %>/druk" target="_blank" rel="noopener"><%= L.print %></a>
+        <a class="btn btn-ghost chan-btn" href="/wezwanie-online"><%= L.makeOwn %></a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

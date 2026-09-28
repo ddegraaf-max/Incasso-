@@ -132,6 +132,8 @@ function parseNote(lead) {
     if ((m = /^lang=(\w+)$/.exec(p))) out.lang = m[1];
     else if ((m = /^dłużnik: (.+)$/.exec(p))) out.debtorName = m[1];
     else if ((m = /^wyrok (.+)$/.exec(p))) out.sygnatura = m[1];
+    else if ((m = /^wezwanie (.+)$/.exec(p))) out.sygnatura = m[1];
+    else if (/^link: /.test(p)) out.remarks.push(p);
     else if ((m = /^egzekucja: (.+)$/.exec(p))) out.enforcement = m[1];
     else if (/^VAT: /.test(p)) out.vatLine = p;
     else if (lead.source !== 'skup-wyrokow' && !out.registerName) out.registerName = p;

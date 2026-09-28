@@ -15,6 +15,7 @@ const mem = {
   leads: [],     // sprzedamfakture-leads
   files: [],     // bijlagen bij leads (buffer in geheugen)
   reports: [],   // onderzoeksverslagen per lead (nieuwste eerst)
+  demands: [],   // wezwania online (bezpłatne sommaties)
   cases: [],     // echte zaken (nieuwste eerst)
 };
 
@@ -116,6 +117,21 @@ async function init() {
       mimetype TEXT,
       size INT,
       data BYTEA,
+      created_at TIMESTAMPTZ DEFAULT now()
+    );
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS demands (
+      id SERIAL PRIMARY KEY,
+      token TEXT UNIQUE NOT NULL,
+      lang TEXT,
+      creditor_company TEXT, creditor_nip TEXT, creditor_email TEXT,
+      debtor_company TEXT, debtor_nip TEXT, debtor_email TEXT,
+      invoice_nr TEXT, amount NUMERIC, due_date DATE, iban TEXT,
+      status TEXT DEFAULT 'wyslane',
+      response_note TEXT, promised_date DATE,
+      opened_at TIMESTAMPTZ, responded_at TIMESTAMPTZ,
+      facts JSONB, lead_id INT,
       created_at TIMESTAMPTZ DEFAULT now()
     );
   `);
@@ -520,6 +536,39 @@ async function deleteCase(id, caseKey) {
   return r.rowCount > 0;
 }
 
+// ── Wezwania online (src/demands.js) ─────────────────────────────────────
+const DEMAND_COLS = ['token', 'lang', 'creditor_company', 'creditor_nip', 'creditor_email', 'debtor_company', 'debtor_nip', 'debtor_email', 'invoice_nr', 'amount', 'due_date', 'iban', 'status', 'response_note', 'promised_date', 'opened_at', 'responded_at', 'facts', 'lead_id'];
+let memDemandId = 1;
+async function insertDemand(d) {
+  const row = {}; for (const k of DEMAND_COLS) row[k] = d[k] === undefined ? null : d[k];
+  if (!pool) {
+    if (mem.demands.some((x) => x.token === row.token)) throw new Error('duplicate token');
+    row.id = memDemandId++; row.created_at = new Date(); mem.demands.unshift(row); return row;
+  }
+  const r = await pool.query(
+    `INSERT INTO demands (${DEMAND_COLS.join(', ')}) VALUES (${DEMAND_COLS.map((_, i) => '$' + (i + 1)).join(', ')}) RETURNING *`,
+    DEMAND_COLS.map((k) => (k === 'facts' ? JSON.stringify(row[k]) : row[k]))
+  );
+  return r.rows[0];
+}
+async function getDemandByToken(token) {
+  if (!pool) return mem.demands.find((x) => x.token === token) || null;
+  const r = await pool.query('SELECT * FROM demands WHERE token=$1', [token]);
+  return r.rows[0] || null;
+}
+async function updateDemand(id, fields) {
+  const keys = Object.keys(fields).filter((k) => DEMAND_COLS.includes(k));
+  if (!keys.length) return false;
+  if (!pool) { const d = mem.demands.find((x) => x.id === id); if (!d) return false; for (const k of keys) d[k] = fields[k]; return true; }
+  const r = await pool.query(`UPDATE demands SET ${keys.map((k, i) => k + '=$' + (i + 2)).join(', ')} WHERE id=$1`, [id, ...keys.map((k) => (k === 'facts' ? JSON.stringify(fields[k]) : fields[k]))]);
+  return r.rowCount > 0;
+}
+async function countDemands() {
+  if (!pool) return mem.demands.length;
+  const r = await pool.query('SELECT count(*)::int AS n FROM demands');
+  return r.rows[0].n;
+}
+
 // ── AIScores ─────────────────────────────────────────────────────────────
 async function saveScore(nip, s) {
   if (!pool) { mem.scores[nip] = { ...s, checkedAt: new Date() }; return; }
@@ -552,5 +601,6 @@ module.exports = {
   saveLead, listLeads, getLead, updateLead, deleteLead, setLeadCase,
   saveLeadFile, listLeadFiles, getLeadFile, countLeadFiles,
   saveLeadReport, getLeadReport, latestReports,
+  insertDemand, getDemandByToken, updateDemand, countDemands,
   purgeDemo,
 };

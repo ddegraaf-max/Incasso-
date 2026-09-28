@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Wezwanie do zapłaty — <%= d.invoice_nr %></title>
+<%- include('partials/meta') %>
+<link rel="stylesheet" href="/css/app.css?v=<%= version %>">
+<style>
+  .doc { max-width: 760px; margin: 0 auto; padding: 56px 28px; }
+  .doc-head { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid var(--color-divider); padding-bottom: 24px; margin-bottom: 28px; }
+  .doc h1 { font-size: 28px; margin: 28px 0 18px; }
+  .doc p { font-size: 15px; max-width: 68ch; }
+  .doc table { width: 100%; border-collapse: collapse; margin: 22px 0; font-size: 15px; }
+  .doc td { padding: 10px 12px; border-bottom: 1px solid var(--color-divider); }
+  .doc td:last-child { text-align: right; }
+  .doc tr.total td { font-weight: 640; border-bottom: 2px solid var(--color-divider); }
+  .parties { display: flex; gap: 40px; flex-wrap: wrap; margin-bottom: 8px; }
+  .parties .label { margin-bottom: 4px; }
+  .qr-row { display: flex; gap: 20px; align-items: center; border-top: 1px solid var(--color-divider); padding-top: 18px; margin-top: 26px; font-size: 12.5px; color: var(--ink-70); }
+  .no-print { margin-top: 28px; }
+  @media print { .no-print { display: none; } body { background: #fff; } .doc { padding: 20px 0; } }
+</style>
+</head>
+<body>
+<div class="doc">
+  <div class="doc-head">
+    <%- include('partials/logo', { asLink: false, tagline: true }) %>
+    <span style="font-size:13px; color:var(--ink-70)" class="tnum">Data: <%= k.issued %> · nr <%= d.token %></span>
+  </div>
+
+  <div class="parties">
+    <div><div class="label">Wierzyciel</div><div style="font-weight:640"><%= d.creditor_company %></div><% if (d.creditor_nip) { %><div class="tnum" style="font-size:13px">NIP <%= d.creditor_nip %></div><% } %></div>
+    <div><div class="label">Dłużnik</div><div style="font-weight:640; font-size:18px"><%= d.debtor_company %></div><% if (d.debtor_nip) { %><div class="tnum" style="font-size:13px">NIP <%= d.debtor_nip %></div><% } %></div>
+  </div>
+
+  <h1>Wezwanie do zapłaty</h1>
+
+  <p>Działając w imieniu wierzyciela <strong><%= d.creditor_company %></strong>, na podstawie art. 4a, 7 i 10 ustawy z dnia 8 marca 2013 r. o przeciwdziałaniu nadmiernym opóźnieniom w transakcjach handlowych, wzywamy do zapłaty należności wynikającej z faktury <strong class="tnum"><%= d.invoice_nr %></strong>, której termin płatności (<span class="tnum"><%= d.due_date %></span>) upłynął <span class="tnum"><%= k.days %></span> dni temu.</p>
+
+  <table class="tnum">
+    <tr><td>Należność główna (faktura <%= d.invoice_nr %>)</td><td><%= D.fmtN(k.amount) %> zł</td></tr>
+    <tr><td>Odsetki ustawowe za opóźnienie (<%= k.rate %>% × <%= k.days %> dni, na dzień <%= today %>)</td><td><%= D.fmtN(k.odsetki) %> zł</td></tr>
+    <tr><td>Rekompensata za koszty odzyskiwania należności (art. 10)</td><td><%= D.fmtN(k.rekomp) %> zł</td></tr>
+    <tr class="total"><td>Razem na dzień <%= today %></td><td><%= D.fmtN(k.total) %> zł</td></tr>
+  </table>
+
+  <p>Prosimy o zapłatę w terminie do <strong class="tnum"><%= k.deadline %></strong><% if (d.iban) { %> na rachunek <strong class="tnum"><%= d.iban %></strong><% } %>, z podaniem numeru faktury w tytule przelewu. Odsetki naliczane są w dalszym ciągu, do dnia zapłaty.</p>
+  <p>Brak zapłaty w terminie może skutkować skierowaniem sprawy do windykacji, zgłoszeniem dłużnika do biura informacji gospodarczej (KRD / BIG) oraz na drogę postępowania sądowego, którego koszty obciążą dłużnika.</p>
+
+  <div class="qr-row">
+    <img src="<%= qr %>" alt="QR" width="104" height="104">
+    <div>Aktualna kwota (odsetki liczone codziennie), potwierdzenie zapłaty, deklaracja terminu lub zgłoszenie zastrzeżeń — online:<br><strong class="tnum"><%= k.url %></strong><br><br>Wezwanie wygenerowane na zlecenie wierzyciela w serwisie sprzedamfakture.pl (<%= company.name %>, <%= company.street %>, <%= company.city %>, KvK <%= company.kvk %>, VAT <%= company.vat %>).</div>
+  </div>
+
+  <div class="no-print" style="display:flex; gap:14px; flex-wrap:wrap">
+    <button class="btn" onclick="window.print()">Drukuj / zapisz PDF</button>
+    <a class="btn btn-ghost" href="/w/<%= d.token %>">← Wersja online</a>
+  </div>
+</div>
+</body>
+</html>

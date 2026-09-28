@@ -1,0 +1,87 @@
+<%
+// Wezwanie online — bezpłatne wezwanie do zapłaty z linkiem, live odsetki, reactie van de dłużnik, QR.
+// Teksten: t.wz (PL/EN). Na aanmaken: ?ok=<token> → bevestiging met link, druk, registercheck en CTA.
+var w = t.wz, c = t.common;
+var errors = (typeof errors !== 'undefined' && errors) ? errors : {};
+var form = (typeof form !== 'undefined' && form) ? form : {};
+var ld = [
+  { '@context': 'https://schema.org', '@type': 'WebApplication', name: w.h1, url: site + '/wezwanie-online', applicationCategory: 'BusinessApplication', operatingSystem: 'Web', inLanguage: lang, isAccessibleForFree: true, description: w.metaDesc,
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'PLN' }, provider: { '@type': 'Organization', name: 'sprzedamfakture.pl', url: site + '/' } },
+  { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: w.faq.map(function (q) { return { '@type': 'Question', name: q[0], acceptedAnswer: { '@type': 'Answer', text: q[1] } }; }) },
+  { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: t.kb.crumbsHome, item: site + '/' }, { '@type': 'ListItem', position: 2, name: w.kicker, item: site + '/wezwanie-online' }] },
+];
+var fe = function (k) { return errors[k] ? '<p class="field-err">' + w.errors[errors[k]] + '</p>' : ''; };
+%><%- include('partials/head', { title: w.metaTitle, desc: w.metaDesc, ld: ld }) %>
+<%- include('partials/nav') %>
+
+<div class="calc-wrap" style="flex:1" id="main">
+  <nav class="crumbs" aria-label="breadcrumb"><a href="/"><%= t.kb.crumbsHome %></a> › <span><%= w.kicker %></span></nav>
+  <div class="kicker"><%= w.kicker %></div>
+  <h1 style="font-size:clamp(30px, 4.2vw, 40px)"><%= w.h1 %></h1>
+  <p class="lead" style="font-size:17px; color:var(--ink-70); max-width:66ch; line-height:1.6"><%= w.lead %></p>
+
+  <% if (typeof okDemand !== 'undefined' && okDemand) { var d = okDemand, k = okCalc; %>
+  <div class="calc-result" style="margin-top:22px">
+    <div class="kicker" style="margin-bottom:12px"><%= w.ok.kicker %></div>
+    <h2 style="font-size:22px; margin:0 0 10px"><%= w.ok.h %></h2>
+    <p class="helper" style="max-width:70ch"><%= w.ok.p %></p>
+    <div class="field-row"><span class="fk"><%= w.ok.link %></span><span><a href="/w/<%= d.token %>" class="tnum" target="_blank" rel="noopener"><%= k.url %></a></span></div>
+    <div class="field-row"><span class="fk"><%= w.ok.print %></span><span><a href="/w/<%= d.token %>/druk" target="_blank" rel="noopener"><%= w.ok.printBtn %></a></span></div>
+    <div class="field-row"><span class="fk"><%= w.ok.debtorMail %></span><span><%= d.debtor_email ? w.ok.debtorMailSent.replace('{email}', d.debtor_email) : w.ok.debtorMailNone %></span></div>
+    <div class="field-row"><span class="fk"><%= w.ok.amount %></span><span class="tnum"><%= D.fmtN(k.total) %> zł (<%= D.fmtN(k.amount) %> + <%= D.fmtN(k.odsetki) %> + <%= D.fmtN(k.rekomp) %>)</span></div>
+    <% var fs = okFacts; if (fs) { %><div class="field-row"><span class="fk"><%= w.ok.registers %></span><span><%= fs %></span></div><% } %>
+    <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:16px">
+      <a class="btn" href="/w/<%= d.token %>" target="_blank" rel="noopener"><%= w.ok.open %></a>
+      <a class="btn btn-secondary" href="/w/<%= d.token %>/druk" target="_blank" rel="noopener"><%= w.ok.printBtn %></a>
+      <a class="btn btn-gold" href="/#wycena"><%= w.ok.sell %></a>
+    </div>
+  </div>
+  <p class="helper" style="margin-top:14px; max-width:70ch"><%= w.ok.next %></p>
+  <% } else { %>
+
+  <ul class="helper" style="max-width:70ch; padding-left:18px; line-height:1.7; margin-top:16px">
+    <% w.bullets.forEach(function (b) { %><li><%- b %></li><% }) %>
+  </ul>
+
+  <form class="calc-form" method="post" action="/wezwanie-online" novalidate>
+    <input type="text" name="website" tabindex="-1" autocomplete="off" style="position:absolute; left:-9999px" aria-hidden="true">
+    <div class="kicker" style="margin-bottom:10px"><%= w.f.creditorKicker %></div>
+    <div class="form-grid2">
+      <div class="fg"><label for="wz-cc"><%= w.f.creditorCompany %></label><input id="wz-cc" name="creditor_company" value="<%= form.creditor_company || '' %>" required><%- fe('creditor_company') %></div>
+      <div class="fg"><label for="wz-ce"><%= w.f.creditorEmail %></label><input id="wz-ce" name="creditor_email" type="email" value="<%= form.creditor_email || '' %>" required><%- fe('creditor_email') %></div>
+      <div class="fg"><label for="wz-cn"><%= w.f.creditorNip %></label><input id="wz-cn" name="creditor_nip" class="tnum" inputmode="numeric" value="<%= form.creditor_nip || '' %>"><%- fe('creditor_nip') %></div>
+      <div class="fg"><label for="wz-ib"><%= w.f.iban %></label><input id="wz-ib" name="iban" class="tnum" value="<%= form.iban || '' %>" placeholder="PL61 1090 1014 0000 0712 1981 2874"><%- fe('iban') %></div>
+    </div>
+    <div class="kicker" style="margin:14px 0 10px"><%= w.f.debtorKicker %></div>
+    <div class="form-grid2">
+      <div class="fg"><label for="wz-dc"><%= w.f.debtorCompany %></label><input id="wz-dc" name="debtor_company" value="<%= form.debtor_company || '' %>" required><%- fe('debtor_company') %></div>
+      <div class="fg"><label for="wz-dn"><%= w.f.debtorNip %></label><input id="wz-dn" name="debtor_nip" class="tnum" inputmode="numeric" value="<%= form.debtor_nip || '' %>"><%- fe('debtor_nip') %></div>
+      <div class="fg"><label for="wz-de"><%= w.f.debtorEmail %></label><input id="wz-de" name="debtor_email" type="email" value="<%= form.debtor_email || '' %>"><%- fe('debtor_email') %></div>
+    </div>
+    <div class="kicker" style="margin:14px 0 10px"><%= w.f.invoiceKicker %></div>
+    <div class="form-grid2">
+      <div class="fg"><label for="wz-nr"><%= w.f.invoiceNr %></label><input id="wz-nr" name="invoice_nr" value="<%= form.invoice_nr || '' %>" placeholder="FV 2026/06/089" required><%- fe('invoice_nr') %></div>
+      <div class="fg"><label for="wz-am"><%= w.f.amount %></label><input id="wz-am" name="amount" class="tnum" inputmode="decimal" value="<%= form.amount || '' %>" placeholder="12400" required><%- fe('amount') %></div>
+      <div class="fg"><label for="wz-du"><%= w.f.due %></label><input id="wz-du" name="due_date" type="date" class="tnum" value="<%= form.due_date || '' %>" required><%- fe('due_date') %></div>
+    </div>
+    <%- include('partials/turnstile') %>
+    <% if (errors.captcha) { %><p class="field-err"><%= w.errors.captcha %></p><% } %>
+    <button class="btn" type="submit"><%= w.f.btn %></button>
+    <p class="helper" style="margin:12px 0 0"><%= w.f.note %></p>
+  </form>
+
+  <h2 style="margin-top:36px"><%= w.how.h %></h2>
+  <% w.how.steps.forEach(function (s, i) { %>
+  <p class="helper" style="max-width:70ch"><strong><%= (i + 1) %>.</strong> <%- s %></p>
+  <% }) %>
+
+  <h2 style="margin-top:30px"><%= w.faqH %></h2>
+  <% w.faq.forEach(function (q) { %>
+  <h3 style="font-size:17px; margin-top:18px"><%= q[0] %></h3>
+  <p class="helper" style="max-width:70ch"><%= q[1] %></p>
+  <% }) %>
+  <p class="legal-note"><%= w.legal %></p>
+  <% } %>
+</div>
+
+<%- include('partials/footer') %>

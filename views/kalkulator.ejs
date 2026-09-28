@@ -48,7 +48,8 @@ var kLd = [
       <div class="row total"><span>Razem do zapłaty</span><span class="tnum"><%= D.fmtN(result.total) %> zł</span></div>
     </div>
     <div style="margin-top:20px; display:flex; gap:14px; flex-wrap:wrap">
-      <a class="btn btn-secondary" href="/wezwanie?kwota=<%= encodeURIComponent(q.kwota) %>&dni=<%= encodeURIComponent(q.dni) %>&nr=<%= encodeURIComponent(q.nr) %>&dluznik=<%= encodeURIComponent(q.dluznik) %>" target="_blank">Wygeneruj wezwanie do zapłaty</a>
+      <a class="btn btn-gold" href="/wezwanie-online">Wyślij wezwanie online — bezpłatnie</a>
+      <a class="btn btn-secondary" href="/wezwanie?kwota=<%= encodeURIComponent(q.kwota) %>&dni=<%= encodeURIComponent(q.dni) %>&nr=<%= encodeURIComponent(q.nr) %>&dluznik=<%= encodeURIComponent(q.dluznik) %>" target="_blank">Wersja do druku</a>
       <% if (!windykacjaOff) { %><a class="btn" href="/app/nowa">Przekaż sprawę agentowi AI — <%= SERVICE_FEE %> zł</a><% } %>
     </div>
     <% } %>
@@ -64,7 +65,7 @@ var kLd = [
   <p class="helper" style="max-width:70ch">Do każdej faktury po terminie dochodzi rekompensata za koszty odzyskiwania należności (art. 10): 40 € przy należności do 5 000 zł, 70 € od 5 000 do 50 000 zł i 100 € od 50 000 zł. Przelicza się ją według średniego kursu euro NBP z ostatniego dnia roboczego miesiąca poprzedzającego miesiąc wymagalności — kalkulator pokazuje kwotę orientacyjną w złotych. Rekompensata jest niezbywalna: przy sprzedaży faktury zostaje u wierzyciela.</p>
 
   <h2 style="margin-top:30px">Co dalej po obliczeniu</h2>
-  <p class="helper" style="max-width:70ch">Wygeneruj wezwanie do zapłaty z policzonymi odsetkami i rekompensatą i wyślij je listem poleconym oraz e-mailem — to najtańszy krok windykacji i standardowy załącznik do pozwu. Jeżeli dłużnik nie reaguje, możesz <a href="/#wycena">sprzedać fakturę</a> i mieć gotówkę w 24 godziny albo zlecić windykację. Więcej w bazie wiedzy: <a href="/baza-wiedzy/odsetki-za-opoznienie-w-transakcjach-handlowych">jak liczyć odsetki</a>, <a href="/baza-wiedzy/rekompensata-40-70-100-euro">rekompensata</a>, <a href="/baza-wiedzy/wezwanie-do-zaplaty-wzor">wezwanie do zapłaty</a>, <a href="/baza-wiedzy/przedawnienie-faktury-b2b">przedawnienie</a>.</p>
+  <p class="helper" style="max-width:70ch">Skorzystaj z <a href="/wezwanie-online">bezpłatnego wezwania online</a> — z własnym linkiem, kodem QR, odsetkami liczonymi codziennie i odpowiedzią dłużnika jednym kliknięciem. Albo wygeneruj wezwanie do druku z policzonymi odsetkami i rekompensatą i wyślij je listem poleconym oraz e-mailem — to najtańszy krok windykacji i standardowy załącznik do pozwu. Jeżeli dłużnik nie reaguje, możesz <a href="/#wycena">sprzedać fakturę</a> i mieć gotówkę w 24 godziny albo zlecić windykację. Więcej w bazie wiedzy: <a href="/baza-wiedzy/odsetki-za-opoznienie-w-transakcjach-handlowych">jak liczyć odsetki</a>, <a href="/baza-wiedzy/rekompensata-40-70-100-euro">rekompensata</a>, <a href="/baza-wiedzy/wezwanie-do-zaplaty-wzor">wezwanie do zapłaty</a>, <a href="/baza-wiedzy/przedawnienie-faktury-b2b">przedawnienie</a>.</p>
 
   <h2 style="margin-top:30px">Najczęstsze pytania</h2>
   <% kFaq.forEach(function (q) { %>

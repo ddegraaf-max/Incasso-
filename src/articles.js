@@ -246,7 +246,7 @@ const ARTICLES = [
           'Pozew musi zawierać informację, czy strony podjęły próbę pozasądowego rozwiązania sporu (art. 187 § 1 pkt 3 KPC) — wezwanie i odpowiedź dłużnika (lub jej brak) są właśnie tą próbą. Wezwanie z dowodem doręczenia to też standardowy załącznik do wniosku o nakaz zapłaty. Bez niego sąd może uznać koszty za niecelowe albo wezwać do uzupełnienia braków.',
         ] },
         { h: 'Gotowy wzór', p: [
-          'Wpisz kwotę i liczbę dni w <a href="/kalkulator">kalkulatorze</a>, dodaj numer faktury i nazwę dłużnika — system wygeneruje wezwanie do zapłaty z aktualnymi odsetkami i rekompensatą, gotowe do druku lub zapisania jako PDF.',
+          'Najprościej: <a href="/wezwanie-online">bezpłatne wezwanie online</a> — wezwanie dostaje własny link i kod QR, odsetki liczą się codziennie, a dłużnik może jednym kliknięciem potwierdzić zapłatę, zadeklarować termin (to uznanie długu) albo zgłosić zastrzeżenia; Ty dostajesz e-mail. Wersję do druku wygenerujesz też w <a href="/kalkulator">kalkulatorze</a>.',
         ] },
       ],
       faq: [
@@ -278,7 +278,7 @@ const ARTICLES = [
           'A statement of claim must state whether the parties attempted an out-of-court settlement (art. 187 § 1(3) Code of Civil Procedure) — the demand and the debtor’s reply (or silence) are that attempt. A demand with proof of delivery is also a standard attachment to an application for a payment order. Without it the court may refuse costs or ask you to cure defects.',
         ] },
         { h: 'Ready-made template', p: [
-          'Enter the amount and the number of days in our <a href="/kalkulator">calculator</a>, add the invoice number and the debtor’s name — the system generates a demand for payment in Polish with current interest and the recovery fee, ready to print or save as PDF.',
+          'The simplest way: our <a href="/wezwanie-online">free online demand</a> — the demand gets its own link and QR code, interest is calculated daily, and the debtor can confirm payment, promise a date (an acknowledgement of the debt) or dispute with one click; you receive an e-mail. A printable version is also available in the <a href="/kalkulator">calculator</a>.',
         ] },
       ],
       faq: [

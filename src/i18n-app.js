@@ -140,7 +140,7 @@ const pl = {
     demoDone: 'Usunięto dane demo — zdarzenia: {events}, komunikacja: {comms}, scoringi: {scores}, akcje: {actions}',
     leads: {
       kicker: 'Leady', helper: 'Wszystkie zgłoszenia z formularzy „Sprzedaj fakturę” i „Skup wyroków”. Kliknij wiersz, ustaw status, dopisz notatkę albo usuń zgłoszenie testowe.',
-      th: { date: 'Data', source: 'Źródło', company: 'Firma', amount: 'Kwota', status: 'Status' }, srcInvoice: 'faktura', srcWyrok: 'wyrok',
+      th: { date: 'Data', source: 'Źródło', company: 'Firma', amount: 'Kwota', status: 'Status' }, srcInvoice: 'faktura', srcWyrok: 'wyrok', srcWezwanie: 'wezwanie',
       f: { email: 'E-mail', tel: 'Telefon', nip: 'NIP dłużnika', forma: 'Forma prawna dłużnika', dni: 'Dni po terminie', pct: 'Wstępna oferta', note: 'Szczegóły zgłoszenia', updated: 'Zaktualizowano' },
       statusLabel: 'Status', noteLabel: 'Notatka wewnętrzna', notePh: 'Ustalenia, kolejne kroki…', save: 'Zapisz', mailBtn: 'Napisz e-mail',
       del: 'Usuń zgłoszenie', delConfirm: 'Usunąć to zgłoszenie bezpowrotnie?', saved: 'Zapisano lead #{id}', deleted: 'Usunięto lead #{id}', notFound: 'Nie znaleziono leada.',
@@ -239,6 +239,7 @@ const FRAGMENTS = [
   ['Sprawa założona z leada', 'Case opened from lead'], ['Sprawa założona ręcznie', 'Case opened manually'], ['Dane sprawy zaktualizowane', 'Case details updated'],
   ['Zlecono windykację', 'Collection ordered'], ['Oferta wykupu przyjęta', 'Buy-out offer accepted'], ['Sprawa zamknięta i odpisana', 'Case closed and written off'],
   ['brak NIP', 'no NIP'], ['Nowe zgłoszenie skupu wyroku:', 'New judgment buy-out request:'], ['Oferta wykupu odrzucona przez klienta', 'Buy-out offer declined by client'],
+  ['Wezwanie online:', 'Online demand:'], ['Odpowiedź dłużnika na wezwanie', 'Debtor reply to demand'], ['wierzyciel ', 'creditor '],
   ['panel klienta', 'client panel'], ['panel admin', 'admin panel'], ['E-mail do klienta', 'E-mail to client'], ['Agent AI:', 'AI agent:'], ['sprawa', 'case'],
 ];
 
@@ -324,6 +325,7 @@ const FRAGMENTS_NL = [
   ['Sprawa założona z leada', 'Zaak aangemaakt uit lead'], ['Sprawa założona ręcznie', 'Zaak handmatig aangemaakt'], ['Dane sprawy zaktualizowane', 'Zaakgegevens bijgewerkt'],
   ['Zlecono windykację', 'Incasso opgedragen'], ['Oferta wykupu przyjęta', 'Opkoopaanbod geaccepteerd'], ['Oferta wykupu odrzucona przez klienta', 'Opkoopaanbod afgewezen door klant'],
   ['Sprawa zamknięta i odpisana', 'Zaak gesloten en afgeboekt'], ['brak NIP', 'geen NIP'], ['Nowe zgłoszenie skupu wyroku:', 'Nieuwe aanvraag opkoop vonnis:'],
+  ['Wezwanie online:', 'Online aanmaning:'], ['Odpowiedź dłużnika na wezwanie', 'Reactie debiteur op aanmaning'], ['wierzyciel ', 'schuldeiser '],
   ['panel klienta', 'klantenpanel'], ['panel admin', 'adminpanel'], ['E-mail do klienta', 'E-mail aan klant'], ['Agent AI:', 'AI-agent:'], ['sprawa', 'zaak'],
 ];
 const trNl = makeTr({ dict: DICT_NL, rules: RULES_NL, fragments: FRAGMENTS_NL, months: MONTHS_NL, za: 'over $1 dagen', dni: '$1 dagen' });
@@ -464,7 +466,7 @@ const nl = {
     demoDone: 'Demodata verwijderd — gebeurtenissen: {events}, communicatie: {comms}, scores: {scores}, acties: {actions}',
     leads: {
       kicker: 'Leads', helper: 'Alle aanvragen uit de formulieren „Factuur verkopen” en „Opkoop vonnissen”. Klik op een rij, zet een status, voeg een notitie toe of verwijder een testaanvraag.',
-      th: { date: 'Datum', source: 'Bron', company: 'Bedrijf', amount: 'Bedrag', status: 'Status' }, srcInvoice: 'factuur', srcWyrok: 'vonnis',
+      th: { date: 'Datum', source: 'Bron', company: 'Bedrijf', amount: 'Bedrag', status: 'Status' }, srcInvoice: 'factuur', srcWyrok: 'vonnis', srcWezwanie: 'aanmaning',
       f: { email: 'E-mail', tel: 'Telefoon', nip: 'NIP debiteur', forma: 'Rechtsvorm debiteur', dni: 'Dagen na vervaldatum', pct: 'Indicatief aanbod', note: 'Details van de aanvraag', updated: 'Bijgewerkt' },
       statusLabel: 'Status', noteLabel: 'Interne notitie', notePh: 'Afspraken, volgende stappen…', save: 'Opslaan', mailBtn: 'E-mail schrijven',
       del: 'Aanvraag verwijderen', delConfirm: 'Deze aanvraag definitief verwijderen?', saved: 'Lead #{id} opgeslagen', deleted: 'Lead #{id} verwijderd', notFound: 'Lead niet gevonden.',
@@ -623,7 +625,7 @@ const en = {
     demoDone: 'Demo data removed — events: {events}, communication: {comms}, scores: {scores}, actions: {actions}',
     leads: {
       kicker: 'Leads', helper: 'All submissions from the "Sell an invoice" and "Judgment buy-out" forms. Click a row, set a status, add a note or delete a test submission.',
-      th: { date: 'Date', source: 'Source', company: 'Company', amount: 'Amount', status: 'Status' }, srcInvoice: 'invoice', srcWyrok: 'judgment',
+      th: { date: 'Date', source: 'Source', company: 'Company', amount: 'Amount', status: 'Status' }, srcInvoice: 'invoice', srcWyrok: 'judgment', srcWezwanie: 'demand',
       f: { email: 'E-mail', tel: 'Phone', nip: 'Debtor NIP', forma: 'Debtor legal form', dni: 'Days overdue', pct: 'Preliminary offer', note: 'Submission details', updated: 'Updated' },
       statusLabel: 'Status', noteLabel: 'Internal note', notePh: 'Agreements, next steps…', save: 'Save', mailBtn: 'Write an e-mail',
       del: 'Delete submission', delConfirm: 'Delete this submission permanently?', saved: 'Lead #{id} saved', deleted: 'Lead #{id} deleted', notFound: 'Lead not found.',

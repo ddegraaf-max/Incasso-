@@ -16,6 +16,7 @@ const Research = require('./src/research');
 const MD = require('./src/md');
 const MailTpl = require('./src/mailtpl');
 const AiMail = require('./src/aimail');
+const Demands = require('./src/demands');
 const pgSession = require('connect-pg-simple')(session);
 const compression = require('compression');
 const VER = require('./src/version');
@@ -775,21 +776,86 @@ app.get('/baza-wiedzy/:slug', (req, res, next) => {
   res.render('artykul', common({ page: 'kb', a, articles: Articles.ARTICLES }));
 });
 
+// ── Wezwanie online: bezpłatne wezwanie do zapłaty met eigen link, live odsetki en reactie van de dłużnik ──
+function renderDemandForm(req, res, extra = {}) {
+  res.render('wezwanie-online', common({ page: 'wezwanie', form: {}, errors: {}, ...extra }));
+}
+app.get('/wezwanie-online', async (req, res) => {
+  if (req.query.ok) {
+    const d = await Demands.byToken(req.query.ok).catch(() => null);
+    if (d) return renderDemandForm(req, res, { okDemand: d, okCalc: Demands.compute(d), okFacts: Demands.factsSummary(d.facts) });
+  }
+  renderDemandForm(req, res);
+});
+app.post('/wezwanie-online', async (req, res) => {
+  const b = req.body || {};
+  if (b.website) return res.redirect('/wezwanie-online'); // honeypot
+  const ts = await Turnstile.verify(b['cf-turnstile-response'], req.ip);
+  const r = await Demands.create(b, res.locals.lang).catch((e) => { console.error('Wezwanie: aanmaken mislukt —', e.message); return { errors: { creditor_company: 'dCreditor' }, row: b }; });
+  const errors = { ...(r.errors || {}) };
+  if (!ts.ok) errors.captcha = true;
+  if (Object.keys(errors).length || !r.demand) { res.status(400); return renderDemandForm(req, res, { form: r.row || b, errors }); }
+  const d = r.demand;
+  const k = Demands.compute(d);
+  await Demands.toLead(d, k, res.locals.lang).catch(() => null);
+  const [md, mc] = await Promise.all([
+    Demands.mailDebtor(d, k).catch((e) => ({ status: 'błąd: ' + e.message })),
+    Demands.mailCreditor(d, k, r.facts).catch((e) => ({ status: 'błąd: ' + e.message })),
+  ]);
+  await db.insertEvent({ nip: d.debtor_nip || null, debtor: d.debtor_company, type: 'wezwanie', title: 'Wezwanie online: ' + d.invoice_nr + ' · ' + D.fmt(k.amount) + ' · wierzyciel ' + d.creditor_company + ' · mail: ' + md.status + ' / ' + mc.status, source: 'wezwanie-online' }).catch(() => {});
+  res.redirect('/wezwanie-online?ok=' + encodeURIComponent(d.token));
+});
+
+async function renderDemand(req, res, d, extra = {}) {
+  const k = Demands.compute(d);
+  const qr = await QRCode.toDataURL(k.url, { margin: 0, width: 208 });
+  res.render('w', common({ page: 'w', d, k, qr, ...extra }));
+}
+app.get('/w/:token', async (req, res, next) => {
+  const d = await Demands.byToken(req.params.token).catch(() => null);
+  if (!d) return next();
+  await Demands.markOpened(d);
+  const L = res.locals.t.wz.letter;
+  renderDemand(req, res, d, { thanksMsg: req.query.dzieki && L.thanks[d.status] ? L.thanks[d.status] : null });
+});
+app.post('/w/:token/odpowiedz', async (req, res, next) => {
+  const d = await Demands.byToken(req.params.token).catch(() => null);
+  if (!d) return next();
+  const L = res.locals.t.wz.letter;
+  if (req.body.website) return res.redirect('/w/' + d.token);
+  const ts = await Turnstile.verify(req.body['cf-turnstile-response'], req.ip);
+  if (!ts.ok) { res.status(400); return renderDemand(req, res, d, { respondError: L.errors.captcha }); }
+  try { await Demands.respond(d, { action: req.body.action, date: req.body.date, note: req.body.note }); }
+  catch (e) { res.status(400); return renderDemand(req, res, d, { respondError: L.errors[e.message] || e.message }); }
+  const k = Demands.compute(d);
+  await Demands.mailResponse(d, k).catch((e) => console.error('Wezwanie: mail odpowiedzi mislukt —', e.message));
+  await db.insertEvent({ nip: d.debtor_nip || null, debtor: d.debtor_company, type: 'wezwanie', title: 'Odpowiedź dłużnika na wezwanie ' + d.invoice_nr + ': ' + (L.status[d.status] || d.status) + (d.promised_date ? ' (' + d.promised_date + ')' : ''), source: 'wezwanie-online' }).catch(() => {});
+  res.redirect('/w/' + d.token + '?dzieki=1#odpowiedz');
+});
+app.get('/w/:token/druk', async (req, res, next) => {
+  const d = await Demands.byToken(req.params.token).catch(() => null);
+  if (!d) return next();
+  const k = Demands.compute(d);
+  const qr = await QRCode.toDataURL(k.url, { margin: 0, width: 208 });
+  res.render('w-druk', { D, d, k, qr, company: Company.C, version: VER.version, today: new Date().toLocaleDateString('pl-PL'), seo: SEO, lang: 'pl', t: res.locals.t });
+});
+
 app.get('/health', async (req, res) => {
   res.set('Cache-Control', 'no-store');
   const m = Mailer.status();
   const dbs = await db.stats().catch((e) => ({ connected: false, error: e.message }));
-  res.json({ ok: true, name: 'sprzedamfakture.pl', version: VER.version, commit: VER.commit, startedAt: VER.startedAt, uptimeSec: Math.round(process.uptime()), db: db.hasDb(), dbStats: dbs, mail: m.resend ? 'resend' : 'simulation', mailFrom: m.from, mailNotify: !!m.notify, mailProblems: m.problems, liveComms: m.liveComms, smsapi: m.smsapi, anthropic: m.anthropic, turnstile: Turnstile.enabled(), turnstileProblems: Turnstile.problems(), cases: D.claims.filter((c) => c.real).length, demoCases: D.DEMO_CASES, articles: Articles.ARTICLES.length, company: Company.complete(), research: Research.status(), seo: { verification: !!(SEO.google || SEO.bing), analytics: !!SEO.plausible } });
+  res.json({ ok: true, name: 'sprzedamfakture.pl', version: VER.version, commit: VER.commit, startedAt: VER.startedAt, uptimeSec: Math.round(process.uptime()), db: db.hasDb(), dbStats: dbs, mail: m.resend ? 'resend' : 'simulation', mailFrom: m.from, mailNotify: !!m.notify, mailProblems: m.problems, liveComms: m.liveComms, smsapi: m.smsapi, anthropic: m.anthropic, turnstile: Turnstile.enabled(), turnstileProblems: Turnstile.problems(), cases: D.claims.filter((c) => c.real).length, demands: await db.countDemands().catch(() => null), demoCases: D.DEMO_CASES, articles: Articles.ARTICLES.length, company: Company.complete(), research: Research.status(), seo: { verification: !!(SEO.google || SEO.bing), analytics: !!SEO.plausible } });
 });
 
 const SITE = 'https://sprzedamfakture.pl';
 app.get('/robots.txt', (req, res) => {
-  res.type('text/plain').send(['User-agent: *', 'Allow: /', 'Disallow: /app/', 'Disallow: /admin', 'Disallow: /login', 'Disallow: /2fa', 'Disallow: /api/', '', 'Sitemap: ' + SITE + '/sitemap.xml', ''].join('\n'));
+  res.type('text/plain').send(['User-agent: *', 'Allow: /', 'Disallow: /app/', 'Disallow: /admin', 'Disallow: /login', 'Disallow: /2fa', 'Disallow: /api/', 'Disallow: /w/', '', 'Sitemap: ' + SITE + '/sitemap.xml', ''].join('\n'));
 });
 app.get('/sitemap.xml', (req, res) => {
   const urls = [
     { loc: SITE + '/', alt: true, prio: '1.0', mod: SITE_LASTMOD },
     { loc: SITE + '/kalkulator', prio: '0.7', mod: SITE_LASTMOD },
+    { loc: SITE + '/wezwanie-online', alt: true, prio: '0.9', mod: SITE_LASTMOD },
     { loc: SITE + '/skup-wyrokow', alt: true, prio: '0.8', mod: SITE_LASTMOD },
     { loc: SITE + '/baza-wiedzy', alt: true, prio: '0.8', mod: Articles.ARTICLES.reduce((m, a) => (a.updated > m ? a.updated : m), SITE_LASTMOD) },
     ...Articles.ARTICLES.map((a) => ({ loc: SITE + '/baza-wiedzy/' + a.slug, alt: true, prio: '0.7', mod: a.updated })),

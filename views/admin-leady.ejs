@@ -1,7 +1,7 @@
 <% var M = t.app.admin, L = M.leads, R = t.app.sprawy.real, fill = t.fill;
    var stTag = function(s) { return (!s || s === 'nowy' || s === 'zaakceptowany') ? 'tag-accent' : (s === 'kontakt' || s === 'oferta') ? 'tag-outline' : 'tag-neutral'; };
    var stTxt = function(s) { return L.statuses[s] || s || L.statuses.nowy; };
-   var src = function(l) { return l.source === 'skup-wyrokow' ? L.srcWyrok : L.srcInvoice; };
+   var src = function(l) { return l.source === 'skup-wyrokow' ? L.srcWyrok : (l.source === 'wezwanie' ? L.srcWezwanie : L.srcInvoice); };
    var dateFmt = function(d) { return new Date(d).toLocaleString(t.locale, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }); };
 %>
 <%- include('partials/head', { title: t.app.titles.leads + ' — sprzedamfakture.pl', autoRefresh: (typeof researchPending !== 'undefined' && researchPending) ? 12 : 0 }) %>
@@ -118,7 +118,7 @@
            }); %>
         <form class="calc-form flat" method="post" action="/admin/leady/<%= sel.id %>/sprawa">
           <div class="fg"><label for="c-nr"><%= R.f.nr %></label><input id="c-nr" name="nr" value="<%= isW ? sygn : '' %>"></div>
-          <div class="fg"><label for="c-debtor"><%= R.f.debtor %></label><input id="c-debtor" name="debtor" value="<%= isW ? (dl || mfName) : (regName || mfName) %>" required></div>
+          <div class="fg"><label for="c-debtor"><%= R.f.debtor %></label><input id="c-debtor" name="debtor" value="<%= dl || (isW ? '' : regName) || mfName %>" required></div>
           <div class="fg"><label for="c-email"><%= R.f.email %></label><input id="c-email" name="email" type="email" value="<%= krsMail %>"></div>
           <div class="fg"><label for="c-tel"><%= R.f.tel %></label><input id="c-tel" name="tel"></div>
           <div class="fg"><label for="c-nip"><%= R.f.nip %></label><input id="c-nip" name="nip" class="tnum" value="<%= sel.nip || '' %>"></div>

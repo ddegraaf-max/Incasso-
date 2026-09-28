@@ -21,6 +21,7 @@ Node/Express/EJS-app achter **sprzedamfakture.pl**: wykup wierzytelności (insta
 | `/kalkulator` | Publieke kalkulator odsetek (14%) + rekompensata 40/70/100 € — leadmagnet/SEO |
 | `/skup-wyrokow` | **Skup starych wyroków** (PL/EN) — oude vonnissen/tytuły wykonawcze: waarom een oude titel waarde houdt (verjaring 6 jaar, herstart na bezskuteczność, art. 299 KSH; valkuil bezczynność wierzyciela), typisch 10–40% van nominaal, leadformulier → mail + admin-leads |
 | `/wezwanie` | Printbaar wezwanie do zapłaty, gegenereerd vanuit de kalkulator |
+| `/wezwanie-online` · `/w/:token` · `/w/:token/druk` | **Bezpłatne wezwanie online**: formulier → levende pagina met dagelijkse rente, QR, reactie van de dłużnik (`POST /w/:token/odpowiedz`), printversie; wierzyciel wordt lead |
 | `/api/wycena?kwota=&dni=` | JSON voor de live wycena-widget (indicatieve oferta) |
 | `/health` | JSON: versie, commit, uptime, db, mail/Resend- en Turnstile-status — voor deploy-checks |
 | `/robots.txt` · `/sitemap.xml` | SEO (hreflang PL/EN in de sitemap) |
@@ -60,6 +61,14 @@ Env vars: `PORT` (Railway zet die zelf), `SESSION_SECRET` (VERPLICHT in producti
 ## Bedrijfsgegevens exploitant (Creditline B.V.) — `src/company.js`
 Onder de footer van elke pagina (ook homepage en landing) staat het identificatieblok van de exploitant: naam, adres, KvK, BTW-id, e-mail, telefoon — verplicht volgens art. 5 ustawy o świadczeniu usług drogą elektroniczną en de e-commercerichtlijn. De homepage zet dezelfde gegevens in het Organization-schema (`legalName`, `address`, `vatID`, KvK als `identifier`). Alles via Railway-variabelen, lege velden worden niet getoond:
 Defaults in `src/company.js` zijn de echte gegevens: **Creditline BV, Torenlaan 5B, 1402 AT Bussum, KvK 59683198, BTW NL853603108B01, kontakt@sprzedamfakture.pl, geen telefoon**. Beleid: **uitsluitend schriftelijk** (e-mail) — niet telefonisch bereikbaar, richting Polen altijd in het Pools; alles gedocumenteerd voor de bewijsvoering. Daarom zijn de telefoonvelden op de formulieren optioneel, stellen sjablonen en AI-teksten nooit een gesprek voor en vragen ze antwoorden per e-mail. Overschrijven kan met `COMPANY_NAME`, `COMPANY_STREET`, `COMPANY_CITY`, `COMPANY_COUNTRY` (ISO, default `NL`), `COMPANY_KVK`, `COMPANY_VAT`, `COMPANY_EMAIL`, `COMPANY_PHONE`, `COMPANY_REP` (vertegenwoordiger, optioneel), `COMPANY_EXTRA` (vrije regel, bv. Poolse entiteit/NIP). `/health` → `company: true` zodra adres, KvK en BTW-id gevuld zijn.
+
+## Wezwanie online — bezpłatne, brandowane wezwanie do zapłaty (`src/demands.js`)
+Lead magnet én iets wat concurrenten niet hebben: het wezwanie is geen PDF maar een **levende pagina** `/w/<token>`.
+- **Formulier** `/wezwanie-online` (PL/EN, honeypot + Turnstile): wierzyciel (firma, e-mail, NIP/IBAN optioneel), dłużnik (firma, NIP/e-mail optioneel), factuur (nr, kwota, termin). Bij een NIP wordt de dłużnik direct gecontroleerd in MF biała lista + KRS (gratis extra; alleen zichtbaar voor de wierzyciel).
+- **Pagina** `/w/<token>` (noindex): logo, wierzyciel/dłużnik, wettelijke grondslag, **rente en rekompensata van vandaag** (kwota × 14% × dni ÷ 365, elke dag opnieuw), termijn 7 dagen, IBAN, QR-code, status (wysłane → otwarte bij eerste weergave → obietnica / zapłacone / spór) en **reactieknoppen voor de dłużnik**: zapłacone (datum), zapłacę do dnia… (uznanie długu, art. 123 KC), kwestionuję (toelichting). Elke reactie → e-mail naar de wierzyciel + event.
+- **Print** `/w/<token>/druk`: briefversie met QR naar dezelfde pagina.
+- **Mails**: aan de dłużnik (als e-mail gegeven) vanaf `FROM_EMAIL` "w imieniu wierzyciela", reply-to = wierzyciel; bevestiging aan de wierzyciel met link, druk, registercheck en CTA "sprzedaj fakturę".
+- **Funnel**: elke aanvraag wordt een lead (bron `wezwanie`, met link in de notitie) in `/admin/leady`; geen automatisch AI-verslag (kosten) — knop blijft. `/health` → `demands`. Tabel `demands`; `robots.txt` sluit `/w/` uit; `/wezwanie-online` in sitemap, nav, footer, kalkulator en het wezwanie-artikel.
 
 ## Onderzoeksverslag per aanvraag — `src/research.js`
 Bij elke nieuwe lead (en op verzoek via de knop *Verslag opstellen* in `/admin/leady`) wordt op de achtergrond een due-diligence-verslag gemaakt over debiteur én aanvrager, opgeslagen in `lead_reports` en getoond in het leadbeheer en (ingeklapt) in de zaak die uit de lead komt:
