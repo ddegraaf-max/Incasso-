@@ -1,6 +1,7 @@
 <%
 // Wezwanie online — bezpłatne wezwanie do zapłaty z linkiem, live odsetki, reactie van de dłużnik, QR.
-// Teksten: t.wz (PL/EN). Na aanmaken: ?ok=<token> → bevestiging met link, druk, registercheck en CTA.
+// Teksten: t.wz (PL/EN). Na aanmaken: ?czeka=<token> → "bevestig je e-mail"; de link uit de mail (/w/<token>/potwierdz)
+// toont de gegevens met de bevestigknop; daarna ?ok=<token>&k=<sleutel> → link, druk, registercheck en CTA.
 var w = t.wz, c = t.common;
 var errors = (typeof errors !== 'undefined' && errors) ? errors : {};
 var form = (typeof form !== 'undefined' && form) ? form : {};
@@ -39,6 +40,44 @@ var fe = function (k) { return errors[k] ? '<p class="field-err">' + w.errors[er
     </div>
   </div>
   <p class="helper" style="margin-top:14px; max-width:70ch"><%= w.ok.next %></p>
+  <% } else if (typeof waitDemand !== 'undefined' && waitDemand) { var d = waitDemand, k = waitCalc, W = w.wait; %>
+  <div class="calc-result" style="margin-top:22px">
+    <div class="kicker" style="margin-bottom:12px"><%= W.kicker %></div>
+    <h2 style="font-size:22px; margin:0 0 10px"><%= W.h %></h2>
+    <% if (typeof waitMailFailed !== 'undefined' && waitMailFailed) { %>
+    <p class="field-err"><%= W.mailErr %></p>
+    <% } else { %>
+    <p class="helper" style="max-width:70ch"><%= W.p1 %> <strong><%= d.creditor_email %></strong>. <%= W.p2 %></p>
+    <% } %>
+    <div class="field-row"><span class="fk"><%= W.invoice %></span><span class="tnum"><%= d.invoice_nr %></span></div>
+    <div class="field-row"><span class="fk"><%= W.debtor %></span><span><%= d.debtor_company %></span></div>
+    <div class="field-row"><span class="fk"><%= W.amount %></span><span class="tnum"><%= D.fmtN(k.total) %> zł</span></div>
+    <p class="helper" style="margin:14px 0 0; max-width:70ch"><%= W.tips %> <%= W.why %></p>
+    <div style="margin-top:16px"><a class="btn btn-secondary" href="/wezwanie-online"><%= W.again %></a></div>
+  </div>
+  <% } else if (typeof confirmDemand !== 'undefined' && confirmDemand) { var d = confirmDemand, k = confirmCalc, C = w.confirm; %>
+  <div class="calc-result" style="margin-top:22px">
+    <div class="kicker" style="margin-bottom:12px"><%= C.kicker %></div>
+    <h2 style="font-size:22px; margin:0 0 10px"><%= C.h %></h2>
+    <p class="helper" style="max-width:70ch"><%= C.p %></p>
+    <div class="field-row"><span class="fk"><%= C.creditor %></span><span><%= d.creditor_company %></span></div>
+    <div class="field-row"><span class="fk"><%= C.debtor %></span><span><%= d.debtor_company %></span></div>
+    <div class="field-row"><span class="fk"><%= C.invoice %></span><span class="tnum"><%= d.invoice_nr %> · <%= d.due_date %></span></div>
+    <div class="field-row"><span class="fk"><%= C.amount %></span><span class="tnum"><%= D.fmtN(k.total) %> zł (<%= D.fmtN(k.amount) %> + <%= D.fmtN(k.odsetki) %> + <%= D.fmtN(k.rekomp) %>)</span></div>
+    <div class="field-row"><span class="fk"><%= C.sendTo %></span><span><%= d.debtor_email || C.sendNone %></span></div>
+    <% if (typeof okFile !== 'undefined' && okFile) { %><div class="field-row"><span class="fk"><%= C.file %></span><span><%= okFile.filename %></span></div><% } %>
+    <% if (confirmExpired) { %>
+    <p class="field-err"><%= C.expired %></p>
+    <div style="margin-top:16px"><a class="btn" href="/wezwanie-online"><%= C.again %></a></div>
+    <% } else { %>
+    <% if (typeof confirmLimit !== 'undefined' && confirmLimit) { %><p class="field-err"><%= C.limit %></p><% } %>
+    <form method="post" action="/w/<%= d.token %>/potwierdz" style="margin-top:16px">
+      <input type="hidden" name="k" value="<%= d.creditor_key %>">
+      <button class="btn btn-gold" type="submit"><%= d.debtor_email ? C.btnSend : C.btn %></button>
+    </form>
+    <p class="helper" style="margin:12px 0 0; max-width:70ch"><%= C.note %></p>
+    <% } %>
+  </div>
   <% } else { %>
 
   <ul class="helper" style="max-width:70ch; padding-left:18px; line-height:1.7; margin-top:16px">

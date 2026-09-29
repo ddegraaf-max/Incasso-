@@ -239,7 +239,7 @@ const FRAGMENTS = [
   ['Sprawa założona z leada', 'Case opened from lead'], ['Sprawa założona ręcznie', 'Case opened manually'], ['Dane sprawy zaktualizowane', 'Case details updated'],
   ['Zlecono windykację', 'Collection ordered'], ['Oferta wykupu przyjęta', 'Buy-out offer accepted'], ['Sprawa zamknięta i odpisana', 'Case closed and written off'],
   ['brak NIP', 'no NIP'], ['Nowe zgłoszenie skupu wyroku:', 'New judgment buy-out request:'], ['Oferta wykupu odrzucona przez klienta', 'Buy-out offer declined by client'],
-  ['Wezwanie online:', 'Online demand:'], ['Odpowiedź dłużnika na wezwanie', 'Debtor reply to demand'], ['wierzyciel ', 'creditor '],
+  ['Wezwanie online:', 'Online demand:'], ['czeka na potwierdzenie e-mail', 'awaiting e-mail confirmation'], ['potwierdzone przez wierzyciela', 'confirmed by the creditor'], ['Odpowiedź dłużnika na wezwanie', 'Debtor reply to demand'], ['wierzyciel ', 'creditor '],
   ['panel klienta', 'client panel'], ['panel admin', 'admin panel'], ['E-mail do klienta', 'E-mail to client'], ['Agent AI:', 'AI agent:'], ['sprawa', 'case'],
 ];
 
@@ -325,7 +325,7 @@ const FRAGMENTS_NL = [
   ['Sprawa założona z leada', 'Zaak aangemaakt uit lead'], ['Sprawa założona ręcznie', 'Zaak handmatig aangemaakt'], ['Dane sprawy zaktualizowane', 'Zaakgegevens bijgewerkt'],
   ['Zlecono windykację', 'Incasso opgedragen'], ['Oferta wykupu przyjęta', 'Opkoopaanbod geaccepteerd'], ['Oferta wykupu odrzucona przez klienta', 'Opkoopaanbod afgewezen door klant'],
   ['Sprawa zamknięta i odpisana', 'Zaak gesloten en afgeboekt'], ['brak NIP', 'geen NIP'], ['Nowe zgłoszenie skupu wyroku:', 'Nieuwe aanvraag opkoop vonnis:'],
-  ['Wezwanie online:', 'Online aanmaning:'], ['Odpowiedź dłużnika na wezwanie', 'Reactie debiteur op aanmaning'], ['wierzyciel ', 'schuldeiser '],
+  ['Wezwanie online:', 'Online aanmaning:'], ['czeka na potwierdzenie e-mail', 'wacht op e-mailbevestiging'], ['potwierdzone przez wierzyciela', 'bevestigd door de schuldeiser'], ['Odpowiedź dłużnika na wezwanie', 'Reactie debiteur op aanmaning'], ['wierzyciel ', 'schuldeiser '],
   ['panel klienta', 'klantenpanel'], ['panel admin', 'adminpanel'], ['E-mail do klienta', 'E-mail aan klant'], ['Agent AI:', 'AI-agent:'], ['sprawa', 'zaak'],
 ];
 const trNl = makeTr({ dict: DICT_NL, rules: RULES_NL, fragments: FRAGMENTS_NL, months: MONTHS_NL, za: 'over $1 dagen', dni: '$1 dagen' });

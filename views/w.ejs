@@ -108,7 +108,11 @@ var rf = (typeof respondForm !== 'undefined' && respondForm) ? respondForm : {};
 <div class="wz-doc" style="padding-top:0">
   <h2 style="font-size:24px"><%= X.mailsH %></h2>
   <p class="helper" style="max-width:70ch"><%= X.mailsP %></p>
-  <div class="label" style="margin-top:18px"><%= X.debtorMailH %></div>
+  <div class="label" style="margin-top:18px"><%= X.confirmMailH %></div>
+  <div class="field-row"><span class="fk"><%= X.to %></span><span><%= d.creditor_email %></span></div>
+  <div class="field-row"><span class="fk"><%= X.subject %></span><span><%= mails.confirmSubject %></span></div>
+  <pre class="mail-body" style="margin-top:10px"><%= mails.confirmText %></pre>
+  <div class="label" style="margin-top:26px"><%= X.debtorMailH %></div>
   <div class="field-row"><span class="fk"><%= X.from %></span><span><%= mails.debtorFrom %></span></div>
   <div class="field-row"><span class="fk"><%= X.to %></span><span><%= d.debtor_email %></span></div>
   <div class="field-row"><span class="fk"><%= X.replyTo %></span><span><%= d.creditor_email %></span></div>

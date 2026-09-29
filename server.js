@@ -787,13 +787,24 @@ const WZ_LIMIT = { hour: 5, day: 15, debtorDay: 3, reply: 10 };
 function reqMeta(req) {
   return { ip: req.ip, ua: String(req.get('user-agent') || '').slice(0, 300), head: req.method === 'HEAD' };
 }
+const demandOkUrl = (d) => '/wezwanie-online?ok=' + encodeURIComponent(d.token) + '&k=' + encodeURIComponent(d.creditor_key || '');
+const demandConfirmUrl = (d) => '/w/' + d.token + '/potwierdz?k=' + encodeURIComponent(d.creditor_key || '');
 app.get('/wezwanie-online', async (req, res) => {
   if (req.query.ok) {
     // de bevestiging toont de registercheck — alleen voor de wierzyciel (sleutel in de link)
     const d = await Demands.byToken(req.query.ok).catch(() => null);
     if (d && (!d.creditor_key || Demands.isCreditor(d, req.query.k))) {
+      if (!Demands.isConfirmed(d)) return res.redirect(demandConfirmUrl(d));
       res.set('Cache-Control', 'private, no-store');
       return renderDemandForm(req, res, { okDemand: d, okCalc: Demands.compute(d), okFacts: Demands.factsSummary(d.facts), okFile: await demandFile(d) });
+    }
+  }
+  if (req.query.czeka) {
+    // na het formulier: wachten op de klik in de bevestigingsmail (de sleutel staat alleen in die mail)
+    const d = await Demands.byToken(req.query.czeka).catch(() => null);
+    if (d && !Demands.isConfirmed(d)) {
+      res.set('Cache-Control', 'private, no-store');
+      return renderDemandForm(req, res, { waitDemand: d, waitCalc: Demands.compute(d), waitMailFailed: !!req.query.blad });
     }
   }
   renderDemandForm(req, res);
@@ -820,18 +831,46 @@ app.post('/wezwanie-online', zalacznikMw, async (req, res) => {
   const d = r.demand;
   const k = Demands.compute(d);
   const lead = await Demands.toLead(d, k, res.locals.lang).catch(() => null);
-  // bijlage (factuur) bij de lead bewaren en aan de demand koppelen; de dłużnik krijgt hem mee en kan hem via /w/<token>/zalacznik openen
-  let file = null;
+  // bijlage (factuur) bij de lead bewaren en aan de demand koppelen; de dłużnik krijgt hem na de bevestiging mee en kan hem via /w/<token>/zalacznik openen
   if (lead && lead.id && req.file && !badFile) {
     const saved = await db.saveLeadFile(lead.id, req.file).catch((e) => { console.error('Wezwanie: bijlage opslaan mislukt —', e.message); return null; });
-    if (saved) { file = { filename: saved.filename, data: req.file.buffer }; d.file_id = saved.id; await db.updateDemand(d.id, { file_id: saved.id }).catch(() => {}); }
+    if (saved) { d.file_id = saved.id; await db.updateDemand(d.id, { file_id: saved.id }).catch(() => {}); }
   }
+  // Alleen de bevestigingsmail aan de wierzyciel; de dłużnik krijgt pas iets na de klik (POST /w/<token>/potwierdz)
+  const mv = await Demands.mailConfirm(d, k).catch((e) => ({ ok: false, status: 'błąd: ' + e.message }));
+  if (mv.simulated) console.log('[wezwanie] mail in simulatie — bevestigingslink: ' + k.confirmUrl);
+  await db.insertEvent({ nip: d.debtor_nip || null, debtor: d.debtor_company, type: 'wezwanie', title: 'Wezwanie online: ' + d.invoice_nr + ' · ' + D.fmt(k.amount) + ' · wierzyciel ' + d.creditor_company + ' · czeka na potwierdzenie e-mail · mail: ' + mv.status, source: 'wezwanie-online' }).catch(() => {});
+  res.redirect('/wezwanie-online?czeka=' + encodeURIComponent(d.token) + (mv.ok ? '' : '&blad=1'));
+});
+
+// Bevestiging door de wierzyciel: de link uit zijn mail toont de gegevens met een knop; pas de knop (POST)
+// bevestigt, zodat linkscanners van mailservers het wezwanie niet per ongeluk versturen.
+async function renderDemandConfirm(req, res, d, extra = {}) {
+  res.set('Cache-Control', 'private, no-store');
+  renderDemandForm(req, res, { confirmDemand: d, confirmCalc: Demands.compute(d), confirmExpired: Demands.confirmExpired(d), okFile: await demandFile(d), ...extra });
+}
+app.get('/w/:token/potwierdz', async (req, res, next) => {
+  const d = await Demands.byToken(req.params.token).catch(() => null);
+  if (!d || !Demands.isCreditor(d, req.query.k)) return next();
+  if (Demands.isConfirmed(d)) return res.redirect(demandOkUrl(d));
+  renderDemandConfirm(req, res, d);
+});
+app.post('/w/:token/potwierdz', async (req, res, next) => {
+  const d = await Demands.byToken(req.params.token).catch(() => null);
+  if (!d || !Demands.isCreditor(d, req.body.k)) return next();
+  if (Demands.isConfirmed(d)) return res.redirect(demandOkUrl(d));
+  if (Demands.confirmExpired(d)) { res.status(410); return renderDemandConfirm(req, res, d); }
+  if (d.debtor_email && (await db.countDemandsTo(d.debtor_email, new Date(Date.now() - 24 * HOUR_MS)).catch(() => 0)) >= WZ_LIMIT.debtorDay) { res.status(429); return renderDemandConfirm(req, res, d, { confirmLimit: true }); }
+  if (!(await Demands.confirm(d, reqMeta(req)))) return res.redirect(demandOkUrl(d)); // dubbel klikken: al bevestigd
+  const k = Demands.compute(d);
+  const f = d.file_id ? await db.getLeadFile(d.file_id).catch(() => null) : null;
   const [md, mc] = await Promise.all([
-    Demands.mailDebtor(d, k, file).catch((e) => ({ status: 'błąd: ' + e.message })),
-    Demands.mailCreditor(d, k, r.facts).catch((e) => ({ status: 'błąd: ' + e.message })),
+    Demands.mailDebtor(d, k, f).catch((e) => ({ status: 'błąd: ' + e.message })),
+    Demands.mailCreditor(d, k, d.facts).catch((e) => ({ status: 'błąd: ' + e.message })),
   ]);
-  await db.insertEvent({ nip: d.debtor_nip || null, debtor: d.debtor_company, type: 'wezwanie', title: 'Wezwanie online: ' + d.invoice_nr + ' · ' + D.fmt(k.amount) + ' · wierzyciel ' + d.creditor_company + ' · mail: ' + md.status + ' / ' + mc.status, source: 'wezwanie-online' }).catch(() => {});
-  res.redirect('/wezwanie-online?ok=' + encodeURIComponent(d.token) + '&k=' + encodeURIComponent(d.creditor_key || ''));
+  await Demands.leadConfirmed(d);
+  await db.insertEvent({ nip: d.debtor_nip || null, debtor: d.debtor_company, type: 'wezwanie', title: 'Wezwanie online: ' + d.invoice_nr + ' · ' + D.fmt(k.amount) + ' · wierzyciel ' + d.creditor_company + ' · potwierdzone przez wierzyciela · mail: ' + md.status + ' / ' + mc.status, source: 'wezwanie-online' }).catch(() => {});
+  res.redirect(demandOkUrl(d));
 });
 
 async function demandFile(d) {
@@ -846,34 +885,41 @@ async function renderDemand(req, res, d, extra = {}) {
   res.set('Cache-Control', 'private, no-store');
   res.render('w', common({ page: 'w', d, k, qr, file, fmtTs: Demands.fmtTs, ...extra }));
 }
+// Wezwanie voor de publieke routes: bestaat én is door de wierzyciel bevestigd (anders 404)
+async function liveDemand(token) {
+  const d = await Demands.byToken(token).catch(() => null);
+  return d && Demands.isConfirmed(d) ? d : null;
+}
 // Bijlage (factuur) van een wezwanie — publiek via het token, net als de brief zelf
 app.get('/w/:token/zalacznik', async (req, res, next) => {
-  const d = await Demands.byToken(req.params.token).catch(() => null);
+  const d = await liveDemand(req.params.token);
   if (!d || !d.file_id) return next();
   const f = await db.getLeadFile(d.file_id).catch(() => null);
   if (!f) return next();
   await Demands.markOpened(d, reqMeta(req), req.query.k, 'attachment');
   sendLeadFile(res, f);
 });
-// Voorbeeld: precies wat wij versturen — brief, mail aan de dłużnik en bevestiging aan de wierzyciel (niets wordt opgeslagen)
+// Voorbeeld: precies wat wij versturen — brief, bevestigingsmail, mail aan de dłużnik en bericht aan de wierzyciel (niets wordt opgeslagen)
 app.get('/wezwanie-online/przyklad', async (req, res) => {
   const ex = Demands.sample(res.locals.lang);
-  ex.k.url = SITE + '/wezwanie-online/przyklad'; ex.k.printUrl = SITE + '/wezwanie-online/przyklad'; ex.k.creditorUrl = SITE + '/wezwanie-online/przyklad';
+  ex.k.url = SITE + '/wezwanie-online/przyklad'; ex.k.printUrl = SITE + '/wezwanie-online/przyklad'; ex.k.creditorUrl = SITE + '/wezwanie-online/przyklad'; ex.k.confirmUrl = SITE + '/wezwanie-online/przyklad';
   const qr = await QRCode.toDataURL(SITE + '/wezwanie-online', { margin: 0, width: 208 });
   res.render('w', common({ page: 'wezwanie', d: ex.d, k: ex.k, qr, file: ex.file, demo: true,
-    mails: { debtorSubject: Demands.debtorMailSubject(ex.d), debtorFrom: 'sprzedamfakture.pl <' + Demands.FROM_EMAIL + '>', debtorText: Demands.debtorMailText(ex.d, ex.k, ex.file), creditorSubject: Demands.creditorMailSubject(ex.d), creditorText: Demands.creditorMailText(ex.d, ex.k, ex.facts) } }));
+    mails: { confirmSubject: Demands.confirmMailSubject(ex.d), confirmText: Demands.confirmMailText(ex.d, ex.k), debtorSubject: Demands.debtorMailSubject(ex.d), debtorFrom: 'sprzedamfakture.pl <' + Demands.FROM_EMAIL + '>', debtorText: Demands.debtorMailText(ex.d, ex.k, ex.file), creditorSubject: Demands.creditorMailSubject(ex.d), creditorText: Demands.creditorMailText(ex.d, ex.k, ex.facts) } }));
 });
 
 app.get('/w/:token', async (req, res, next) => {
   const d = await Demands.byToken(req.params.token).catch(() => null);
   if (!d) return next();
+  // nog niet bevestigd: de brief bestaat voor de buitenwereld niet; de wierzyciel gaat naar de bevestiging
+  if (!Demands.isConfirmed(d)) return Demands.isCreditor(d, req.query.k) ? res.redirect(demandConfirmUrl(d)) : next();
   const creditorView = Demands.isCreditor(d, req.query.k);
   await Demands.markOpened(d, reqMeta(req), req.query.k);
   const L = res.locals.t.wz.letter;
   renderDemand(req, res, d, { creditorView, hist: creditorView ? await Demands.history(d) : null, thanksMsg: req.query.dzieki && L.thanks[d.status] ? L.thanks[d.status] : null });
 });
 app.post('/w/:token/odpowiedz', async (req, res, next) => {
-  const d = await Demands.byToken(req.params.token).catch(() => null);
+  const d = await liveDemand(req.params.token);
   if (!d) return next();
   const L = res.locals.t.wz.letter;
   if (req.body.website) return res.redirect('/w/' + d.token);
@@ -890,7 +936,7 @@ app.post('/w/:token/odpowiedz', async (req, res, next) => {
   res.redirect('/w/' + d.token + '?dzieki=1#odpowiedz');
 });
 app.get('/w/:token/druk', async (req, res, next) => {
-  const d = await Demands.byToken(req.params.token).catch(() => null);
+  const d = await liveDemand(req.params.token);
   if (!d) return next();
   await Demands.markOpened(d, reqMeta(req), req.query.k, 'print');
   const k = Demands.compute(d);

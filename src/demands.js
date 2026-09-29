@@ -8,7 +8,9 @@
 //     (podgląd wierzyciela); zijn eigen bezoeken en bots/linkscanners tellen niet als "geopend",
 //   - elke weergave en elke reactie komt met IP en user-agent in de bewijslog (tabel demand_log),
 //   - de printversie draagt een QR-code naar dezelfde pagina,
-//   - de dłużnik wordt bij het aanmaken gecontroleerd in MF biała lista + KRS (gratis extra voor de wierzyciel).
+//   - de dłużnik wordt bij het aanmaken gecontroleerd in MF biała lista + KRS (gratis extra voor de wierzyciel),
+//   - e-mailverificatie: het wezwanie is pas actief (pagina zichtbaar, mail naar de dłużnik) nadat de wierzyciel
+//     via de link in zijn eigen mailbox heeft bevestigd (/w/<token>/potwierdz?k=<sleutel>, knop = POST).
 // Elk aangemaakt wezwanie wordt ook een lead (bron 'wezwanie') in /admin/leady — de funnel naar skup faktur.
 const crypto = require('crypto');
 const db = require('./db');
@@ -21,6 +23,7 @@ const Company = require('./company');
 const SITE = (process.env.SITE_URL || 'https://sprzedamfakture.pl').replace(/\/$/, '');
 const FROM_EMAIL = process.env.FROM_EMAIL || 'windykacja@sprzedamfakture.pl';
 const DAY_MS = 86400000;
+const CONFIRM_DAYS = 7; // geldigheid van de bevestigingslink
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const STATUSES = ['wyslane', 'otwarte', 'obietnica', 'zaplacone', 'spor'];
 const ANSWERED = ['obietnica', 'zaplacone', 'spor'];
@@ -44,18 +47,19 @@ function daysOverdue(due) {
   return Math.max(0, Math.round((t - d) / DAY_MS));
 }
 
-// Bedragen van vandaag + termijn (7 dagen na aanmaak) + publieke URL
+// Bedragen van vandaag + termijn (7 dagen na bevestiging door de wierzyciel) + publieke URL
 function compute(d) {
   const amount = Number(d.amount) || 0;
   const days = daysOverdue(d.due_date);
   const odsetki = D.interestExact(amount, days);
   const rekomp = D.rekompZl(amount);
-  const created = new Date(d.created_at || Date.now());
+  const created = new Date(d.confirmed_at || d.created_at || Date.now());
   const deadline = new Date(created.getTime() + 7 * DAY_MS);
   return {
     amount, days, odsetki, rekomp, total: Math.round((amount + odsetki + rekomp) * 100) / 100,
     deadline: isoDate(deadline), issued: isoDate(created), url: SITE + '/w/' + d.token, printUrl: SITE + '/w/' + d.token + '/druk',
     creditorUrl: d.creditor_key ? SITE + '/w/' + d.token + '?k=' + d.creditor_key : null,
+    confirmUrl: d.creditor_key ? SITE + '/w/' + d.token + '/potwierdz?k=' + d.creditor_key : null,
     rate: Math.round(D.INTEREST_RATE * 100),
   };
 }
@@ -111,6 +115,17 @@ async function byToken(token) {
 }
 
 function isAnswered(d) { return ANSWERED.includes(d.status); }
+function isConfirmed(d) { return !!d.confirmed_at; }
+function confirmExpired(d) { return !d.confirmed_at && Date.now() - new Date(d.created_at).getTime() > CONFIRM_DAYS * DAY_MS; }
+
+// Bevestiging door de wierzyciel (klik op de knop na de link uit zijn mail). true = deze klik heeft bevestigd;
+// false = was al bevestigd (dubbel klikken) — dan vertrekken de mails niet nog een keer.
+async function confirm(d, meta = {}) {
+  if (!(await db.confirmDemand(d.id, meta.ip))) return false;
+  d.confirmed_at = new Date(); d.confirm_ip = meta.ip || null;
+  await log(d, 'confirmed', meta, 'creditor');
+  return true;
+}
 
 // Is dit de wierzyciel? Alleen met de sleutel uit zijn bevestigingsmail (/w/<token>?k=<sleutel>)
 function isCreditor(d, key) {
@@ -118,10 +133,10 @@ function isCreditor(d, key) {
   return a.length > 0 && a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
-// Wie kijkt er? creditor (sleutel, of hetzelfde IP als bij het aanmaken) · bot · debtor
+// Wie kijkt er? creditor (sleutel, of hetzelfde IP als bij het aanmaken of bevestigen) · bot · debtor
 function actorOf(d, meta, key) {
   if (isCreditor(d, key)) return 'creditor';
-  if (meta.ip && d.creator_ip && meta.ip === d.creator_ip) return 'creditor';
+  if (meta.ip && (meta.ip === d.creator_ip || meta.ip === d.confirm_ip)) return 'creditor';
   if (meta.head || !meta.ua || BOT_RE.test(meta.ua)) return 'bot';
   return 'debtor';
 }
@@ -214,6 +229,41 @@ async function mailDebtor(d, c, file) {
   return Mailer.sendPlain({ from: 'sprzedamfakture.pl <' + FROM_EMAIL + '>', to: d.debtor_email, replyTo: d.creditor_email, subject: debtorMailSubject(d), text: debtorMailText(d, c, file), lang: 'pl', attachments });
 }
 
+// Eerste mail aan de wierzyciel: bevestig je adres — pas daarna wordt het wezwanie actief en verstuurd
+function confirmMailText(d, c) {
+  const en = d.lang === 'en';
+  return en
+    ? `Confirm your demand for payment.
+
+Invoice ${d.invoice_nr} · debtor ${d.debtor_company} · ${D.fmtN(c.amount)} zł (+ interest ${D.fmtN(c.odsetki)} zł and recovery fee ${D.fmtN(c.rekomp)} zł as of today)
+${d.debtor_email ? 'After you confirm, we send the demand to the debtor: ' + d.debtor_email : 'No debtor e-mail was given — after you confirm, you get the link to send yourself.'}
+
+Confirm here: ${c.confirmUrl}
+
+The demand is activated${d.debtor_email ? ' and sent to the debtor' : ''} only after you confirm. The link is valid for ${CONFIRM_DAYS} days.
+
+Not you? Someone entered this address in the form on sprzedamfakture.pl — ignore this message and nothing will be sent.
+
+sprzedamfakture.pl — ${Company.C.name}`
+    : `Potwierdź swoje wezwanie do zapłaty.
+
+Faktura ${d.invoice_nr} · dłużnik ${d.debtor_company} · ${D.fmtN(c.amount)} zł (+ odsetki ${D.fmtN(c.odsetki)} zł i rekompensata ${D.fmtN(c.rekomp)} zł na dziś)
+${d.debtor_email ? 'Po potwierdzeniu wyślemy wezwanie do dłużnika na adres: ' + d.debtor_email : 'Nie podano adresu e-mail dłużnika — po potwierdzeniu otrzymasz link do samodzielnego przesłania.'}
+
+Potwierdź tutaj: ${c.confirmUrl}
+
+Wezwanie zostanie aktywowane${d.debtor_email ? ' i wysłane do dłużnika' : ''} dopiero po potwierdzeniu. Link jest ważny ${CONFIRM_DAYS} dni.
+
+To nie Ty? Ktoś podał ten adres w formularzu na sprzedamfakture.pl — zignoruj tę wiadomość, a nic nie zostanie wysłane.
+
+sprzedamfakture.pl — ${Company.C.name}`;
+}
+function confirmMailSubject(d) { return d.lang === 'en' ? `Confirm your demand — invoice ${d.invoice_nr}` : `Potwierdź wezwanie do zapłaty — faktura ${d.invoice_nr}`; }
+
+async function mailConfirm(d, c) {
+  return Mailer.sendPlain({ to: d.creditor_email, subject: confirmMailSubject(d), text: confirmMailText(d, c), lang: d.lang });
+}
+
 function creditorMailText(d, c, facts) {
   const en = d.lang === 'en';
   const fs = factsSummary(facts);
@@ -258,7 +308,7 @@ function sample(lang) {
     creditor_company: 'Twoja Firma Sp. z o.o.', creditor_nip: '5213456789', creditor_email: 'faktury@twojafirma.pl',
     debtor_company: 'Przykładowy Dłużnik Sp. z o.o.', debtor_nip: '7740001454', debtor_email: 'ksiegowosc@dluznik.pl',
     invoice_nr: 'FV 2026/06/089', amount: 12400, due_date: isoDate(due), iban: 'PL61109010140000071219812874',
-    status: 'otwarte', opened_at: created, created_at: created, file_id: null, creditor_key: 'klucz-wierzyciela',
+    status: 'otwarte', opened_at: created, created_at: created, confirmed_at: created, file_id: null, creditor_key: 'klucz-wierzyciela',
   };
   const facts = { mf: { found: true, nip: '7740001454', name: 'PRZYKŁADOWY DŁUŻNIK SPÓŁKA Z OGRANICZONĄ ODPOWIEDZIALNOŚCIĄ', statusVat: 'Czynny', krs: '0000012345' }, krs: { found: true, krs: '0000012345', form: 'SPÓŁKA Z OGRANICZONĄ ODPOWIEDZIALNOŚCIĄ', flags: [] } };
   const file = { filename: 'faktura-FV-2026-06-089.pdf', size: 184320 };
@@ -283,15 +333,22 @@ async function mailResponse(d, c) {
   return Mailer.sendPlain({ to: d.creditor_email, subject: en ? `Debtor response — invoice ${d.invoice_nr}: ${label}` : `Odpowiedź dłużnika — faktura ${d.invoice_nr}: ${label}`, text, lang: d.lang });
 }
 
-// Lead in het panel (bron 'wezwanie') — de funnel naar skup faktur
+// Lead in het panel (bron 'wezwanie') — de funnel naar skup faktur. Ontstaat bij het aanmaken;
+// de notitie zegt of de wierzyciel zijn e-mailadres al heeft bevestigd (leadConfirmed werkt hem bij).
+const LEAD_WAIT = 'e-mail: czeka na potwierdzenie', LEAD_OK = 'e-mail: potwierdzony';
+async function leadConfirmed(d) {
+  if (!d.lead_id) return;
+  const lead = await db.getLead(d.lead_id).catch(() => null);
+  if (lead && lead.note) await db.setLeadNote(lead.id, String(lead.note).replace(LEAD_WAIT, LEAD_OK)).catch(() => {});
+}
 async function toLead(d, c, lang) {
   const est = AiScore.estimateOffer(c.amount, c.days);
   const lead = await db.saveLead({
     source: 'wezwanie', company: d.creditor_company, nip: d.debtor_nip || '', email: d.creditor_email, tel: '', kwota: c.amount, dni: c.days, oferta_pct: est.pct, forma: null,
-    note: ['wezwanie ' + d.invoice_nr, 'dłużnik: ' + d.debtor_company, 'link: ' + c.url, 'lang=' + (lang === 'en' ? 'en' : 'pl')].join(' · '),
+    note: ['wezwanie ' + d.invoice_nr, 'dłużnik: ' + d.debtor_company, 'link: ' + c.url, isConfirmed(d) ? LEAD_OK : LEAD_WAIT, 'lang=' + (lang === 'en' ? 'en' : 'pl')].join(' · '),
   }).catch(() => null);
-  if (lead && lead.id) await db.updateDemand(d.id, { lead_id: lead.id }).catch(() => {});
+  if (lead && lead.id) { d.lead_id = lead.id; await db.updateDemand(d.id, { lead_id: lead.id }).catch(() => {}); }
   return lead;
 }
 
-module.exports = { STATUSES, validate: toRow, create, byToken, compute, isAnswered, isCreditor, markOpened, respond, history, fmtTs, mailDebtor, mailCreditor, mailResponse, toLead, factsSummary, daysOverdue, debtorMailText, debtorMailSubject, creditorMailText, creditorMailSubject, sample, FROM_EMAIL };
+module.exports = { STATUSES, validate: toRow, create, byToken, compute, isAnswered, isConfirmed, confirmExpired, confirm, isCreditor, markOpened, respond, history, fmtTs, mailDebtor, mailCreditor, mailConfirm, mailResponse, toLead, leadConfirmed, factsSummary, daysOverdue, debtorMailText, debtorMailSubject, creditorMailText, creditorMailSubject, confirmMailText, confirmMailSubject, CONFIRM_DAYS, sample, FROM_EMAIL };

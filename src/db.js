@@ -140,6 +140,14 @@ async function init() {
   await pool.query('ALTER TABLE demands ADD COLUMN IF NOT EXISTS paid_date DATE');
   await pool.query('ALTER TABLE demands ADD COLUMN IF NOT EXISTS creditor_key TEXT');
   await pool.query('ALTER TABLE demands ADD COLUMN IF NOT EXISTS creator_ip TEXT');
+  // E-mailverificatie van de wierzyciel: een wezwanie is pas actief na bevestiging (confirmed_at).
+  // Eenmalig bij het toevoegen van de kolom: wat er al stond is al verstuurd en geldt als bevestigd.
+  const hasConfirmed = await pool.query("SELECT 1 FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'demands' AND column_name = 'confirmed_at'");
+  if (!hasConfirmed.rowCount) {
+    await pool.query('ALTER TABLE demands ADD COLUMN confirmed_at TIMESTAMPTZ');
+    await pool.query('UPDATE demands SET confirmed_at = created_at');
+  }
+  await pool.query('ALTER TABLE demands ADD COLUMN IF NOT EXISTS confirm_ip TEXT');
   // Bewijslog per wezwanie: elke weergave en elke reactie, met IP en user-agent (nooit overschreven)
   await pool.query(`
     CREATE TABLE IF NOT EXISTS demand_log (
@@ -415,6 +423,14 @@ async function updateLead(id, { status, admin_note }) {
   return r.rowCount > 0;
 }
 
+// Notitie van het formulier bijwerken (bv. wezwanie: e-mail bevestigd); admin_note blijft van de beheerder
+async function setLeadNote(id, note) {
+  const n = parseInt(id, 10);
+  if (!Number.isInteger(n)) return;
+  if (!pool) { const l = mem.leads.find((x) => x.id === n); if (l) l.note = note; return; }
+  await pool.query('UPDATE leads SET note=$2 WHERE id=$1', [n, note]);
+}
+
 async function setLeadCase(id, caseId) {
   const n = parseInt(id, 10);
   if (!Number.isInteger(n)) return;
@@ -556,7 +572,7 @@ async function deleteCase(id, caseKey) {
 }
 
 // ── Wezwania online (src/demands.js) ─────────────────────────────────────
-const DEMAND_COLS = ['token', 'lang', 'creditor_company', 'creditor_nip', 'creditor_email', 'debtor_company', 'debtor_nip', 'debtor_email', 'invoice_nr', 'amount', 'due_date', 'iban', 'status', 'response_note', 'promised_date', 'paid_date', 'opened_at', 'responded_at', 'facts', 'lead_id', 'file_id', 'creditor_key', 'creator_ip'];
+const DEMAND_COLS = ['token', 'lang', 'creditor_company', 'creditor_nip', 'creditor_email', 'debtor_company', 'debtor_nip', 'debtor_email', 'invoice_nr', 'amount', 'due_date', 'iban', 'status', 'response_note', 'promised_date', 'paid_date', 'opened_at', 'responded_at', 'facts', 'lead_id', 'file_id', 'creditor_key', 'creator_ip', 'confirmed_at', 'confirm_ip'];
 const DEMAND_DATES = ['due_date', 'promised_date', 'paid_date'];
 // pg geeft DATE-kolommen terug als Date (lokale middernacht) — de brief en de mails willen JJJJ-MM-DD
 function demandRow(r) {
@@ -602,11 +618,22 @@ async function answerDemand(id, fields) {
   );
   return r.rowCount > 0;
 }
-// Aantal wezwania naar hetzelfde e-mailadres van een dłużnik sinds een tijdstip (rem op misbruik)
+// Bevestiging door de wierzyciel — alleen de eerste klik telt (true), zodat de mails één keer vertrekken
+async function confirmDemand(id, ip) {
+  if (!pool) {
+    const d = mem.demands.find((x) => x.id === id);
+    if (!d || d.confirmed_at) return false;
+    d.confirmed_at = new Date(); d.confirm_ip = ip || null;
+    return true;
+  }
+  const r = await pool.query('UPDATE demands SET confirmed_at=now(), confirm_ip=$2 WHERE id=$1 AND confirmed_at IS NULL', [id, ip || null]);
+  return r.rowCount > 0;
+}
+// Aantal bevestigde (dus verstuurde) wezwania naar hetzelfde e-mailadres van een dłużnik sinds een tijdstip (rem op misbruik)
 async function countDemandsTo(email, since) {
   if (!email) return 0;
-  if (!pool) return mem.demands.filter((x) => x.debtor_email === email && new Date(x.created_at) >= since).length;
-  const r = await pool.query('SELECT count(*)::int AS n FROM demands WHERE debtor_email=$1 AND created_at >= $2', [email, since]);
+  if (!pool) return mem.demands.filter((x) => x.debtor_email === email && x.confirmed_at && new Date(x.confirmed_at) >= since).length;
+  const r = await pool.query('SELECT count(*)::int AS n FROM demands WHERE debtor_email=$1 AND confirmed_at >= $2', [email, since]);
   return r.rows[0].n;
 }
 let memDemandLogId = 1;
@@ -667,10 +694,10 @@ module.exports = {
   listCases, insertCase, updateCase, deleteCase,
   saveScore, loadScores,
   logComm, getComm, listComms, countComms,
-  saveLead, listLeads, getLead, updateLead, deleteLead, setLeadCase,
+  saveLead, listLeads, getLead, updateLead, deleteLead, setLeadCase, setLeadNote,
   saveLeadFile, listLeadFiles, getLeadFile, countLeadFiles,
   saveLeadReport, getLeadReport, latestReports,
   insertDemand, getDemandByToken, updateDemand, countDemands,
-  answerDemand, countDemandsTo, logDemand, listDemandLog,
+  answerDemand, confirmDemand, countDemandsTo, logDemand, listDemandLog,
   purgeDemo,
 };
