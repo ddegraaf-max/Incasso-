@@ -629,6 +629,20 @@ async function confirmDemand(id, ip) {
   const r = await pool.query('UPDATE demands SET confirmed_at=now(), confirm_ip=$2 WHERE id=$1 AND confirmed_at IS NULL', [id, ip || null]);
   return r.rowCount > 0;
 }
+// Onbevestigde wezwania van vóór `before` verwijderen, met hun bewijslog. De lead (en zijn bijlage) blijft
+// staan — die beheert de admin in /admin/leady. Geeft de verwijderde rijen terug ({ id, lead_id }).
+async function purgeUnconfirmedDemands(before) {
+  if (!pool) {
+    const gone = mem.demands.filter((x) => !x.confirmed_at && new Date(x.created_at) < before);
+    const ids = gone.map((x) => x.id);
+    mem.demands = mem.demands.filter((x) => !ids.includes(x.id));
+    mem.demandLog = mem.demandLog.filter((x) => !ids.includes(x.demand_id));
+    return gone.map((x) => ({ id: x.id, lead_id: x.lead_id }));
+  }
+  const r = await pool.query('DELETE FROM demands WHERE confirmed_at IS NULL AND created_at < $1 RETURNING id, lead_id', [before]);
+  if (r.rowCount) await pool.query('DELETE FROM demand_log WHERE demand_id = ANY($1)', [r.rows.map((x) => x.id)]);
+  return r.rows;
+}
 // Aantal bevestigde (dus verstuurde) wezwania naar hetzelfde e-mailadres van een dłużnik sinds een tijdstip (rem op misbruik)
 async function countDemandsTo(email, since) {
   if (!email) return 0;
@@ -698,6 +712,6 @@ module.exports = {
   saveLeadFile, listLeadFiles, getLeadFile, countLeadFiles,
   saveLeadReport, getLeadReport, latestReports,
   insertDemand, getDemandByToken, updateDemand, countDemands,
-  answerDemand, confirmDemand, countDemandsTo, logDemand, listDemandLog,
+  answerDemand, confirmDemand, purgeUnconfirmedDemands, countDemandsTo, logDemand, listDemandLog,
   purgeDemo,
 };

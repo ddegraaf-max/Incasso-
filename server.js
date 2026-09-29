@@ -783,7 +783,7 @@ function renderDemandForm(req, res, extra = {}) {
 }
 // Rem op misbruik: per IP (aanmaken, reageren) en per e-mailadres van de dłużnik
 const HOUR_MS = 3600 * 1000;
-const WZ_LIMIT = { hour: 5, day: 15, debtorDay: 3, reply: 10 };
+const WZ_LIMIT = { hour: 5, day: 15, debtorDay: 3, reply: 10, resendHour: 5 };
 function reqMeta(req) {
   return { ip: req.ip, ua: String(req.get('user-agent') || '').slice(0, 300), head: req.method === 'HEAD' };
 }
@@ -804,7 +804,7 @@ app.get('/wezwanie-online', async (req, res) => {
     const d = await Demands.byToken(req.query.czeka).catch(() => null);
     if (d && !Demands.isConfirmed(d)) {
       res.set('Cache-Control', 'private, no-store');
-      return renderDemandForm(req, res, { waitDemand: d, waitCalc: Demands.compute(d), waitMailFailed: !!req.query.blad });
+      return renderDemandForm(req, res, { waitDemand: d, waitCalc: Demands.compute(d), waitMailFailed: !!req.query.blad, waitResent: req.query.ponow === '1', waitResendLimit: req.query.ponow === 'limit', waitExpired: Demands.confirmExpired(d) });
     }
   }
   renderDemandForm(req, res);
@@ -841,6 +841,21 @@ app.post('/wezwanie-online', zalacznikMw, async (req, res) => {
   if (mv.simulated) console.log('[wezwanie] mail in simulatie — bevestigingslink: ' + k.confirmUrl);
   await db.insertEvent({ nip: d.debtor_nip || null, debtor: d.debtor_company, type: 'wezwanie', title: 'Wezwanie online: ' + d.invoice_nr + ' · ' + D.fmt(k.amount) + ' · wierzyciel ' + d.creditor_company + ' · czeka na potwierdzenie e-mail · mail: ' + mv.status, source: 'wezwanie-online' }).catch(() => {});
   res.redirect('/wezwanie-online?czeka=' + encodeURIComponent(d.token) + (mv.ok ? '' : '&blad=1'));
+});
+
+// Bevestigingsmail opnieuw sturen vanaf de wachtpagina: max. 3 keer per wezwanie (Demands.RESEND_MAX),
+// 5 keer per uur per IP en hooguit één keer per minuut per wezwanie
+app.post('/wezwanie-online/ponow', async (req, res) => {
+  const d = await Demands.byToken(req.body.token).catch(() => null);
+  if (!d || Demands.isConfirmed(d) || Demands.confirmExpired(d)) return res.redirect('/wezwanie-online');
+  const back = '/wezwanie-online?czeka=' + encodeURIComponent(d.token);
+  if (!RateLimit.check('wzc:' + req.ip, WZ_LIMIT.resendHour, HOUR_MS) || !RateLimit.check('wzc:t:' + d.token, 1, 60 * 1000)) return res.redirect(back + '&ponow=limit');
+  const mv = await Demands.resendConfirm(d, reqMeta(req)).catch((e) => ({ ok: false, status: 'błąd: ' + e.message }));
+  if (mv.limit) return res.redirect(back + '&ponow=limit');
+  RateLimit.hit('wzc:' + req.ip, HOUR_MS);
+  RateLimit.hit('wzc:t:' + d.token, 60 * 1000);
+  if (mv.simulated) console.log('[wezwanie] mail in simulatie — bevestigingslink: ' + Demands.compute(d).confirmUrl);
+  res.redirect(back + (mv.ok ? '&ponow=1' : '&blad=1'));
 });
 
 // Bevestiging door de wierzyciel: de link uit zijn mail toont de gegevens met een knop; pas de knop (POST)
@@ -1173,6 +1188,12 @@ async function start() {
   await D.initActions().catch(() => {});
   await Cases.init().catch((e) => console.error('Cases init:', e.message));
   await AiScore.init(D.claims).catch((e) => console.error('AIScore init:', e.message));
+  // Onbevestigde wezwania opruimen: bij de start en daarna elke 24 uur
+  const purgeDemands = () => Demands.purgeUnconfirmed()
+    .then((n) => { if (n) console.log('Wezwanie: ' + n + ' onbevestigde wezwania ouder dan ' + Demands.PURGE_DAYS + ' dagen verwijderd'); })
+    .catch((e) => console.error('Wezwanie: opruimen mislukt —', e.message));
+  await purgeDemands();
+  setInterval(purgeDemands, 24 * HOUR_MS).unref();
   app.listen(PORT, () => console.log('sprzedamfakture.pl draait op poort ' + PORT));
 }
 start();

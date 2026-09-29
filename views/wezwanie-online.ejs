@@ -44,16 +44,28 @@ var fe = function (k) { return errors[k] ? '<p class="field-err">' + w.errors[er
   <div class="calc-result" style="margin-top:22px">
     <div class="kicker" style="margin-bottom:12px"><%= W.kicker %></div>
     <h2 style="font-size:22px; margin:0 0 10px"><%= W.h %></h2>
-    <% if (typeof waitMailFailed !== 'undefined' && waitMailFailed) { %>
+    <% if (waitExpired) { %>
+    <p class="field-err"><%= w.confirm.expired %></p>
+    <% } else if (waitMailFailed) { %>
     <p class="field-err"><%= W.mailErr %></p>
     <% } else { %>
     <p class="helper" style="max-width:70ch"><%= W.p1 %> <strong><%= d.creditor_email %></strong>. <%= W.p2 %></p>
     <% } %>
+    <% if (waitResent) { %><div class="confirm" style="margin:0 0 12px"><span class="sq"></span><span><%= W.resent %></span></div><% } %>
+    <% if (waitResendLimit) { %><p class="field-err"><%= W.resendLimit %></p><% } %>
     <div class="field-row"><span class="fk"><%= W.invoice %></span><span class="tnum"><%= d.invoice_nr %></span></div>
     <div class="field-row"><span class="fk"><%= W.debtor %></span><span><%= d.debtor_company %></span></div>
     <div class="field-row"><span class="fk"><%= W.amount %></span><span class="tnum"><%= D.fmtN(k.total) %> zł</span></div>
     <p class="helper" style="margin:14px 0 0; max-width:70ch"><%= W.tips %> <%= W.why %></p>
-    <div style="margin-top:16px"><a class="btn btn-secondary" href="/wezwanie-online"><%= W.again %></a></div>
+    <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:16px">
+      <% if (!waitExpired) { %>
+      <form method="post" action="/wezwanie-online/ponow" style="margin:0">
+        <input type="hidden" name="token" value="<%= d.token %>">
+        <button class="btn" type="submit"><%= W.resend %></button>
+      </form>
+      <% } %>
+      <a class="btn btn-secondary" href="/wezwanie-online"><%= W.again %></a>
+    </div>
   </div>
   <% } else if (typeof confirmDemand !== 'undefined' && confirmDemand) { var d = confirmDemand, k = confirmCalc, C = w.confirm; %>
   <div class="calc-result" style="margin-top:22px">

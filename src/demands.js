@@ -24,6 +24,10 @@ const SITE = (process.env.SITE_URL || 'https://sprzedamfakture.pl').replace(/\/$
 const FROM_EMAIL = process.env.FROM_EMAIL || 'windykacja@sprzedamfakture.pl';
 const DAY_MS = 86400000;
 const CONFIRM_DAYS = 7; // geldigheid van de bevestigingslink
+const RESEND_MAX = 3;   // zo vaak kan de bevestigingsmail per wezwanie opnieuw worden gestuurd
+const PURGE_DAYS = 30;  // onbevestigde wezwania worden na zoveel dagen verwijderd
+// Stand van de e-mailverificatie in de notitie van de lead
+const LEAD_WAIT = 'e-mail: czeka na potwierdzenie', LEAD_OK = 'e-mail: potwierdzony', LEAD_GONE = 'e-mail: niepotwierdzony — wezwanie usunięte';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const STATUSES = ['wyslane', 'otwarte', 'obietnica', 'zaplacone', 'spor'];
 const ANSWERED = ['obietnica', 'zaplacone', 'spor'];
@@ -264,6 +268,28 @@ async function mailConfirm(d, c) {
   return Mailer.sendPlain({ to: d.creditor_email, subject: confirmMailSubject(d), text: confirmMailText(d, c), lang: d.lang });
 }
 
+// Bevestigingsmail opnieuw sturen (knop op de wachtpagina) — hooguit RESEND_MAX keer per wezwanie,
+// geteld in de bewijslog zodat de grens een herstart overleeft.
+async function resendConfirm(d, meta = {}) {
+  const rows = await db.listDemandLog(d.id, 500).catch(() => []);
+  if (rows.filter((r) => r.type === 'confirm_resent').length >= RESEND_MAX) return { ok: false, limit: true };
+  const r = await mailConfirm(d, compute(d));
+  if (r.ok) await log(d, 'confirm_resent', meta, 'creditor');
+  return r;
+}
+
+// Opruimen: onbevestigde wezwania ouder dan PURGE_DAYS verdwijnen met hun log (de link was na CONFIRM_DAYS
+// al verlopen). De lead blijft; zijn notitie zegt dat het wezwanie is verwijderd.
+async function purgeUnconfirmed() {
+  const gone = await db.purgeUnconfirmedDemands(new Date(Date.now() - PURGE_DAYS * DAY_MS));
+  for (const g of gone) {
+    if (!g.lead_id) continue;
+    const lead = await db.getLead(g.lead_id).catch(() => null);
+    if (lead && lead.note) await db.setLeadNote(lead.id, String(lead.note).replace(LEAD_WAIT, LEAD_GONE)).catch(() => {});
+  }
+  return gone.length;
+}
+
 function creditorMailText(d, c, facts) {
   const en = d.lang === 'en';
   const fs = factsSummary(facts);
@@ -335,7 +361,6 @@ async function mailResponse(d, c) {
 
 // Lead in het panel (bron 'wezwanie') — de funnel naar skup faktur. Ontstaat bij het aanmaken;
 // de notitie zegt of de wierzyciel zijn e-mailadres al heeft bevestigd (leadConfirmed werkt hem bij).
-const LEAD_WAIT = 'e-mail: czeka na potwierdzenie', LEAD_OK = 'e-mail: potwierdzony';
 async function leadConfirmed(d) {
   if (!d.lead_id) return;
   const lead = await db.getLead(d.lead_id).catch(() => null);
@@ -351,4 +376,4 @@ async function toLead(d, c, lang) {
   return lead;
 }
 
-module.exports = { STATUSES, validate: toRow, create, byToken, compute, isAnswered, isConfirmed, confirmExpired, confirm, isCreditor, markOpened, respond, history, fmtTs, mailDebtor, mailCreditor, mailConfirm, mailResponse, toLead, leadConfirmed, factsSummary, daysOverdue, debtorMailText, debtorMailSubject, creditorMailText, creditorMailSubject, confirmMailText, confirmMailSubject, CONFIRM_DAYS, sample, FROM_EMAIL };
+module.exports = { STATUSES, validate: toRow, create, byToken, compute, isAnswered, isConfirmed, confirmExpired, confirm, isCreditor, markOpened, respond, history, fmtTs, mailDebtor, mailCreditor, mailConfirm, resendConfirm, purgeUnconfirmed, mailResponse, toLead, leadConfirmed, factsSummary, daysOverdue, debtorMailText, debtorMailSubject, creditorMailText, creditorMailSubject, confirmMailText, confirmMailSubject, CONFIRM_DAYS, RESEND_MAX, PURGE_DAYS, sample, FROM_EMAIL };
