@@ -611,6 +611,8 @@ table.cases .hg-mini { width: 12px; height: 16px; vertical-align: -3px; margin: 
 .wz-table td:last-child { text-align: right; white-space: nowrap; }
 .wz-table tr.total td { font-weight: 640; border-bottom: 2px solid var(--color-divider); }
 .wz-respond { margin-top: 26px; padding: 20px 22px; background: var(--color-accent-100); border: 1px solid #ecdfc0; border-radius: var(--radius); }
+.wz-cred { margin: 0 0 18px; padding: 16px 20px; background: var(--color-surface); border: 1px dashed var(--color-accent); border-radius: var(--radius); }
+.wz-cred .field-row > span:last-child { text-align: right; overflow-wrap: anywhere; }
 .wz-choices { display: flex; flex-direction: column; gap: 8px; }
 .wz-choice { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; background: var(--color-surface); border: 1px solid var(--color-divider); border-radius: 10px; cursor: pointer; font-size: 14px; }
 .wz-choice input { margin-top: 3px; }

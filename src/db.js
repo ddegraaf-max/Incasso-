@@ -16,6 +16,7 @@ const mem = {
   files: [],     // bijlagen bij leads (buffer in geheugen)
   reports: [],   // onderzoeksverslagen per lead (nieuwste eerst)
   demands: [],   // wezwania online (bezpłatne sommaties)
+  demandLog: [], // bewijslog van wezwania (weergaven + reacties, oudste eerst)
   cases: [],     // echte zaken (nieuwste eerst)
 };
 
@@ -136,6 +137,23 @@ async function init() {
     );
   `);
   await pool.query('ALTER TABLE demands ADD COLUMN IF NOT EXISTS file_id INT');
+  await pool.query('ALTER TABLE demands ADD COLUMN IF NOT EXISTS paid_date DATE');
+  await pool.query('ALTER TABLE demands ADD COLUMN IF NOT EXISTS creditor_key TEXT');
+  await pool.query('ALTER TABLE demands ADD COLUMN IF NOT EXISTS creator_ip TEXT');
+  // Bewijslog per wezwanie: elke weergave en elke reactie, met IP en user-agent (nooit overschreven)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS demand_log (
+      id SERIAL PRIMARY KEY,
+      demand_id INT NOT NULL,
+      type TEXT,
+      actor TEXT,
+      ip TEXT,
+      user_agent TEXT,
+      data JSONB,
+      created_at TIMESTAMPTZ DEFAULT now()
+    );
+  `);
+  await pool.query('CREATE INDEX IF NOT EXISTS demand_log_demand_idx ON demand_log (demand_id, id)');
   await pool.query(`
     CREATE TABLE IF NOT EXISTS lead_reports (
       id SERIAL PRIMARY KEY,
@@ -538,7 +556,17 @@ async function deleteCase(id, caseKey) {
 }
 
 // ── Wezwania online (src/demands.js) ─────────────────────────────────────
-const DEMAND_COLS = ['token', 'lang', 'creditor_company', 'creditor_nip', 'creditor_email', 'debtor_company', 'debtor_nip', 'debtor_email', 'invoice_nr', 'amount', 'due_date', 'iban', 'status', 'response_note', 'promised_date', 'opened_at', 'responded_at', 'facts', 'lead_id', 'file_id'];
+const DEMAND_COLS = ['token', 'lang', 'creditor_company', 'creditor_nip', 'creditor_email', 'debtor_company', 'debtor_nip', 'debtor_email', 'invoice_nr', 'amount', 'due_date', 'iban', 'status', 'response_note', 'promised_date', 'paid_date', 'opened_at', 'responded_at', 'facts', 'lead_id', 'file_id', 'creditor_key', 'creator_ip'];
+const DEMAND_DATES = ['due_date', 'promised_date', 'paid_date'];
+// pg geeft DATE-kolommen terug als Date (lokale middernacht) — de brief en de mails willen JJJJ-MM-DD
+function demandRow(r) {
+  if (!r) return null;
+  for (const k of DEMAND_DATES) {
+    const v = r[k];
+    if (v instanceof Date) r[k] = Number.isNaN(v.getTime()) ? null : v.getFullYear() + '-' + String(v.getMonth() + 1).padStart(2, '0') + '-' + String(v.getDate()).padStart(2, '0');
+  }
+  return r;
+}
 let memDemandId = 1;
 async function insertDemand(d) {
   const row = {}; for (const k of DEMAND_COLS) row[k] = d[k] === undefined ? null : d[k];
@@ -550,12 +578,52 @@ async function insertDemand(d) {
     `INSERT INTO demands (${DEMAND_COLS.join(', ')}) VALUES (${DEMAND_COLS.map((_, i) => '$' + (i + 1)).join(', ')}) RETURNING *`,
     DEMAND_COLS.map((k) => (k === 'facts' ? JSON.stringify(row[k]) : row[k]))
   );
-  return r.rows[0];
+  return demandRow(r.rows[0]);
 }
 async function getDemandByToken(token) {
   if (!pool) return mem.demands.find((x) => x.token === token) || null;
   const r = await pool.query('SELECT * FROM demands WHERE token=$1', [token]);
-  return r.rows[0] || null;
+  return demandRow(r.rows[0]);
+}
+// Reactie van de dłużnik vastleggen — alleen zolang er nog niet is gereageerd (ook bij dubbel klikken telt de eerste)
+const DEMAND_OPEN = ['wyslane', 'otwarte'];
+async function answerDemand(id, fields) {
+  const keys = Object.keys(fields).filter((k) => DEMAND_COLS.includes(k));
+  if (!keys.length) return false;
+  if (!pool) {
+    const d = mem.demands.find((x) => x.id === id);
+    if (!d || !DEMAND_OPEN.includes(d.status || 'wyslane')) return false;
+    for (const k of keys) d[k] = fields[k];
+    return true;
+  }
+  const r = await pool.query(
+    `UPDATE demands SET ${keys.map((k, i) => k + '=$' + (i + 3)).join(', ')} WHERE id=$1 AND COALESCE(status, 'wyslane') = ANY($2)`,
+    [id, DEMAND_OPEN, ...keys.map((k) => fields[k])]
+  );
+  return r.rowCount > 0;
+}
+// Aantal wezwania naar hetzelfde e-mailadres van een dłużnik sinds een tijdstip (rem op misbruik)
+async function countDemandsTo(email, since) {
+  if (!email) return 0;
+  if (!pool) return mem.demands.filter((x) => x.debtor_email === email && new Date(x.created_at) >= since).length;
+  const r = await pool.query('SELECT count(*)::int AS n FROM demands WHERE debtor_email=$1 AND created_at >= $2', [email, since]);
+  return r.rows[0].n;
+}
+let memDemandLogId = 1;
+async function logDemand(demandId, e) {
+  const row = { demand_id: demandId, type: e.type, actor: e.actor || null, ip: e.ip || null, user_agent: e.user_agent || null, data: e.data || null, created_at: new Date() };
+  if (!pool) { row.id = memDemandLogId++; mem.demandLog.push(row); mem.demandLog = mem.demandLog.slice(-2000); return row; }
+  await pool.query(
+    'INSERT INTO demand_log (demand_id, type, actor, ip, user_agent, data) VALUES ($1,$2,$3,$4,$5,$6)',
+    [row.demand_id, row.type, row.actor, row.ip, row.user_agent, row.data ? JSON.stringify(row.data) : null]
+  );
+  return row;
+}
+// Oudste eerst; de laatste `limit` regels
+async function listDemandLog(demandId, limit = 200) {
+  if (!pool) return mem.demandLog.filter((x) => x.demand_id === demandId).slice(-limit);
+  const r = await pool.query('SELECT * FROM (SELECT * FROM demand_log WHERE demand_id=$1 ORDER BY id DESC LIMIT $2) t ORDER BY id', [demandId, limit]);
+  return r.rows;
 }
 async function updateDemand(id, fields) {
   const keys = Object.keys(fields).filter((k) => DEMAND_COLS.includes(k));
@@ -603,5 +671,6 @@ module.exports = {
   saveLeadFile, listLeadFiles, getLeadFile, countLeadFiles,
   saveLeadReport, getLeadReport, latestReports,
   insertDemand, getDemandByToken, updateDemand, countDemands,
+  answerDemand, countDemandsTo, logDemand, listDemandLog,
   purgeDemo,
 };

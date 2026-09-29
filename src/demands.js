@@ -4,7 +4,9 @@
 //   - de rente loopt dagelijks op (kwota × 14% × dni ÷ 365) en de dłużnik ziet altijd het bedrag van vandaag,
 //   - de dłużnik reageert met één klik (zapłacone / obietnica zapłaty met datum / spór) — de wierzyciel
 //     krijgt direct een mail; elke reactie is een schriftelijk spoor (uznanie długu bij obietnica),
-//   - de wierzyciel ziet wanneer het wezwanie is geopend,
+//   - de wierzyciel ziet wanneer het wezwanie is geopend — via zijn eigen link /w/<token>?k=<sleutel>
+//     (podgląd wierzyciela); zijn eigen bezoeken en bots/linkscanners tellen niet als "geopend",
+//   - elke weergave en elke reactie komt met IP en user-agent in de bewijslog (tabel demand_log),
 //   - de printversie draagt een QR-code naar dezelfde pagina,
 //   - de dłużnik wordt bij het aanmaken gecontroleerd in MF biała lista + KRS (gratis extra voor de wierzyciel).
 // Elk aangemaakt wezwanie wordt ook een lead (bron 'wezwanie') in /admin/leady — de funnel naar skup faktur.
@@ -21,12 +23,20 @@ const FROM_EMAIL = process.env.FROM_EMAIL || 'windykacja@sprzedamfakture.pl';
 const DAY_MS = 86400000;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const STATUSES = ['wyslane', 'otwarte', 'obietnica', 'zaplacone', 'spor'];
+const ANSWERED = ['obietnica', 'zaplacone', 'spor'];
+// Linkscanners van mailservers, previews van chat-apps en scripts: geen bewijs dat de dłużnik heeft gekeken
+const BOT_RE = /bot|crawl|spider|slurp|preview|scan|fetch|monitor|headless|curl|wget|python|java\/|go-http|okhttp|axios|facebookexternalhit|whatsapp|telegram|skype|safelinks|proofpoint|mimecast|barracuda/i;
 
 function newToken() {
   return crypto.randomBytes(9).toString('base64url').replace(/[^A-Za-z0-9]/g, '').slice(0, 11) || crypto.randomBytes(6).toString('hex');
 }
+function newKey() { return crypto.randomBytes(16).toString('base64url'); }
 
 function isoDate(d) { const x = d instanceof Date ? d : new Date(d); return Number.isNaN(x.getTime()) ? null : x.toISOString().slice(0, 10); }
+// Bestaande kalenderdag in de vorm JJJJ-MM-DD (2026-02-31 valt af)
+function isDay(s) { return /^\d{4}-\d{2}-\d{2}$/.test(s) && isoDate(s) === s; }
+// Tijdstip voor mails en de podgląd wierzyciela: JJJJ-MM-DD UU:MM, Poolse tijd
+function fmtTs(d) { const x = d instanceof Date ? d : new Date(d); return Number.isNaN(x.getTime()) ? '' : x.toLocaleString('sv-SE', { timeZone: 'Europe/Warsaw' }).slice(0, 16); }
 function daysOverdue(due) {
   if (!due) return 0;
   const d = new Date(due); d.setHours(0, 0, 0, 0);
@@ -45,6 +55,7 @@ function compute(d) {
   return {
     amount, days, odsetki, rekomp, total: Math.round((amount + odsetki + rekomp) * 100) / 100,
     deadline: isoDate(deadline), issued: isoDate(created), url: SITE + '/w/' + d.token, printUrl: SITE + '/w/' + d.token + '/druk',
+    creditorUrl: d.creditor_key ? SITE + '/w/' + d.token + '?k=' + d.creditor_key : null,
     rate: Math.round(D.INTEREST_RATE * 100),
   };
 }
@@ -67,12 +78,13 @@ function toRow(b, lang) {
   if (row.debtor_email && !EMAIL_RE.test(row.debtor_email)) errors.debtor_email = 'dDebtorEmail';
   if (!row.invoice_nr) errors.invoice_nr = 'dNr';
   if (!(row.amount > 0) || row.amount > 1e9) errors.amount = 'dAmount';
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(row.due_date) || new Date(row.due_date) > new Date()) errors.due_date = 'dDue';
+  if (!isDay(row.due_date) || new Date(row.due_date) > new Date()) errors.due_date = 'dDue';
   if (row.iban && !/^[A-Z]{2}[0-9A-Z]{13,32}$/.test(row.iban)) errors.iban = 'dIban';
   return { row, errors };
 }
 
-async function create(body, lang) {
+// meta = { ip, ua } van de aanmaker: het IP herkent later zijn eigen bezoeken, beide gaan in de bewijslog
+async function create(body, lang, meta = {}) {
   const { row, errors } = toRow(body, lang);
   if (Object.keys(errors).length) return { errors, row };
   // gratis registercheck van de dłużnik (best effort, snel)
@@ -85,9 +97,10 @@ async function create(body, lang) {
   }
   let saved = null;
   for (let i = 0; i < 3 && !saved; i++) {
-    try { saved = await db.insertDemand({ ...row, token: newToken(), status: 'wyslane', facts }); }
+    try { saved = await db.insertDemand({ ...row, token: newToken(), creditor_key: newKey(), creator_ip: meta.ip || null, status: 'wyslane', facts }); }
     catch (e) { if (!/duplicate|unique/i.test(e.message) || i === 2) throw e; }
   }
+  await log(saved, 'created', meta, 'creditor');
   return { demand: saved, facts };
 }
 
@@ -97,25 +110,70 @@ async function byToken(token) {
   return db.getDemandByToken(t);
 }
 
-async function markOpened(d) {
-  if (d.opened_at) return;
+function isAnswered(d) { return ANSWERED.includes(d.status); }
+
+// Is dit de wierzyciel? Alleen met de sleutel uit zijn bevestigingsmail (/w/<token>?k=<sleutel>)
+function isCreditor(d, key) {
+  const a = Buffer.from(String(d.creditor_key || '')), b = Buffer.from(typeof key === 'string' ? key : '');
+  return a.length > 0 && a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+// Wie kijkt er? creditor (sleutel, of hetzelfde IP als bij het aanmaken) · bot · debtor
+function actorOf(d, meta, key) {
+  if (isCreditor(d, key)) return 'creditor';
+  if (meta.ip && d.creator_ip && meta.ip === d.creator_ip) return 'creditor';
+  if (meta.head || !meta.ua || BOT_RE.test(meta.ua)) return 'bot';
+  return 'debtor';
+}
+
+// Regel in de bewijslog (tabel demand_log); het voorbeeld (id 0) wordt niet gelogd
+async function log(d, type, meta = {}, actor, data) {
+  if (!d || !d.id) return;
+  await db.logDemand(d.id, { type, actor, ip: meta.ip, user_agent: meta.ua, data }).catch((e) => console.error('Wezwanie: log mislukt —', e.message));
+}
+
+// Weergave vastleggen (type: open | print | attachment). Alleen een weergave van de brief door de dłużnik
+// zet de status op 'otwarte' — de wierzyciel zelf en bots/linkscanners tellen niet mee.
+async function markOpened(d, meta = {}, key, type = 'open') {
+  const actor = actorOf(d, meta, key);
+  await log(d, type, meta, actor);
+  if (type !== 'open' || actor !== 'debtor' || d.opened_at) return actor;
   d.opened_at = new Date();
   if (d.status === 'wyslane') d.status = 'otwarte';
   await db.updateDemand(d.id, { opened_at: d.opened_at, status: d.status }).catch(() => {});
+  return actor;
 }
 
-// Reactie van de dłużnik: paid | promise (datum) | dispute (toelichting)
-async function respond(d, { action, date, note }) {
+// Reactie van de dłużnik: paid (datum van de overboeking, optioneel) | promise (datum) | dispute (toelichting).
+// Eén reactie per wezwanie: de eerste telt en wordt nooit overschreven; elke poging komt in de bewijslog.
+async function respond(d, { action, date, note }, meta = {}) {
   const map = { paid: 'zaplacone', promise: 'obietnica', dispute: 'spor' };
   const status = map[action];
-  if (!status) throw new Error('rBad');
-  const promised = action === 'promise' ? String(date || '').slice(0, 10) : null;
-  if (action === 'promise' && !/^\d{4}-\d{2}-\d{2}$/.test(promised)) throw new Error('rDate');
+  const day = String(date || '').trim().slice(0, 10);
   const n = String(note || '').trim().slice(0, 1000);
+  const entry = { action: String(action || '').slice(0, 20), date: day || null, note: n || null };
+  if (isAnswered(d)) { await log(d, 'response_rejected', meta, 'debtor', entry); throw new Error('rDone'); }
+  if (!status) throw new Error('rBad');
+  if (action === 'promise' && (!isDay(day) || day < isoDate(Date.now() - DAY_MS))) throw new Error('rDate');
+  if (action === 'paid' && day && (!isDay(day) || day > isoDate(Date.now() + DAY_MS))) throw new Error('rPaidDate');
   if (action === 'dispute' && !n) throw new Error('rNote');
-  d.status = status; d.promised_date = promised; d.response_note = n || null; d.responded_at = new Date();
-  await db.updateDemand(d.id, { status, promised_date: promised, response_note: d.response_note, responded_at: d.responded_at });
+  const fields = { status, promised_date: action === 'promise' ? day : null, paid_date: action === 'paid' && day ? day : null, response_note: n || null, responded_at: new Date() };
+  if (!(await db.answerDemand(d.id, fields))) { await log(d, 'response_rejected', meta, 'debtor', entry); throw new Error('rDone'); }
+  Object.assign(d, fields);
+  await log(d, 'response', meta, 'debtor', { ...entry, status });
   return d;
+}
+
+// Voor de podgląd wierzyciela: hoe vaak de dłużnik keek en wat hij antwoordde (zonder IP's)
+async function history(d) {
+  const rows = await db.listDemandLog(d.id, 500).catch(() => []);
+  const opens = rows.filter((r) => r.type === 'open' && r.actor === 'debtor');
+  return {
+    opens: opens.length,
+    firstOpen: d.opened_at || (opens[0] && opens[0].created_at) || null,
+    lastOpen: opens.length ? opens[opens.length - 1].created_at : null,
+    responses: rows.filter((r) => r.type === 'response').map((r) => ({ at: r.created_at, ...(r.data || {}) })),
+  };
 }
 
 // ── Mails ────────────────────────────────────────────────────────────────
@@ -166,8 +224,8 @@ Invoice ${d.invoice_nr} · debtor ${d.debtor_company} · ${D.fmtN(c.amount)} zł
 
 Link to the demand (send it to the debtor, or we already did if you gave an e-mail): ${c.url}
 Printable version with QR code: ${c.printUrl}
-${fs ? '\nDebtor register check: ' + fs + '\n' : ''}
-The amount updates daily. When the debtor confirms payment, promises a date or disputes the invoice, you will receive an e-mail. You can check the status any time via the link.
+${c.creditorUrl ? 'Your creditor view — status, opens and the debtor\'s reply (do not forward this link): ' + c.creditorUrl + '\n' : ''}${fs ? '\nDebtor register check: ' + fs + '\n' : ''}
+The amount updates daily. When the debtor confirms payment, promises a date or disputes the invoice, you will receive an e-mail. You can check the status any time ${c.creditorUrl ? 'in your creditor view' : 'via the link'}.
 
 Not paid within 7 days? Sell the invoice and have cash within 24 hours: ${SITE}/?lang=en#wycena
 
@@ -178,8 +236,8 @@ Faktura ${d.invoice_nr} · dłużnik ${d.debtor_company} · ${D.fmtN(c.amount)} 
 
 Link do wezwania (prześlij dłużnikowi — jeśli podałeś jego e-mail, już to zrobiliśmy): ${c.url}
 Wersja do druku z kodem QR: ${c.printUrl}
-${fs ? '\nWeryfikacja dłużnika w rejestrach: ' + fs + '\n' : ''}
-Kwota aktualizuje się codziennie. Gdy dłużnik potwierdzi zapłatę, zadeklaruje termin albo zgłosi zastrzeżenia, otrzymasz e-mail. Status sprawdzisz w każdej chwili pod linkiem.
+${c.creditorUrl ? 'Twój podgląd wierzyciela — status, otwarcia i odpowiedź dłużnika (nie przekazuj tego linku dalej): ' + c.creditorUrl + '\n' : ''}${fs ? '\nWeryfikacja dłużnika w rejestrach: ' + fs + '\n' : ''}
+Kwota aktualizuje się codziennie. Gdy dłużnik potwierdzi zapłatę, zadeklaruje termin albo zgłosi zastrzeżenia, otrzymasz e-mail. Status sprawdzisz w każdej chwili ${c.creditorUrl ? 'w podglądzie wierzyciela' : 'pod linkiem'}.
 
 Brak zapłaty w 7 dni? Sprzedaj fakturę i miej gotówkę w 24 godziny: ${SITE}/#wycena
 
@@ -200,7 +258,7 @@ function sample(lang) {
     creditor_company: 'Twoja Firma Sp. z o.o.', creditor_nip: '5213456789', creditor_email: 'faktury@twojafirma.pl',
     debtor_company: 'Przykładowy Dłużnik Sp. z o.o.', debtor_nip: '7740001454', debtor_email: 'ksiegowosc@dluznik.pl',
     invoice_nr: 'FV 2026/06/089', amount: 12400, due_date: isoDate(due), iban: 'PL61109010140000071219812874',
-    status: 'otwarte', opened_at: created, created_at: created, file_id: null,
+    status: 'otwarte', opened_at: created, created_at: created, file_id: null, creditor_key: 'klucz-wierzyciela',
   };
   const facts = { mf: { found: true, nip: '7740001454', name: 'PRZYKŁADOWY DŁUŻNIK SPÓŁKA Z OGRANICZONĄ ODPOWIEDZIALNOŚCIĄ', statusVat: 'Czynny', krs: '0000012345' }, krs: { found: true, krs: '0000012345', form: 'SPÓŁKA Z OGRANICZONĄ ODPOWIEDZIALNOŚCIĄ', flags: [] } };
   const file = { filename: 'faktura-FV-2026-06-089.pdf', size: 184320 };
@@ -209,12 +267,16 @@ function sample(lang) {
 
 async function mailResponse(d, c) {
   const en = d.lang === 'en';
-  const label = { zaplacone: en ? 'confirms payment' : 'potwierdza zapłatę', obietnica: en ? 'promises to pay by ' + (d.promised_date || '—') : 'deklaruje zapłatę do ' + (d.promised_date || '—'), spor: en ? 'disputes the invoice' : 'zgłasza zastrzeżenia' }[d.status] || d.status;
+  const paidOn = d.paid_date ? (en ? ' (transfer date: ' : ' (data przelewu: ') + d.paid_date + ')' : '';
+  const label = { zaplacone: (en ? 'confirms payment' : 'potwierdza zapłatę') + paidOn, obietnica: en ? 'promises to pay by ' + (d.promised_date || '—') : 'deklaruje zapłatę do ' + (d.promised_date || '—'), spor: en ? 'disputes the invoice' : 'zgłasza zastrzeżenia' }[d.status] || d.status;
   const text = (en
     ? `The debtor ${d.debtor_company} has responded to your demand for invoice ${d.invoice_nr}: ${label}.`
     : `Dłużnik ${d.debtor_company} odpowiedział na wezwanie do faktury ${d.invoice_nr}: ${label}.`)
     + (d.response_note ? '\n\n' + (en ? 'Note from the debtor:' : 'Treść od dłużnika:') + '\n' + d.response_note : '')
-    + '\n\n' + (en ? 'Demand page: ' : 'Strona wezwania: ') + c.url
+    + '\n\n' + (en
+      ? `Reply submitted: ${fmtTs(d.responded_at)} (Polish time). The date, IP address and browser of the reply are kept in the demand's record.`
+      : `Odpowiedź złożono: ${fmtTs(d.responded_at)}. Data, adres IP i przeglądarka odpowiedzi są zapisane w rejestrze wezwania.`)
+    + '\n\n' + (c.creditorUrl ? (en ? 'Your creditor view: ' : 'Twój podgląd wierzyciela: ') + c.creditorUrl : (en ? 'Demand page: ' : 'Strona wezwania: ') + c.url)
     + '\n\n' + (d.status === 'obietnica' ? (en ? 'A written promise to pay is an acknowledgement of the debt — keep this e-mail; it interrupts the limitation period.' : 'Pisemna deklaracja zapłaty to uznanie długu — zachowaj ten e-mail; przerywa bieg przedawnienia.') : '')
     + (d.status === 'spor' ? (en ? 'A disputed invoice is hard to sell; check the objection against your documents.' : 'Sporną fakturę trudno sprzedać — zweryfikuj zastrzeżenia z dokumentami.') : '')
     + '\n\nsprzedamfakture.pl';
@@ -232,4 +294,4 @@ async function toLead(d, c, lang) {
   return lead;
 }
 
-module.exports = { STATUSES, create, byToken, compute, markOpened, respond, mailDebtor, mailCreditor, mailResponse, toLead, factsSummary, daysOverdue, debtorMailText, debtorMailSubject, creditorMailText, creditorMailSubject, sample, FROM_EMAIL };
+module.exports = { STATUSES, validate: toRow, create, byToken, compute, isAnswered, isCreditor, markOpened, respond, history, fmtTs, mailDebtor, mailCreditor, mailResponse, toLead, factsSummary, daysOverdue, debtorMailText, debtorMailSubject, creditorMailText, creditorMailSubject, sample, FROM_EMAIL };

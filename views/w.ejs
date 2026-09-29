@@ -7,6 +7,10 @@ var answered = ['obietnica', 'zaplacone', 'spor'].indexOf(st) !== -1;
 var thanks = typeof thanksMsg !== 'undefined' && thanksMsg;
 var isDemo = typeof demo !== 'undefined' && demo;
 var X = w.example;
+// Podgląd wierzyciela: /w/<token>?k=<sleutel> — status, otwarcia en odpowiedzi; geen reactieformulier
+var isCred = typeof creditorView !== 'undefined' && creditorView && typeof hist !== 'undefined' && hist;
+var rErr = typeof respondError !== 'undefined' && respondError;
+var rf = (typeof respondForm !== 'undefined' && respondForm) ? respondForm : {};
 %><%- include('partials/head', isDemo ? { title: X.metaTitle, desc: X.metaDesc, noindex: false, altLang: true } : { title: 'Wezwanie do zapłaty — ' + d.invoice_nr, desc: L.metaDesc, noindex: true, altLang: false }) %>
 <% if (isDemo) { %><%- include('partials/nav') %>
 <div class="wz-demo-bar"><span class="tag tag-accent"><%= X.badge %></span> <span><%= X.bar %></span> <a class="btn btn-gold chan-btn" href="/wezwanie-online"><%= X.cta %></a></div>
@@ -22,9 +26,24 @@ var X = w.example;
 
   <% if (thanks) { %><div class="confirm" style="margin:0 0 18px"><span class="sq"></span><span><%= thanks %></span></div><% } %>
 
+  <% if (isCred) { var C = L.cred; %>
+  <div class="wz-cred no-print">
+    <div class="label"><%= C.h %></div>
+    <p class="helper" style="margin:0 0 10px"><%= C.note %></p>
+    <div class="field-row"><span class="fk"><%= C.share %></span><span class="tnum"><%= k.url %></span></div>
+    <div class="field-row"><span class="fk"><%= C.opened %></span><span class="tnum"><%= hist.firstOpen ? fmtTs(hist.firstOpen) + (hist.opens > 1 ? ' · ' + C.times.replace('{n}', hist.opens) + ' ' + fmtTs(hist.lastOpen) : '') : C.notYet %></span></div>
+    <% if (!hist.responses.length) { %><div class="field-row"><span class="fk"><%= C.responses %></span><span><%= C.none %></span></div><% } %>
+    <% hist.responses.forEach(function (r) { %>
+    <div class="field-row"><span class="fk"><%= C.responses %></span><span><span class="tnum"><%= fmtTs(r.at) %></span> · <strong><%= L.status[r.status] || r.status %></strong><% if (r.date) { %> <span class="tnum">(<%= r.status === 'obietnica' ? L.promisedOn : L.paidOn %> <%= r.date %>)</span><% } %><% if (r.note) { %><br><%= r.note %><% } %></span></div>
+    <% }) %>
+    <p class="helper" style="margin:10px 0 0"><%= C.evidence %></p>
+  </div>
+  <% } %>
+
   <div class="wz-status">
     <span class="tag <%= st === 'zaplacone' ? 'tag-accent' : (st === 'spor' ? 'tag-outline' : 'tag-neutral') %>"><%= L.status[st] || st %></span>
     <% if (st === 'obietnica' && d.promised_date) { %><span class="tnum"> · <%= L.promisedOn %> <%= d.promised_date %></span><% } %>
+    <% if (st === 'zaplacone' && d.paid_date) { %><span class="tnum"> · <%= L.paidOn %> <%= d.paid_date %></span><% } %>
     <span class="tnum wz-live" title="<%= L.liveTitle %>"> · <%= L.live %></span>
   </div>
 
@@ -49,24 +68,27 @@ var X = w.example;
 
   <div class="wz-respond no-print" id="odpowiedz">
     <div class="label"><%= L.respondH %></div>
-    <p class="helper" style="margin:0 0 12px"><%= answered ? L.respondDone : L.respondP %></p>
-    <% if (!answered) { %>
+    <p class="helper" style="margin:0 0 12px"><%= answered ? L.respondDone : (isCred ? L.cred.formHidden : L.respondP) %></p>
+    <% if (rErr && (answered || isCred)) { %><p class="field-err"><%= rErr %></p><% } %>
+    <% if (!answered && !isCred) { %>
     <form method="post" action="<%= isDemo ? '#' : '/w/' + d.token + '/odpowiedz' %>" class="calc-form flat wz-form" <% if (isDemo) { %>onsubmit="return false"<% } %>>
       <input type="text" name="website" tabindex="-1" autocomplete="off" style="position:absolute; left:-9999px" aria-hidden="true">
       <div class="wz-choices">
-        <label class="wz-choice"><input type="radio" name="action" value="paid" required> <span><strong><%= L.paid %></strong><br><small><%= L.paidHint %></small></span></label>
-        <label class="wz-choice"><input type="radio" name="action" value="promise"> <span><strong><%= L.promise %></strong><br><small><%= L.promiseHint %></small></span></label>
-        <label class="wz-choice"><input type="radio" name="action" value="dispute"> <span><strong><%= L.dispute %></strong><br><small><%= L.disputeHint %></small></span></label>
+        <label class="wz-choice"><input type="radio" name="action" value="paid" required<%= rf.action === 'paid' ? ' checked' : '' %>> <span><strong><%= L.paid %></strong><br><small><%= L.paidHint %></small></span></label>
+        <label class="wz-choice"><input type="radio" name="action" value="promise"<%= rf.action === 'promise' ? ' checked' : '' %>> <span><strong><%= L.promise %></strong><br><small><%= L.promiseHint %></small></span></label>
+        <label class="wz-choice"><input type="radio" name="action" value="dispute"<%= rf.action === 'dispute' ? ' checked' : '' %>> <span><strong><%= L.dispute %></strong><br><small><%= L.disputeHint %></small></span></label>
       </div>
       <div class="form-grid2" style="margin-top:12px">
-        <div class="fg"><label for="wz-date"><%= L.date %></label><input id="wz-date" name="date" type="date" class="tnum"></div>
-        <div class="fg"><label for="wz-note"><%= L.note %></label><textarea id="wz-note" name="note" rows="3" placeholder="<%= L.notePh %>"></textarea></div>
+        <div class="fg"><label for="wz-date"><%= L.date %></label><input id="wz-date" name="date" type="date" class="tnum" value="<%= rf.date || '' %>"></div>
+        <div class="fg"><label for="wz-note"><%= L.note %></label><textarea id="wz-note" name="note" rows="3" maxlength="1000" placeholder="<%= L.notePh %>"><%= rf.note || '' %></textarea></div>
       </div>
-      <% if (typeof respondError !== 'undefined' && respondError) { %><p class="field-err"><%= respondError %></p><% } %>
+      <% if (!isDemo) { %><%- include('partials/turnstile') %><% } %>
+      <% if (rErr) { %><p class="field-err"><%= rErr %></p><% } %>
       <button class="btn" type="submit" <%= isDemo ? 'disabled' : '' %>><%= L.send %></button>
       <p class="helper" style="margin:10px 0 0"><%= isDemo ? X.disabled : L.sendNote %></p>
     </form>
     <% } %>
+    <% if (rErr) { %><script>document.getElementById('odpowiedz').scrollIntoView();</script><% } %>
   </div>
 
   <div class="wz-foot">

@@ -20,19 +20,20 @@ var fe = function (k) { return errors[k] ? '<p class="field-err">' + w.errors[er
   <h1 style="font-size:clamp(30px, 4.2vw, 40px)"><%= w.h1 %></h1>
   <p class="lead" style="font-size:17px; color:var(--ink-70); max-width:66ch; line-height:1.6"><%= w.lead %></p>
 
-  <% if (typeof okDemand !== 'undefined' && okDemand) { var d = okDemand, k = okCalc; %>
+  <% if (typeof okDemand !== 'undefined' && okDemand) { var d = okDemand, k = okCalc, viewUrl = '/w/' + d.token + (d.creditor_key ? '?k=' + encodeURIComponent(d.creditor_key) : ''); %>
   <div class="calc-result" style="margin-top:22px">
     <div class="kicker" style="margin-bottom:12px"><%= w.ok.kicker %></div>
     <h2 style="font-size:22px; margin:0 0 10px"><%= w.ok.h %></h2>
     <p class="helper" style="max-width:70ch"><%= w.ok.p %></p>
     <div class="field-row"><span class="fk"><%= w.ok.link %></span><span><a href="/w/<%= d.token %>" class="tnum" target="_blank" rel="noopener"><%= k.url %></a></span></div>
+    <% if (d.creditor_key) { %><div class="field-row"><span class="fk"><%= w.ok.view %></span><span><a href="<%= viewUrl %>" target="_blank" rel="noopener"><%= w.ok.viewNote %></a></span></div><% } %>
     <div class="field-row"><span class="fk"><%= w.ok.print %></span><span><a href="/w/<%= d.token %>/druk" target="_blank" rel="noopener"><%= w.ok.printBtn %></a></span></div>
     <div class="field-row"><span class="fk"><%= w.ok.debtorMail %></span><span><%= d.debtor_email ? w.ok.debtorMailSent.replace('{email}', d.debtor_email) : w.ok.debtorMailNone %></span></div>
     <% if (typeof okFile !== 'undefined' && okFile) { %><div class="field-row"><span class="fk"><%= w.ok.file %></span><span><a href="/w/<%= d.token %>/zalacznik" target="_blank" rel="noopener"><%= okFile.filename %></a></span></div><% } %>
     <div class="field-row"><span class="fk"><%= w.ok.amount %></span><span class="tnum"><%= D.fmtN(k.total) %> zł (<%= D.fmtN(k.amount) %> + <%= D.fmtN(k.odsetki) %> + <%= D.fmtN(k.rekomp) %>)</span></div>
     <% var fs = okFacts; if (fs) { %><div class="field-row"><span class="fk"><%= w.ok.registers %></span><span><%= fs %></span></div><% } %>
     <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:16px">
-      <a class="btn" href="/w/<%= d.token %>" target="_blank" rel="noopener"><%= w.ok.open %></a>
+      <a class="btn" href="<%= viewUrl %>" target="_blank" rel="noopener"><%= w.ok.open %></a>
       <a class="btn btn-secondary" href="/w/<%= d.token %>/druk" target="_blank" rel="noopener"><%= w.ok.printBtn %></a>
       <a class="btn btn-gold" href="/#wycena"><%= w.ok.sell %></a>
     </div>
@@ -78,6 +79,7 @@ var fe = function (k) { return errors[k] ? '<p class="field-err">' + w.errors[er
     </div>
     <%- include('partials/turnstile') %>
     <% if (errors.captcha) { %><p class="field-err"><%= w.errors.captcha %></p><% } %>
+    <% if (errors.limit) { %><p class="field-err"><%= w.errors.dLimit %></p><% } %>
     <button class="btn" type="submit"><%= w.f.btn %></button>
     <p class="helper" style="margin:12px 0 0"><%= w.f.note %></p>
   </form>

@@ -17,6 +17,7 @@ const MD = require('./src/md');
 const MailTpl = require('./src/mailtpl');
 const AiMail = require('./src/aimail');
 const Demands = require('./src/demands');
+const RateLimit = require('./src/ratelimit');
 const pgSession = require('connect-pg-simple')(session);
 const compression = require('compression');
 const VER = require('./src/version');
@@ -26,7 +27,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 // Zichtbaarheid op internet: Search Console / Bing-verificatie en Plausible-analytics via env
 const SEO = { google: process.env.GOOGLE_SITE_VERIFICATION || '', bing: process.env.BING_SITE_VERIFICATION || '', plausible: process.env.PLAUSIBLE_DOMAIN || '' };
-const SITE_LASTMOD = '2026-09-28'; // laatste inhoudelijke wijziging van de statische pagina's (sitemap)
+const SITE_LASTMOD = '2026-09-29'; // laatste inhoudelijke wijziging van de statische pagina's (sitemap)
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -780,10 +781,20 @@ app.get('/baza-wiedzy/:slug', (req, res, next) => {
 function renderDemandForm(req, res, extra = {}) {
   res.render('wezwanie-online', common({ page: 'wezwanie', form: {}, errors: {}, ...extra }));
 }
+// Rem op misbruik: per IP (aanmaken, reageren) en per e-mailadres van de dłużnik
+const HOUR_MS = 3600 * 1000;
+const WZ_LIMIT = { hour: 5, day: 15, debtorDay: 3, reply: 10 };
+function reqMeta(req) {
+  return { ip: req.ip, ua: String(req.get('user-agent') || '').slice(0, 300), head: req.method === 'HEAD' };
+}
 app.get('/wezwanie-online', async (req, res) => {
   if (req.query.ok) {
+    // de bevestiging toont de registercheck — alleen voor de wierzyciel (sleutel in de link)
     const d = await Demands.byToken(req.query.ok).catch(() => null);
-    if (d) return renderDemandForm(req, res, { okDemand: d, okCalc: Demands.compute(d), okFacts: Demands.factsSummary(d.facts), okFile: await demandFile(d) });
+    if (d && (!d.creditor_key || Demands.isCreditor(d, req.query.k))) {
+      res.set('Cache-Control', 'private, no-store');
+      return renderDemandForm(req, res, { okDemand: d, okCalc: Demands.compute(d), okFacts: Demands.factsSummary(d.facts), okFile: await demandFile(d) });
+    }
   }
   renderDemandForm(req, res);
 });
@@ -792,10 +803,20 @@ app.post('/wezwanie-online', zalacznikMw, async (req, res) => {
   if (b.website) return res.redirect('/wezwanie-online'); // honeypot
   const ts = await Turnstile.verify(b['cf-turnstile-response'], req.ip);
   const badFile = req.zalacznikError || (req.file && !ALLOWED_UPLOAD.includes(req.file.mimetype));
-  const r = badFile ? { errors: { zalacznik: 'dFile' }, row: b } : await Demands.create(b, res.locals.lang).catch((e) => { console.error('Wezwanie: aanmaken mislukt —', e.message); return { errors: { creditor_company: 'dCreditor' }, row: b }; });
-  const errors = { ...(r.errors || {}) };
+  // eerst alles controleren; pas bij een foutloos formulier wordt er iets opgeslagen of opgezocht
+  const v = Demands.validate(b, res.locals.lang);
+  const errors = { ...v.errors };
+  if (badFile) errors.zalacznik = 'dFile';
   if (!ts.ok) errors.captcha = true;
-  if (Object.keys(errors).length || !r.demand) { res.status(400); return renderDemandForm(req, res, { form: r.row || b, errors }); }
+  if (!Object.keys(errors).length) {
+    if (!RateLimit.check('wz:h:' + req.ip, WZ_LIMIT.hour, HOUR_MS) || !RateLimit.check('wz:d:' + req.ip, WZ_LIMIT.day, 24 * HOUR_MS)) errors.limit = true;
+    else if (v.row.debtor_email && (await db.countDemandsTo(v.row.debtor_email, new Date(Date.now() - 24 * HOUR_MS)).catch(() => 0)) >= WZ_LIMIT.debtorDay) errors.debtor_email = 'dDebtorLimit';
+  }
+  if (Object.keys(errors).length) { res.status(errors.limit ? 429 : 400); return renderDemandForm(req, res, { form: v.row, errors }); }
+  const r = await Demands.create(b, res.locals.lang, reqMeta(req)).catch((e) => { console.error('Wezwanie: aanmaken mislukt —', e.message); return { errors: { creditor_company: 'dCreditor' }, row: v.row }; });
+  if (!r.demand) { res.status(400); return renderDemandForm(req, res, { form: r.row || v.row, errors: r.errors || {} }); }
+  RateLimit.hit('wz:h:' + req.ip, HOUR_MS);
+  RateLimit.hit('wz:d:' + req.ip, 24 * HOUR_MS);
   const d = r.demand;
   const k = Demands.compute(d);
   const lead = await Demands.toLead(d, k, res.locals.lang).catch(() => null);
@@ -810,7 +831,7 @@ app.post('/wezwanie-online', zalacznikMw, async (req, res) => {
     Demands.mailCreditor(d, k, r.facts).catch((e) => ({ status: 'błąd: ' + e.message })),
   ]);
   await db.insertEvent({ nip: d.debtor_nip || null, debtor: d.debtor_company, type: 'wezwanie', title: 'Wezwanie online: ' + d.invoice_nr + ' · ' + D.fmt(k.amount) + ' · wierzyciel ' + d.creditor_company + ' · mail: ' + md.status + ' / ' + mc.status, source: 'wezwanie-online' }).catch(() => {});
-  res.redirect('/wezwanie-online?ok=' + encodeURIComponent(d.token));
+  res.redirect('/wezwanie-online?ok=' + encodeURIComponent(d.token) + '&k=' + encodeURIComponent(d.creditor_key || ''));
 });
 
 async function demandFile(d) {
@@ -822,7 +843,8 @@ async function renderDemand(req, res, d, extra = {}) {
   const k = Demands.compute(d);
   const qr = await QRCode.toDataURL(k.url, { margin: 0, width: 208 });
   const file = await demandFile(d);
-  res.render('w', common({ page: 'w', d, k, qr, file, ...extra }));
+  res.set('Cache-Control', 'private, no-store');
+  res.render('w', common({ page: 'w', d, k, qr, file, fmtTs: Demands.fmtTs, ...extra }));
 }
 // Bijlage (factuur) van een wezwanie — publiek via het token, net als de brief zelf
 app.get('/w/:token/zalacznik', async (req, res, next) => {
@@ -830,12 +852,13 @@ app.get('/w/:token/zalacznik', async (req, res, next) => {
   if (!d || !d.file_id) return next();
   const f = await db.getLeadFile(d.file_id).catch(() => null);
   if (!f) return next();
+  await Demands.markOpened(d, reqMeta(req), req.query.k, 'attachment');
   sendLeadFile(res, f);
 });
 // Voorbeeld: precies wat wij versturen — brief, mail aan de dłużnik en bevestiging aan de wierzyciel (niets wordt opgeslagen)
 app.get('/wezwanie-online/przyklad', async (req, res) => {
   const ex = Demands.sample(res.locals.lang);
-  ex.k.url = SITE + '/wezwanie-online/przyklad'; ex.k.printUrl = SITE + '/wezwanie-online/przyklad';
+  ex.k.url = SITE + '/wezwanie-online/przyklad'; ex.k.printUrl = SITE + '/wezwanie-online/przyklad'; ex.k.creditorUrl = SITE + '/wezwanie-online/przyklad';
   const qr = await QRCode.toDataURL(SITE + '/wezwanie-online', { margin: 0, width: 208 });
   res.render('w', common({ page: 'wezwanie', d: ex.d, k: ex.k, qr, file: ex.file, demo: true,
     mails: { debtorSubject: Demands.debtorMailSubject(ex.d), debtorFrom: 'sprzedamfakture.pl <' + Demands.FROM_EMAIL + '>', debtorText: Demands.debtorMailText(ex.d, ex.k, ex.file), creditorSubject: Demands.creditorMailSubject(ex.d), creditorText: Demands.creditorMailText(ex.d, ex.k, ex.facts) } }));
@@ -844,27 +867,32 @@ app.get('/wezwanie-online/przyklad', async (req, res) => {
 app.get('/w/:token', async (req, res, next) => {
   const d = await Demands.byToken(req.params.token).catch(() => null);
   if (!d) return next();
-  await Demands.markOpened(d);
+  const creditorView = Demands.isCreditor(d, req.query.k);
+  await Demands.markOpened(d, reqMeta(req), req.query.k);
   const L = res.locals.t.wz.letter;
-  renderDemand(req, res, d, { thanksMsg: req.query.dzieki && L.thanks[d.status] ? L.thanks[d.status] : null });
+  renderDemand(req, res, d, { creditorView, hist: creditorView ? await Demands.history(d) : null, thanksMsg: req.query.dzieki && L.thanks[d.status] ? L.thanks[d.status] : null });
 });
 app.post('/w/:token/odpowiedz', async (req, res, next) => {
   const d = await Demands.byToken(req.params.token).catch(() => null);
   if (!d) return next();
   const L = res.locals.t.wz.letter;
   if (req.body.website) return res.redirect('/w/' + d.token);
+  if (!RateLimit.check('wzr:' + req.ip, WZ_LIMIT.reply, HOUR_MS)) { res.status(429); return renderDemand(req, res, d, { respondError: L.errors.limit }); }
+  RateLimit.hit('wzr:' + req.ip, HOUR_MS);
+  const form = { action: req.body.action, date: req.body.date, note: req.body.note };
   const ts = await Turnstile.verify(req.body['cf-turnstile-response'], req.ip);
-  if (!ts.ok) { res.status(400); return renderDemand(req, res, d, { respondError: L.errors.captcha }); }
-  try { await Demands.respond(d, { action: req.body.action, date: req.body.date, note: req.body.note }); }
-  catch (e) { res.status(400); return renderDemand(req, res, d, { respondError: L.errors[e.message] || e.message }); }
+  if (!ts.ok) { res.status(400); return renderDemand(req, res, d, { respondError: L.errors.captcha, respondForm: form }); }
+  try { await Demands.respond(d, form, reqMeta(req)); }
+  catch (e) { res.status(e.message === 'rDone' ? 409 : 400); return renderDemand(req, res, d, { respondError: L.errors[e.message] || e.message, respondForm: form }); }
   const k = Demands.compute(d);
   await Demands.mailResponse(d, k).catch((e) => console.error('Wezwanie: mail odpowiedzi mislukt —', e.message));
-  await db.insertEvent({ nip: d.debtor_nip || null, debtor: d.debtor_company, type: 'wezwanie', title: 'Odpowiedź dłużnika na wezwanie ' + d.invoice_nr + ': ' + (L.status[d.status] || d.status) + (d.promised_date ? ' (' + d.promised_date + ')' : ''), source: 'wezwanie-online' }).catch(() => {});
+  await db.insertEvent({ nip: d.debtor_nip || null, debtor: d.debtor_company, type: 'wezwanie', title: 'Odpowiedź dłużnika na wezwanie ' + d.invoice_nr + ': ' + (L.status[d.status] || d.status) + (d.promised_date || d.paid_date ? ' (' + (d.promised_date || d.paid_date) + ')' : ''), source: 'wezwanie-online' }).catch(() => {});
   res.redirect('/w/' + d.token + '?dzieki=1#odpowiedz');
 });
 app.get('/w/:token/druk', async (req, res, next) => {
   const d = await Demands.byToken(req.params.token).catch(() => null);
   if (!d) return next();
+  await Demands.markOpened(d, reqMeta(req), req.query.k, 'print');
   const k = Demands.compute(d);
   const qr = await QRCode.toDataURL(k.url, { margin: 0, width: 208 });
   const file = await demandFile(d);
