@@ -48,7 +48,7 @@ var kLd = [
       <div class="row total"><span>Razem do zapłaty</span><span class="tnum"><%= D.fmtN(result.total) %> zł</span></div>
     </div>
     <div style="margin-top:20px; display:flex; gap:14px; flex-wrap:wrap">
-      <a class="btn btn-live" href="/wezwanie-online">Wyślij wezwanie online <span class="live-badge">0 zł</span></a>
+      <a class="btn btn-live" href="/wezwanie-online?kwota=<%= encodeURIComponent(q.kwota) %>&dni=<%= encodeURIComponent(q.dni) %>&nr=<%= encodeURIComponent(q.nr) %>&dluznik=<%= encodeURIComponent(q.dluznik) %>#formularz">Wyślij wezwanie online <span class="live-badge">0 zł</span></a>
       <a class="btn btn-secondary" href="/wezwanie?kwota=<%= encodeURIComponent(q.kwota) %>&dni=<%= encodeURIComponent(q.dni) %>&nr=<%= encodeURIComponent(q.nr) %>&dluznik=<%= encodeURIComponent(q.dluznik) %>" target="_blank">Wersja do druku</a>
       <% if (!windykacjaOff) { %><a class="btn" href="/app/nowa">Przekaż sprawę agentowi AI — <%= SERVICE_FEE %> zł</a><% } %>
     </div>

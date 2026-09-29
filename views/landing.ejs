@@ -5,8 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title><%= t.metaTitle %></title>
 <meta name="description" content="<%= t.metaDesc %>">
-<link rel="alternate" hreflang="pl" href="/windykacja?lang=pl">
-<link rel="alternate" hreflang="en" href="/windykacja?lang=en">
+<link rel="canonical" href="https://sprzedamfakture.pl/windykacja<%= lang === 'en' ? '?lang=en' : '' %>">
+<link rel="alternate" hreflang="pl" href="https://sprzedamfakture.pl/windykacja?lang=pl">
+<link rel="alternate" hreflang="en" href="https://sprzedamfakture.pl/windykacja?lang=en">
+<link rel="alternate" hreflang="x-default" href="https://sprzedamfakture.pl/windykacja">
+<meta property="og:title" content="<%= t.metaTitle %>">
+<meta property="og:description" content="<%= t.metaDesc %>">
+<meta property="og:url" content="https://sprzedamfakture.pl/windykacja">
 <%- include('partials/meta') %>
 <link rel="preload" as="font" type="font/woff2" href="/fonts/fraunces-latin.woff2" crossorigin>
 <link rel="preload" as="font" type="font/woff2" href="/fonts/manrope-latin.woff2" crossorigin>

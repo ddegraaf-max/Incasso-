@@ -7,7 +7,7 @@
 
 const ARTICLES = [
   {
-    slug: 'odsetki-za-opoznienie-w-transakcjach-handlowych', date: '2026-09-28', updated: '2026-09-28',
+    slug: 'odsetki-za-opoznienie-w-transakcjach-handlowych', date: '2026-09-28', updated: '2026-09-29',
     related: ['rekompensata-40-70-100-euro', 'wezwanie-do-zaplaty-wzor', 'przedawnienie-faktury-b2b'],
     pl: {
       title: 'Odsetki ustawowe za opóźnienie w transakcjach handlowych — stawka 2026 i sposób liczenia',
@@ -35,7 +35,7 @@ const ARTICLES = [
           'Odsetki przedawniają się najpóźniej razem z należnością główną — nie czekaj z ich naliczeniem do ostatniej chwili.',
         ] },
         { h: 'Jak dochodzić odsetek w praktyce', p: [
-          'Najprościej: nota odsetkowa (nie faktura — odsetki nie podlegają VAT) wysłana razem z <a href="/baza-wiedzy/wezwanie-do-zaplaty-wzor">wezwaniem do zapłaty</a>. Kwotę na dowolny dzień policzysz w naszym <a href="/kalkulator">kalkulatorze</a>, a gotowe wezwanie z odsetkami i rekompensatą wygenerujesz jednym kliknięciem.',
+          'Najprościej: nota odsetkowa (nie faktura — odsetki nie podlegają VAT) wysłana razem z <a href="/baza-wiedzy/wezwanie-do-zaplaty-wzor">wezwaniem do zapłaty</a>. Kwotę na dowolny dzień policzysz w naszym <a href="/kalkulator">kalkulatorze</a>, a gotowe <a href="/wezwanie-online">wezwanie online</a> z odsetkami i rekompensatą wygenerujesz bezpłatnie w 2 minuty.',
           'Jeżeli dłużnik milczy, zostają dwie drogi: windykacja i pozew albo sprzedaż faktury — wtedy odsetki przechodzą na nabywcę razem z należnością główną, a Ty masz gotówkę od razu.',
         ] },
       ],
@@ -71,7 +71,7 @@ const ARTICLES = [
           'Interest becomes time-barred at the latest together with the principal — do not leave it to the last minute.',
         ] },
         { h: 'Claiming interest in practice', p: [
-          'The simplest route: an interest note (not an invoice — interest is outside VAT) sent together with a <a href="/baza-wiedzy/wezwanie-do-zaplaty-wzor">demand for payment</a>. Our <a href="/kalkulator">calculator</a> gives the amount for any date and generates a ready-to-print demand with interest and the recovery fee.',
+          'The simplest route: an interest note (not an invoice — interest is outside VAT) sent together with a <a href="/baza-wiedzy/wezwanie-do-zaplaty-wzor">demand for payment</a>. Our <a href="/kalkulator">calculator</a> gives the amount for any date and the <a href="/wezwanie-online">free online demand</a> sends the debtor a letter with interest and the recovery fee in 2 minutes.',
           'If the debtor stays silent, two routes remain: collection and a court claim, or selling the invoice — interest then passes to the buyer with the principal and you have cash immediately.',
         ] },
       ],
@@ -84,7 +84,7 @@ const ARTICLES = [
   },
 
   {
-    slug: 'rekompensata-40-70-100-euro', date: '2026-09-28', updated: '2026-09-28',
+    slug: 'rekompensata-40-70-100-euro', date: '2026-09-28', updated: '2026-09-29',
     related: ['odsetki-za-opoznienie-w-transakcjach-handlowych', 'sprzedaz-faktury-cesja-a-faktoring', 'wezwanie-do-zaplaty-wzor'],
     pl: {
       title: 'Rekompensata 40, 70 i 100 euro za koszty odzyskiwania należności — komu, kiedy i ile',
@@ -108,7 +108,7 @@ const ARTICLES = [
         ] },
         { h: 'Praktyka', ul: [
           'Wystaw notę księgową (obciążeniową), nie fakturę — rekompensata, tak jak odsetki, nie podlega VAT.',
-          'Ujmij ją w wezwaniu do zapłaty razem z odsetkami — nasz <a href="/kalkulator">kalkulator</a> robi to automatycznie.',
+          'Ujmij ją w wezwaniu do zapłaty razem z odsetkami — nasz <a href="/kalkulator">kalkulator</a> i <a href="/wezwanie-online">bezpłatne wezwanie online</a> robią to automatycznie.',
           'Roszczenie o rekompensatę przedawnia się jak inne roszczenia z działalności gospodarczej — przyjmuje się 3 lata.',
           'Sądy uznają, że przy wielu drobnych fakturach (dziesiątki faktur na kilkadziesiąt złotych) dochodzenie rekompensaty od każdej z nich może być nadużyciem prawa — działaj proporcjonalnie.',
         ] },
@@ -140,7 +140,7 @@ const ARTICLES = [
         ] },
         { h: 'In practice', ul: [
           'Issue an accounting (debit) note, not an invoice — like interest, the fee is outside VAT.',
-          'Include it in the demand for payment together with interest — our <a href="/kalkulator">calculator</a> does this automatically.',
+          'Include it in the demand for payment together with interest — our <a href="/kalkulator">calculator</a> and the <a href="/wezwanie-online">free online demand</a> do this automatically.',
           'The claim is time-barred like other business claims — 3 years is the accepted view.',
           'Courts have held that claiming the fee on dozens of tiny invoices may be an abuse of rights — act proportionately.',
         ] },
@@ -153,7 +153,7 @@ const ARTICLES = [
   },
 
   {
-    slug: 'przedawnienie-faktury-b2b', date: '2026-09-28', updated: '2026-09-28',
+    slug: 'przedawnienie-faktury-b2b', date: '2026-09-28', updated: '2026-09-29',
     related: ['odsetki-za-opoznienie-w-transakcjach-handlowych', 'wezwanie-do-zaplaty-wzor', 'windykacja-w-polsce-dla-zagranicznych-wierzycieli'],
     pl: {
       title: 'Przedawnienie faktury B2B — terminy, przerwanie i zawieszenie biegu',
@@ -182,7 +182,7 @@ const ARTICLES = [
         ] },
       ],
       faq: [
-        ['Czy wystawienie noty odsetkowej albo wysłanie wezwania przerywa przedawnienie?', 'Nie. Wezwanie, nota, monit czy telefon nie przerywają biegu — robi to dopiero czynność przed sądem lub komornikiem albo uznanie długu przez dłużnika.'],
+        ['Czy wystawienie noty odsetkowej albo wysłanie wezwania przerywa przedawnienie?', 'Nie. Wezwanie, nota, monit czy telefon nie przerywają biegu — robi to dopiero czynność przed sądem lub komornikiem albo <a href="/baza-wiedzy/uznanie-dlugu">uznanie długu</a> przez dłużnika.'],
         ['Jak przerwać przedawnienie tanio?', 'Uzyskaj pisemne uznanie długu (e-mail wystarczy) albo złóż pozew w elektronicznym postępowaniu upominawczym — opłata to czwarta część zwykłej opłaty sądowej (min. 30 zł).'],
       ],
     },
@@ -213,15 +213,15 @@ const ARTICLES = [
         ] },
       ],
       faq: [
-        ['Does an interest note or a demand letter interrupt limitation?', 'No. Demands, notes, reminders and phone calls do not interrupt the period — only an act before a court or bailiff, or an acknowledgement by the debtor, does.'],
+        ['Does an interest note or a demand letter interrupt limitation?', 'No. Demands, notes, reminders and phone calls do not interrupt the period — only an act before a court or bailiff, or an <a href="/baza-wiedzy/uznanie-dlugu">acknowledgement by the debtor</a>, does.'],
         ['What is the cheapest way to interrupt limitation?', 'Obtain a written acknowledgement of the debt (an e-mail suffices) or file a claim in the electronic writ-of-payment procedure — the fee is a quarter of the ordinary court fee (min. PLN 30).'],
       ],
     },
   },
 
   {
-    slug: 'wezwanie-do-zaplaty-wzor', date: '2026-09-28', updated: '2026-09-28',
-    related: ['odsetki-za-opoznienie-w-transakcjach-handlowych', 'wpis-dluznika-do-krd-big', 'przedawnienie-faktury-b2b'],
+    slug: 'wezwanie-do-zaplaty-wzor', date: '2026-09-28', updated: '2026-09-29',
+    related: ['przedsadowe-wezwanie-do-zaplaty', 'wezwanie-do-zaplaty-e-mailem', 'odsetki-za-opoznienie-w-transakcjach-handlowych'],
     pl: {
       title: 'Wezwanie do zapłaty — co musi zawierać, jak je wysłać i dlaczego warto (wzór)',
       seoTitle: 'Wezwanie do zapłaty — wzór i zasady',
@@ -237,7 +237,7 @@ const ARTICLES = [
           'podpis osoby uprawnionej i datę.',
         ] },
         { h: 'Trzy stopnie eskalacji', p: [
-          'W praktyce sprawdza się sekwencja: <strong>przypomnienie</strong> (uprzejme, e-mailem, kilka dni po terminie) → <strong>wezwanie do zapłaty</strong> (stanowcze, z odsetkami i rekompensatą) → <strong>ostateczne przedsądowe wezwanie</strong> (z podstawą prawną i zapowiedzią pozwu w 7 dni). Każdy kolejny krok jest krótszy i bardziej formalny. Ton ma znaczenie — agent AI w naszym panelu generuje te trzy warianty automatycznie.',
+          'W praktyce sprawdza się sekwencja: <a href="/baza-wiedzy/przypomnienie-o-platnosci-monit-wzor"><strong>przypomnienie</strong></a> (uprzejme, e-mailem, kilka dni po terminie) → <strong>wezwanie do zapłaty</strong> (stanowcze, z odsetkami i rekompensatą) → <a href="/baza-wiedzy/przedsadowe-wezwanie-do-zaplaty"><strong>ostateczne przedsądowe wezwanie</strong></a> (z podstawą prawną i zapowiedzią pozwu w 7 dni). Każdy kolejny krok jest krótszy i bardziej formalny. Ton ma znaczenie — agent AI w naszym panelu generuje te trzy warianty automatycznie.',
         ] },
         { h: 'Jak wysłać, żeby mieć dowód', p: [
           'Listem poleconym za potwierdzeniem odbioru na adres z KRS lub CEIDG — i równolegle e-mailem na adres, którym dłużnik posługuje się w kontaktach. Zachowaj potwierdzenie nadania, zwrotkę i kopię pisma. Dla wpisu do BIG ustawa wymaga wezwania <strong>listem poleconym albo doręczonego do rąk własnych</strong>, a wpis jest możliwy najwcześniej miesiąc po jego wysłaniu.',
@@ -250,7 +250,7 @@ const ARTICLES = [
         ] },
       ],
       faq: [
-        ['Czy wezwanie e-mailem jest skuteczne?', 'Tak, o ile dotarło do dłużnika — ale dowód doręczenia e-maila bywa sporny. Do celów sądowych i wpisu do BIG wysyłaj list polecony.'],
+        ['Czy wezwanie e-mailem jest skuteczne?', 'Tak, o ile dotarło do dłużnika — ale dowód doręczenia e-maila bywa sporny. Do celów sądowych i wpisu do BIG wysyłaj list polecony. Więcej: <a href="/baza-wiedzy/wezwanie-do-zaplaty-e-mailem">wezwanie do zapłaty e-mailem</a>.'],
         ['Ile dni dać dłużnikowi?', 'Zwyczajowo 7 dni od doręczenia. Krótszy termin (3 dni) jest dopuszczalny przy ostatecznym wezwaniu; dłuższy tylko odwleka sprawę.'],
       ],
     },
@@ -269,7 +269,7 @@ const ARTICLES = [
           'signature of an authorised person and the date.',
         ] },
         { h: 'Three levels of escalation', p: [
-          'A proven sequence: <strong>reminder</strong> (polite, by e-mail, a few days after the due date) → <strong>demand for payment</strong> (firm, with interest and the recovery fee) → <strong>final pre-court demand</strong> (with the legal basis and notice of a claim within 7 days). Each step is shorter and more formal. Tone matters — the AI agent in our panel generates all three variants automatically, in Polish.',
+          'A proven sequence: <a href="/baza-wiedzy/przypomnienie-o-platnosci-monit-wzor"><strong>reminder</strong></a> (polite, by e-mail, a few days after the due date) → <strong>demand for payment</strong> (firm, with interest and the recovery fee) → <a href="/baza-wiedzy/przedsadowe-wezwanie-do-zaplaty"><strong>final pre-court demand</strong></a> (with the legal basis and notice of a claim within 7 days). Each step is shorter and more formal. Tone matters — the AI agent in our panel generates all three variants automatically, in Polish.',
         ] },
         { h: 'How to send it and keep proof', p: [
           'By registered letter with acknowledgement of receipt to the address in the KRS or CEIDG register — and in parallel by e-mail to the address the debtor actually uses. Keep the posting receipt, the return slip and a copy. For a credit-bureau listing the law requires a demand sent <strong>by registered mail or delivered in person</strong>, and the listing is possible at the earliest one month after sending.',
@@ -282,7 +282,7 @@ const ARTICLES = [
         ] },
       ],
       faq: [
-        ['Is a demand sent by e-mail effective?', 'Yes, as long as it reached the debtor — but proof of delivery of an e-mail is often disputed. For court and credit-bureau purposes send a registered letter.'],
+        ['Is a demand sent by e-mail effective?', 'Yes, as long as it reached the debtor — but proof of delivery of an e-mail is often disputed. For court and credit-bureau purposes send a registered letter. More: <a href="/baza-wiedzy/wezwanie-do-zaplaty-e-mailem">demand for payment by e-mail</a>.'],
         ['How many days should I give the debtor?', 'Customarily 7 days from delivery. A shorter period (3 days) is acceptable for a final demand; a longer one only delays matters.'],
       ],
     },
@@ -421,7 +421,7 @@ const ARTICLES = [
   },
 
   {
-    slug: 'windykacja-w-polsce-dla-zagranicznych-wierzycieli', date: '2026-09-28', updated: '2026-09-28',
+    slug: 'windykacja-w-polsce-dla-zagranicznych-wierzycieli', date: '2026-09-28', updated: '2026-09-29',
     related: ['odsetki-za-opoznienie-w-transakcjach-handlowych', 'wezwanie-do-zaplaty-wzor', 'sprzedaz-faktury-cesja-a-faktoring'],
     pl: {
       title: 'Windykacja należności od polskiej firmy — poradnik dla zagranicznych wierzycieli',
@@ -439,7 +439,7 @@ const ARTICLES = [
           'Jeżeli umowa podlega prawu polskiemu (albo strony tego nie uregulowały, a dostawa była do Polski), stosuje się ustawę z 2013 r.: <a href="/baza-wiedzy/odsetki-za-opoznienie-w-transakcjach-handlowych">odsetki 14% rocznie</a> od dnia po terminie oraz <a href="/baza-wiedzy/rekompensata-40-70-100-euro">rekompensata 40/70/100 euro</a> od każdej faktury. Jeżeli umowa podlega prawu Twojego kraju, obowiązują tamtejsze przepisy implementujące dyrektywę 2011/7/UE — zbliżone, ale z własnymi stawkami.',
         ] },
         { h: 'Krok 3: wezwanie po polsku', p: [
-          'Wezwanie do zapłaty wysłane po polsku, listem poleconym na adres z KRS, z odsetkami, rekompensatą, terminem 7 dni oraz zapowiedzią KRD i sądu — to często wystarcza. Dłużnicy ignorują zagraniczne monity w obcym języku; pismo, które wygląda jak początek polskiej procedury, traktują poważnie.',
+          'Wezwanie do zapłaty wysłane po polsku, listem poleconym na adres z KRS, z odsetkami, rekompensatą, terminem 7 dni oraz zapowiedzią KRD i sądu — to często wystarcza. Dłużnicy ignorują zagraniczne monity w obcym języku; pismo, które wygląda jak początek polskiej procedury, traktują poważnie. Wersję elektroniczną po polsku przygotujesz w kilka minut przez <a href="/wezwanie-online">bezpłatne wezwanie online</a> — formularz jest też po angielsku.',
         ] },
         { h: 'Krok 4: sąd i komornik', ul: [
           '<strong>Europejski nakaz zapłaty</strong> (rozporządzenie 1896/2006) — dla spraw transgranicznych w UE, na formularzu, bez rozprawy; po uprawomocnieniu wykonalny w Polsce bez dodatkowej procedury.',
@@ -473,7 +473,7 @@ const ARTICLES = [
           'If Polish law governs the contract (or nothing was agreed and delivery was to Poland), the 2013 Act applies: <a href="/baza-wiedzy/odsetki-za-opoznienie-w-transakcjach-handlowych">interest at 14% per annum</a> from the day after the due date and a <a href="/baza-wiedzy/rekompensata-40-70-100-euro">fixed fee of EUR 40/70/100</a> per invoice. If your own law governs, your national rules implementing Directive 2011/7/EU apply — similar, with their own rates.',
         ] },
         { h: 'Step 3: a demand letter in Polish', p: [
-          'A demand for payment written in Polish, sent by registered mail to the KRS address, with interest, the recovery fee, a 7-day deadline and notice of a KRD listing and court action — this alone often works. Debtors ignore foreign reminders in a foreign language; a letter that looks like the start of a Polish procedure gets taken seriously.',
+          'A demand for payment written in Polish, sent by registered mail to the KRS address, with interest, the recovery fee, a 7-day deadline and notice of a KRD listing and court action — this alone often works. Debtors ignore foreign reminders in a foreign language; a letter that looks like the start of a Polish procedure gets taken seriously. You can prepare the electronic version in Polish in a few minutes with the <a href="/wezwanie-online?lang=en">free online demand</a> — the form is in English.',
         ] },
         { h: 'Step 4: court and bailiff', ul: [
           '<strong>European order for payment</strong> (Regulation 1896/2006) — for cross-border cases within the EU, on a form, without a hearing; once final it is enforceable in Poland without further procedure.',
@@ -496,6 +496,8 @@ const ARTICLES = [
 
 // Deel 2 (commercieel + praktisch) vooraan: skup faktur, kontrahent sprawdzić, nota odsetkowa
 ARTICLES.unshift(...require('./articles-2'));
+// Deel 3 (rond het wezwanie online) daarvoor: kontrahent nie płaci, przedsądowe wezwanie, e-mail, uznanie długu, monit, dłużnik
+ARTICLES.unshift(...require('./articles-3'));
 
 function bySlug(slug) { return ARTICLES.find((a) => a.slug === slug) || null; }
 

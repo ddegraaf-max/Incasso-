@@ -154,7 +154,7 @@ module.exports = [
   },
 
   {
-    slug: 'nota-odsetkowa-wzor', date: '2026-09-28', updated: '2026-09-28',
+    slug: 'nota-odsetkowa-wzor', date: '2026-09-28', updated: '2026-09-29',
     related: ['odsetki-za-opoznienie-w-transakcjach-handlowych', 'rekompensata-40-70-100-euro', 'wezwanie-do-zaplaty-wzor'],
     pl: {
       seoTitle: 'Nota odsetkowa — wzór i jak wystawić',
@@ -169,7 +169,7 @@ module.exports = [
           'liczba dni opóźnienia, stawka (14% w I półroczu 2026 r.) i podstawa prawna (art. 4a i 7 ustawy z 8 marca 2013 r. — dla transakcji handlowych);',
           'kwota odsetek, ewentualnie rekompensata 40/70/100 € z kursem NBP i kwotą w złotych (art. 10);',
           'termin zapłaty i numer rachunku, podpis osoby wystawiającej.',
-        ], p2: ['Kwotę na dowolny dzień policzysz w <a href="/kalkulator">kalkulatorze</a> — wynik możesz od razu przenieść do noty i do <a href="/baza-wiedzy/wezwanie-do-zaplaty-wzor">wezwania do zapłaty</a>.'] },
+        ], p2: ['Kwotę na dowolny dzień policzysz w <a href="/kalkulator">kalkulatorze</a> — wynik możesz od razu przenieść do noty i do <a href="/baza-wiedzy/wezwanie-do-zaplaty-wzor">wezwania do zapłaty</a>. Wezwanie z odsetkami liczonymi na bieżąco wyślesz bezpłatnie przez <a href="/wezwanie-online">wezwanie online</a>.'] },
         { h: 'Kiedy wystawić', p: ['Najczęściej po wpłacie należności głównej po terminie (odsetki „za okres opóźnienia”) albo razem z wezwaniem, na dzień wezwania, z zastrzeżeniem dalszego naliczania do dnia zapłaty. Nota nie jest warunkiem dochodzenia odsetek — one należą się z mocy ustawy — ale porządkuje roszczenie i jest dowodem w sądzie.'] },
         { h: 'Podatek dochodowy i księgowanie', p: ['Odsetki są przychodem dopiero <strong>w momencie otrzymania</strong> — naliczone, ale niezapłacone nie stanowią przychodu (art. 12 ust. 4 pkt 2 CIT, analogicznie w PIT). U dłużnika są kosztem w dacie zapłaty. Rekompensatę ujmuje się na podobnych zasadach, choć praktyka bywa różna — potwierdź z księgową. W księgach nota trafia na pozostałe przychody operacyjne (lub finansowe, zależnie od polityki rachunkowości).'] },
         { h: 'Wzór noty odsetkowej', p: ['<strong>NOTA ODSETKOWA nr 3/2026</strong> z dnia 28.09.2026<br>Wystawca: [Twoja firma, NIP] · Odbiorca: [dłużnik, NIP]<br>Dotyczy: faktura FV 2026/06/089 z 02.06.2026, kwota 12 400,00 zł, termin płatności 16.06.2026<br>Opóźnienie: 104 dni (17.06.2026–28.09.2026) · stawka 14% (art. 4a i 7 ustawy z 8.03.2013 r.)<br>Odsetki: 12 400 × 14% × 104 ÷ 365 = 494,60 zł<br>Rekompensata (art. 10): 70 € × 4,30 zł = 301,00 zł<br><strong>Do zapłaty: 795,60 zł</strong> w terminie 7 dni na rachunek …<br>Podpis'] },
@@ -192,7 +192,7 @@ module.exports = [
           'days of delay, the rate (14% in the first half of 2026) and the legal basis (arts. 4a and 7 of the Act of 8 March 2013 — for commercial transactions);',
           'the interest amount and, if claimed, the EUR 40/70/100 recovery fee with the NBP rate and the PLN amount (art. 10);',
           'payment deadline and bank account, signature of the issuer.',
-        ], p2: ['Our <a href="/kalkulator">calculator</a> gives the amount for any date — copy it into the note and the <a href="/baza-wiedzy/wezwanie-do-zaplaty-wzor">demand for payment</a>.'] },
+        ], p2: ['Our <a href="/kalkulator">calculator</a> gives the amount for any date — copy it into the note and the <a href="/baza-wiedzy/wezwanie-do-zaplaty-wzor">demand for payment</a>. A demand with interest that keeps updating can be sent free of charge with the <a href="/wezwanie-online">online demand</a>.'] },
         { h: 'When to issue it', p: ['Usually after the principal was paid late (interest “for the period of delay”) or together with the demand, as at the date of the demand, reserving further accrual until payment. The note is not a condition for claiming interest — it is due by law — but it structures the claim and serves as evidence in court.'] },
         { h: 'Income tax and bookkeeping', p: ['Interest is taxable income only <strong>when received</strong> — accrued but unpaid interest is not income (art. 12(4)(2) CIT Act, analogously in PIT). For the debtor it is a cost when paid. The recovery fee is treated similarly, although practice varies — confirm with your accountant. In the books the note goes to other operating (or financial) income depending on the accounting policy.'] },
         { h: 'Interest note template', p: ['<strong>INTEREST NOTE no. 3/2026</strong> dated 28.09.2026<br>Issuer: [your company, NIP] · Recipient: [debtor, NIP]<br>Re: invoice FV 2026/06/089 of 02.06.2026, PLN 12,400.00, due 16.06.2026<br>Delay: 104 days (17.06.2026–28.09.2026) · rate 14% (arts. 4a and 7 of the Act of 8 March 2013)<br>Interest: 12,400 × 14% × 104 ÷ 365 = PLN 494.60<br>Recovery fee (art. 10): EUR 70 × 4.30 = PLN 301.00<br><strong>Total due: PLN 795.60</strong> within 7 days to account …<br>Signature'] },

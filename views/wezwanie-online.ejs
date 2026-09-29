@@ -6,17 +6,19 @@ var w = t.wz, c = t.common;
 var errors = (typeof errors !== 'undefined' && errors) ? errors : {};
 var form = (typeof form !== 'undefined' && form) ? form : {};
 var ld = [
-  { '@context': 'https://schema.org', '@type': 'WebApplication', name: w.h1, url: site + '/wezwanie-online', applicationCategory: 'BusinessApplication', operatingSystem: 'Web', inLanguage: lang, isAccessibleForFree: true, description: w.metaDesc,
+  { '@context': 'https://schema.org', '@type': 'WebApplication', name: w.appName, url: site + '/wezwanie-online', applicationCategory: 'BusinessApplication', operatingSystem: 'Web', inLanguage: lang, isAccessibleForFree: true, description: w.metaDesc,
     offers: { '@type': 'Offer', price: '0', priceCurrency: 'PLN' }, provider: { '@type': 'Organization', name: 'sprzedamfakture.pl', url: site + '/' } },
   { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: w.faq.map(function (q) { return { '@type': 'Question', name: q[0], acceptedAnswer: { '@type': 'Answer', text: q[1] } }; }) },
-  { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: t.kb.crumbsHome, item: site + '/' }, { '@type': 'ListItem', position: 2, name: w.kicker, item: site + '/wezwanie-online' }] },
+  { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: t.kb.crumbsHome, item: site + '/' }, { '@type': 'ListItem', position: 2, name: w.crumb, item: site + '/wezwanie-online' }] },
+  { '@context': 'https://schema.org', '@type': 'HowTo', name: w.h1, description: w.metaDesc, inLanguage: lang, totalTime: 'PT2M',
+    step: w.how.steps.map(function (s, i) { return { '@type': 'HowToStep', position: i + 1, text: String(s).replace(/<[^>]+>/g, ''), url: site + '/wezwanie-online#formularz' }; }) },
 ];
 var fe = function (k) { return errors[k] ? '<p class="field-err">' + w.errors[errors[k]] + '</p>' : ''; };
 %><%- include('partials/head', { title: w.metaTitle, desc: w.metaDesc, ld: ld }) %>
 <%- include('partials/nav') %>
 
 <div class="calc-wrap" style="flex:1" id="main">
-  <nav class="crumbs" aria-label="breadcrumb"><a href="/"><%= t.kb.crumbsHome %></a> › <span><%= w.kicker %></span></nav>
+  <nav class="crumbs" aria-label="breadcrumb"><a href="/"><%= t.kb.crumbsHome %></a> › <span><%= w.crumb %></span></nav>
   <div class="kicker"><%= w.kicker %></div>
   <h1 style="font-size:clamp(30px, 4.2vw, 40px)"><%= w.h1 %></h1>
   <p class="lead" style="font-size:17px; color:var(--ink-70); max-width:66ch; line-height:1.6"><%= w.lead %></p>
@@ -106,7 +108,7 @@ var fe = function (k) { return errors[k] ? '<p class="field-err">' + w.errors[er
     <a class="btn btn-secondary" href="/wezwanie-online/przyklad"><%= w.example.btn %></a>
   </div>
 
-  <form class="calc-form" method="post" action="/wezwanie-online" enctype="multipart/form-data" novalidate>
+  <form class="calc-form" id="formularz" method="post" action="/wezwanie-online" enctype="multipart/form-data" novalidate>
     <input type="text" name="website" tabindex="-1" autocomplete="off" style="position:absolute; left:-9999px" aria-hidden="true">
     <div class="kicker" style="margin-bottom:10px"><%= w.f.creditorKicker %></div>
     <div class="form-grid2">
@@ -140,11 +142,32 @@ var fe = function (k) { return errors[k] ? '<p class="field-err">' + w.errors[er
   <p class="helper" style="max-width:70ch"><strong><%= (i + 1) %>.</strong> <%- s %></p>
   <% }) %>
 
+  <h2 style="margin-top:30px"><%= w.contains.h %></h2>
+  <p class="helper" style="max-width:70ch"><%= w.contains.p %></p>
+  <ul class="helper" style="max-width:70ch; padding-left:18px; line-height:1.7">
+    <% w.contains.items.forEach(function (i) { %><li><%- i %></li><% }) %>
+  </ul>
+
+  <h2 style="margin-top:30px"><%= w.compare.h %></h2>
+  <div style="overflow-x:auto">
+    <table class="wz-table wz-compare">
+      <thead><tr><% w.compare.head.forEach(function (h) { %><th scope="col"><%= h %></th><% }) %></tr></thead>
+      <tbody>
+        <% w.compare.rows.forEach(function (r) { %><tr><th scope="row"><%= r[0] %></th><td data-label="<%= w.compare.head[1] %>"><%= r[1] %></td><td data-label="<%= w.compare.head[2] %>"><%= r[2] %></td></tr><% }) %>
+      </tbody>
+    </table>
+  </div>
+  <p style="margin-top:16px"><a class="btn btn-live" href="#formularz"><%= w.f.btn %></a></p>
+
   <h2 style="margin-top:30px"><%= w.faqH %></h2>
   <% w.faq.forEach(function (q) { %>
   <h3 style="font-size:17px; margin-top:18px"><%= q[0] %></h3>
   <p class="helper" style="max-width:70ch"><%= q[1] %></p>
   <% }) %>
+  <h2 style="margin-top:30px"><%= w.guides.h %></h2>
+  <div class="kb-related" style="margin-top:10px; max-width:70ch">
+    <% w.guides.items.forEach(function (g) { %><a href="/baza-wiedzy/<%= g[0] %>"><%= g[1] %></a><% }) %>
+  </div>
   <p class="legal-note"><%= w.legal %></p>
   <% } %>
 </div>

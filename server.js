@@ -781,6 +781,18 @@ app.get('/baza-wiedzy/:slug', (req, res, next) => {
 function renderDemandForm(req, res, extra = {}) {
   res.render('wezwanie-online', common({ page: 'wezwanie', form: {}, errors: {}, ...extra }));
 }
+// Formulier vooringevuld vanuit de kalkulator: /wezwanie-online?kwota=…&dni=…&nr=…&dluznik=…
+function demandPrefill(q) {
+  const s = (v, n) => (typeof v === 'string' ? v.trim().slice(0, n) : '');
+  const form = {};
+  const kwota = parseFloat(s(q.kwota, 20).replace(/\s/g, '').replace(',', '.'));
+  if (kwota > 0) form.amount = kwota;
+  const dni = parseInt(s(q.dni, 5), 10);
+  if (dni > 0 && dni < 36500) form.due_date = new Date(Date.now() - dni * 24 * 3600 * 1000).toISOString().slice(0, 10);
+  if (s(q.nr, 60)) form.invoice_nr = s(q.nr, 60);
+  if (s(q.dluznik, 200)) form.debtor_company = s(q.dluznik, 200);
+  return form;
+}
 // Rem op misbruik: per IP (aanmaken, reageren) en per e-mailadres van de dłużnik
 const HOUR_MS = 3600 * 1000;
 const WZ_LIMIT = { hour: 5, day: 15, debtorDay: 3, reply: 10, resendHour: 5 };
@@ -807,7 +819,7 @@ app.get('/wezwanie-online', async (req, res) => {
       return renderDemandForm(req, res, { waitDemand: d, waitCalc: Demands.compute(d), waitMailFailed: !!req.query.blad, waitResent: req.query.ponow === '1', waitResendLimit: req.query.ponow === 'limit', waitExpired: Demands.confirmExpired(d) });
     }
   }
-  renderDemandForm(req, res);
+  renderDemandForm(req, res, { form: demandPrefill(req.query) });
 });
 app.post('/wezwanie-online', zalacznikMw, async (req, res) => {
   const b = req.body || {};
