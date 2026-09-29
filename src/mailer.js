@@ -75,13 +75,33 @@ async function send({ to, subject, text, html, replyTo, from, attachments }) {
 function textToHtml(text) {
   return String(text || '').replace(/\r\n/g, '\n').split(/\n{2,}/).map((p) => '<p style="margin:0 0 14px">' + esc(p).replace(/\n/g, '<br>') + '</p>').join('');
 }
-async function sendPlain({ to, subject, text, replyTo, from, lang, attachments }) {
-  return send({ to, subject, text, html: layout(textToHtml(text), lang, String(text || '').slice(0, 120)), replyTo: replyTo || MAIL_NOTIFY || undefined, from, attachments });
+// pixel: adres van het onzichtbare plaatje voor de leesstatus (src/mailbox.js), optioneel
+async function sendPlain({ to, subject, text, replyTo, from, lang, attachments, pixel }) {
+  return send({ to, subject, text, html: layout(textToHtml(text), lang, String(text || '').slice(0, 120), pixel), replyTo: replyTo || MAIL_NOTIFY || undefined, from, attachments });
 }
+// Sobere HTML-versie van een platte mail (mails aan dłużnicy hebben geen huisstijl-layout) — alleen om het plaatje mee te sturen
+function plainHtml(text, pixel) {
+  return '<!doctype html><html><body style="margin:0;padding:16px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#17233a">' + textToHtml(text) + pixelTag(pixel) + '</body></html>';
+}
+function pixelTag(pixel) { return pixel ? '<img src="' + esc(pixel) + '" width="1" height="1" alt="" style="display:block;border:0;width:1px;height:1px">' : ''; }
+
+// ── Resend: status van een verstuurde mail en inhoud van een ontvangen mail ─
+async function api(path) {
+  if (!RESEND_KEY) return null;
+  try {
+    const r = await fetch('https://api.resend.com' + path, { headers: { authorization: `Bearer ${RESEND_KEY}` }, signal: AbortSignal.timeout(8000) });
+    if (!r.ok) { console.error(`[mail] Resend GET ${path.replace(/[0-9a-f-]{20,}/g, '…')}: ${r.status}`); return null; }
+    return await r.json();
+  } catch (e) { console.error('[mail] netwerkfout:', e.message); return null; }
+}
+// Laatste gebeurtenis van een verstuurde mail: sent | delivered | delivery_delayed | bounced | complained | opened | clicked
+async function fetchStatus(id) { const j = await api('/emails/' + encodeURIComponent(id)); return j && j.last_event ? String(j.last_event) : null; }
+async function fetchReceived(id) { return api('/emails/receiving/' + encodeURIComponent(id)); }
+async function fetchReceivedAttachments(id) { const j = await api('/emails/receiving/' + encodeURIComponent(id) + '/attachments'); return (j && j.data) || []; }
 
 // ── HTML-layout (eenvoudig, inline styles — werkt in elke mailclient) ────
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
-function layout(bodyHtml, lang, preheader) {
+function layout(bodyHtml, lang, preheader, pixel) {
   const en = lang === 'en';
   const mailto = '<a href="mailto:kontakt@sprzedamfakture.pl" style="color:#8a6415;text-decoration:none">kontakt@sprzedamfakture.pl</a>';
   const foot = en
@@ -102,7 +122,7 @@ ${pre}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bg
 <tr><td style="padding:16px 32px 20px;border-top:1px solid #eee9db;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#8a8577;line-height:1.6">${foot}</td></tr>
 </table>
 <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#b5ae9d;padding:14px 0 6px">© 2026 sprzedamfakture.pl</div>
-</td></tr></table></body></html>`;
+</td></tr></table>${pixelTag(pixel)}</body></html>`;
 }
 function rows(pairs) {
   // [label, waarde] of [label, waarde, true] voor een goud gemarkeerde rij (bv. de oferta)
@@ -262,4 +282,4 @@ async function testMail(lang, version) {
   return { ...r, to: MAIL_NOTIFY };
 }
 
-module.exports = { configured, status, send, sendPlain, leadConfirm, leadNotify, wyrokConfirm, wyrokNotify, welcome, testMail, MAIL_FROM, MAIL_NOTIFY };
+module.exports = { configured, status, send, sendPlain, plainHtml, fetchStatus, fetchReceived, fetchReceivedAttachments, SITE, leadConfirm, leadNotify, wyrokConfirm, wyrokNotify, welcome, testMail, MAIL_FROM, MAIL_NOTIFY };

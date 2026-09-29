@@ -1,0 +1,7 @@
+<%
+// Stand van één bericht uit comm_log: binnengekomen (nieuw/gelezen), geopend, afgeleverd, mislukt…
+// Verwacht: k (rij). mailState komt uit src/mailbox.js (stateOf), teksten uit t.app.mail.st.
+var _s = mailState(k), _st = t.app.mail.st;
+var _cls = { 'new': 'tag-accent', reply: 'tag-outline', opened: 'tag-accent', delivered: 'tag-neutral', delayed: 'tag-outline', failed: 'tag-danger', sent: 'tag-neutral', simulated: 'tag-outline', error: 'tag-danger' }[_s] || 'tag-neutral';
+var _when = function (d) { return new Date(d).toLocaleString(t.locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); };
+%><% if (_s !== 'other') { %><span class="tag <%= _cls %>"><%= _st[_s] || t.tr(k.status) %></span><% if (_s === 'opened' && k.opened_at) { %> <span class="tnum" style="color:var(--ink-55)"><%= _when(k.opened_at) %><% if ((k.open_count || 0) > 1) { %> · <%= k.open_count %>×<% } %></span><% } %><% } else { %><%= t.tr(k.status) %><% } %>

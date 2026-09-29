@@ -1,0 +1,54 @@
+<%
+// Postvak: alle binnengekomen antwoorden op paneelmails (comm_log, direction 'in'), nieuwste eerst.
+// Verwacht: inbound (rijen), box (Mailbox.status()), notify (MAIL_NOTIFY).
+var Mm = t.app.mail;
+var when = function (d) { return new Date(d).toLocaleString(t.locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); };
+var link = function (k) {
+  if (/^L\d+$/.test(k.case_id)) return '/admin/leady/' + k.case_id.slice(1) + '/mail/' + k.id;
+  if (k.case_id === 'INBOX') return '/admin/poczta/' + k.id;
+  return '/app/sprawy/' + encodeURIComponent(k.case_id) + '/mail/' + k.id;
+};
+var thread = function (k) { return /^L\d+$/.test(k.case_id) ? 'lead #' + k.case_id.slice(1) : (k.case_id === 'INBOX' ? Mm.inboxLoose : k.case_id); };
+%>
+<%- include('partials/head', { title: Mm.inbox + ' — sprzedamfakture.pl' }) %>
+<%- include('partials/nav') %>
+
+<div class="two-pane">
+  <div class="pane-left">
+    <div class="kicker"><%= Mm.inbox %> · <span class="tnum"><%= inbound.length %></span></div>
+    <p class="helper"><%= Mm.inboxHelp %></p>
+    <table class="cases">
+      <thead><tr><th><%= Mm.subject %> · <%= Mm.fromLabel %></th><th><%= Mm.threadLabel %></th><th><%= Mm.status %></th></tr></thead>
+      <tbody>
+        <% if (!inbound.length) { %><tr><td colspan="3" style="color:var(--ink-55); padding:18px 12px"><%= Mm.inboxEmpty %></td></tr><% } %>
+        <% inbound.forEach(function (k) { %>
+        <tr class="row" onclick="location.href='<%= link(k) %>'">
+          <td style="overflow-wrap:anywhere"><a href="<%= link(k) %>" style="<%= k.read_at ? '' : 'font-weight:800' %>"><%= k.subject || '—' %></a><% if (k.attachments && k.attachments.length) { %> <span title="<%= Mm.attachments %>">📎</span><% } %><% if (k.outcome) { %> <span title="<%= t.tr(k.outcome) %>">⚠</span><% } %>
+            <div style="font-size:13px; color:var(--ink-55); margin-top:2px"><%= k.sender || '—' %> · <span class="tnum"><%= when(k.created_at) %></span></div></td>
+          <td><span class="tag tag-outline"><%= thread(k) %></span></td>
+          <td><%- include('partials/mail-state', { k: k }) %></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+
+  <aside class="pane-right detail">
+    <div class="kicker"><%= Mm.inboxHowKicker %></div>
+    <% if (box.inbound) { %>
+    <p class="helper"><%= t.fill(Mm.repliesPanel, { domain: box.domain }) %></p>
+    <% } else { %>
+    <p class="field-err" style="margin-top:0"><%= t.fill(Mm.repliesMailbox, { notify: notify || '—' }) %></p>
+    <p class="helper" style="margin-bottom:4px"><%= Mm.need.h %></p>
+    <ul class="helper" style="padding-left:18px; margin-top:0">
+      <% if (!box.mail) { %><li><%= Mm.need.mail %></li><% } %>
+      <% if (!box.domain) { %><li><%= Mm.need.domain %></li><% } %>
+      <% if (!box.webhookSecret) { %><li><%= Mm.need.secret %></li><% } %>
+      <% if (box.domain && !box.mx) { %><li><%= t.fill(Mm.need.mx, { mx: box.mxInfo || '—' }) %></li><% } %>
+    </ul>
+    <% } %>
+    <p class="helper"><%= Mm.openedNote %></p>
+  </aside>
+</div>
+
+<%- include('partials/footer') %>

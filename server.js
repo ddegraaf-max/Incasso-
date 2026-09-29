@@ -18,6 +18,7 @@ const MailTpl = require('./src/mailtpl');
 const AiMail = require('./src/aimail');
 const Demands = require('./src/demands');
 const RateLimit = require('./src/ratelimit');
+const Mailbox = require('./src/mailbox');
 const pgSession = require('connect-pg-simple')(session);
 const compression = require('compression');
 const VER = require('./src/version');
@@ -96,6 +97,20 @@ app.use((req, res, next) => {
   res.locals.md = MD.render;
   next();
 });
+// Webhook van Resend (antwoorden op paneelmails + afleverstatus): ruwe body voor de controle van de handtekening
+app.post('/api/resend/webhook', express.raw({ type: '*/*', limit: '2mb' }), async (req, res) => {
+  if (!Mailbox.verifyWebhook(req.headers, req.body)) return res.status(401).json({ ok: false });
+  let ev = null;
+  try { ev = JSON.parse(req.body.toString('utf8')); } catch (e) { return res.status(400).json({ ok: false }); }
+  try { res.json({ ok: true, ...(await Mailbox.handleEvent(ev)) }); }
+  catch (e) { console.error('[postvak] webhook mislukt —', e.message); res.status(500).json({ ok: false }); } // 5xx → Resend probeert opnieuw
+});
+// Leesstatus: onzichtbaar plaatje in paneelmails
+app.get('/t/:key.gif', async (req, res) => {
+  await Mailbox.recordOpen(String(req.params.key || '').replace(/[^a-f0-9]/gi, ''), { ua: String(req.get('user-agent') || '') }).catch(() => {});
+  res.set({ 'Content-Type': 'image/gif', 'Cache-Control': 'no-store, max-age=0', 'X-Robots-Tag': 'noindex' });
+  res.send(Mailbox.PIXEL);
+});
 app.use(express.urlencoded({ extended: true }));
 const sessionOpts = {
   secret: process.env.SESSION_SECRET || 'sprzedamfakture-dev-secret-zmien-mnie',
@@ -110,6 +125,16 @@ const sessionOpts = {
 };
 let sessionMiddleware = null;
 app.use((req, res, next) => sessionMiddleware(req, res, next));
+// Aantal ongelezen antwoorden voor de navigatie van de beheerder
+app.use(async (req, res, next) => {
+  res.locals.unreadMail = 0;
+  res.locals.boxOn = Mailbox.enabled();
+  if (req.method === 'GET' && /^\/(admin|app)(\/|$)/.test(req.path)) {
+    const u = Auth.currentUser(req);
+    if (u && u.role === 'admin') res.locals.unreadMail = Object.values(await db.unreadReplies().catch(() => ({}))).reduce((a, b) => a + b, 0);
+  }
+  next();
+});
 
 // ── Bijlagen bij formulieren (factuur/vonnis): in-memory, gaat alleen mee per mail ──
 const multer = require('multer');
@@ -160,7 +185,7 @@ const TONES = ['Uprzejmy', 'Stanowczy', 'Prawniczy'];
 const DEBTOR_LEGAL_FORMS = ['spzoo', 'sa', 'psa', 'inna-op', 'jdg', 'sc', 'osobowa'];
 
 function common(extra = {}) {
-  return { D, SERVICE_FEE: D.SERVICE_FEE, user: null, ...extra };
+  return { D, SERVICE_FEE: D.SERVICE_FEE, user: null, mailState: Mailbox.stateOf, ...extra };
 }
 
 function safeNext(n) {
@@ -324,9 +349,35 @@ app.get('/admin/leady', Auth.requireAdmin, async (req, res) => {
   const reportMap = await db.latestReports().catch(() => ({}));
   const researchPending = sel ? Research.isPending(sel.id) : false;
   const pendingIds = leads.filter((l) => Research.isPending(l.id)).map((l) => l.id);
-  const mails = sel ? await db.listComms('L' + sel.id, 10).catch(() => []) : [];
-  res.render('admin-leady', common({ page: 'admin', user: req.user, leads, sel, files, fileCounts, report, reportMap, researchPending, pendingIds, mails, LEAD_STATUSES, flash: req.query.msg || null }));
+  const mails = sel ? await Mailbox.refresh(await db.listComms('L' + sel.id, 20).catch(() => [])) : [];
+  const unread = await db.unreadReplies().catch(() => ({}));
+  res.render('admin-leady', common({ page: 'admin', user: req.user, leads, sel, files, fileCounts, report, reportMap, researchPending, pendingIds, mails, unread, LEAD_STATUSES, flash: req.query.msg || null }));
 });
+
+// ── Postvak: alle binnengekomen antwoorden op één plek ───────────────────
+app.get('/admin/poczta', Auth.requireAdmin, async (req, res) => {
+  const inbound = await db.listInbound(200).catch(() => []);
+  res.render('admin-poczta', common({ page: 'admin', user: req.user, inbound, box: Mailbox.status(), notify: Mailer.MAIL_NOTIFY }));
+});
+// Bericht zonder lead of zaak (rechtstreeks naar het domein gemaild)
+app.get('/admin/poczta/:cid', Auth.requireAdmin, async (req, res, next) => {
+  const m = await db.getComm(req.params.cid, Mailbox.INBOX).catch(() => null);
+  if (!m) return next();
+  await markRead(m);
+  res.render('mail-view', common({ page: 'admin', user: req.user, ctx: { label: res.locals.t.app.mail.inbox }, m, history: [], historyBase: '/admin/poczta',
+    backUrl: '/admin/poczta', reuseUrl: null, replyUrl: null, fromAddr: Mailer.MAIL_FROM }));
+});
+async function markRead(m) {
+  if (m.direction !== 'in' || m.read_at) return;
+  m.read_at = new Date();
+  await db.updateComm(m.id, { read_at: m.read_at }).catch(() => {});
+}
+// Composer vullen bij "beantwoorden" (?reply=<id>) — alleen met een binnengekomen bericht uit dezelfde draad
+async function replyOver(req, caseKey, over) {
+  if (!req.query.reply || over.subject !== undefined) return over;
+  const m = await db.getComm(req.query.reply, caseKey).catch(() => null);
+  return m && m.direction === 'in' ? { ...over, ...Mailbox.replyDraft(m) } : over;
+}
 
 // ── E-mailcomposer ───────────────────────────────────────────────────────
 // Vanuit een lead (admin → aanvrager) of een zaak (admin/eigenaar → dłużnik of klant).
@@ -357,19 +408,19 @@ function applyJob(req, res, over) {
 
 async function renderLeadComposer(req, res, lead, over = {}) {
   const Mm = res.locals.t.app.mail;
-  over = applyJob(req, res, over);
+  over = await replyOver(req, 'L' + lead.id, applyJob(req, res, over));
   const tl = over.tl || tplLang(req, Research.parseNote(lead).lang === 'en' ? 'en' : 'pl');
   const tpl = over.tpl !== undefined ? over.tpl : String(req.query.tpl || '');
   let draft = tpl ? MailTpl.forLead(lead, tpl, tl) : { subject: '', body: '' };
   if (req.query.reuse && over.subject === undefined) { const prev = await db.getComm(req.query.reuse, 'L' + lead.id).catch(() => null); if (prev) draft = { subject: prev.subject || '', body: prev.body || '' }; }
-  const history = await db.listComms('L' + lead.id, 10).catch(() => []);
+  const history = await Mailbox.refresh(await db.listComms('L' + lead.id, 10).catch(() => []));
   res.status(over.error ? 400 : 200).render('mail', common({
     page: 'admin', user: req.user, ctx: { label: lead.company + ' · #' + lead.id },
     action: '/admin/leady/' + lead.id + '/mail', backUrl: '/admin/leady?sel=' + lead.id, base: '/admin/leady/' + lead.id + '/mail',
     to: over.to !== undefined ? over.to : (lead.email || ''), subject: over.subject !== undefined ? over.subject : draft.subject, body: over.body !== undefined ? over.body : draft.body,
     tpl, tl, aud: 'klient', audiences: [], templates: MailTpl.list('lead', tl, lead.source === 'skup-wyrokow'), history,
     instruction: over.instruction || '', translation: over.translation || '', notes: over.notes || '', aiOk: AiMail.available(), aiPending: !!over.aiPending, aiMode: over.aiMode || 'draft',
-    error: over.error || null, fromAddr: Mailer.MAIL_FROM, replyTo: Mailer.MAIL_NOTIFY, mailOk: Mailer.configured(), live: true,
+    error: over.error || null, fromAddr: Mailer.MAIL_FROM, replyTo: Mailbox.replyToLabel(), mailOk: Mailer.configured(), live: true,
   }));
 }
 
@@ -415,9 +466,12 @@ app.get('/admin/leady/:id/mail/:cid', Auth.requireAdmin, async (req, res, next) 
   if (!/^\d+$/.test(req.params.cid)) return next();
   const m = await db.getComm(req.params.cid, 'L' + lead.id).catch(() => null);
   if (!m) return next();
-  const history = await db.listComms('L' + lead.id, 20).catch(() => []);
-  res.render('mail-view', common({ page: 'admin', user: req.user, ctx: { label: lead.company + ' · #' + lead.id }, m, history, historyBase: '/admin/leady/' + lead.id + '/mail',
-    backUrl: '/admin/leady?sel=' + lead.id, reuseUrl: m.channel === 'email' ? '/admin/leady/' + lead.id + '/mail?reuse=' + m.id : null, fromAddr: Mailer.MAIL_FROM }));
+  await markRead(m);
+  const history = await Mailbox.refresh(await db.listComms('L' + lead.id, 20).catch(() => []));
+  const inbound = m.direction === 'in';
+  res.render('mail-view', common({ page: 'admin', user: req.user, ctx: { label: lead.company + ' · #' + lead.id }, m: history.find((k) => k.id === m.id) || m, history, historyBase: '/admin/leady/' + lead.id + '/mail',
+    backUrl: '/admin/leady?sel=' + lead.id, reuseUrl: m.channel === 'email' && !inbound ? '/admin/leady/' + lead.id + '/mail?reuse=' + m.id : null,
+    replyUrl: inbound ? '/admin/leady/' + lead.id + '/mail?reply=' + m.id : null, fromAddr: Mailer.MAIL_FROM }));
 });
 
 app.post('/admin/leady/:id/mail', Auth.requireAdmin, async (req, res) => {
@@ -435,7 +489,7 @@ app.post('/admin/leady/:id/mail', Auth.requireAdmin, async (req, res) => {
 
 async function renderCaseComposer(req, res, c, over = {}) {
   const Mm = res.locals.t.app.mail;
-  over = applyJob(req, res, over);
+  over = await replyOver(req, c.id, applyJob(req, res, over));
   const isAdmin = req.user.role === 'admin';
   const audiences = isAdmin ? [{ key: 'dluznik', label: Mm.audDebtor }, { key: 'klient', label: Mm.audClient }] : [{ key: 'dluznik', label: Mm.audDebtor }];
   const aud = over.aud || (req.query.aud === 'klient' && isAdmin ? 'klient' : 'dluznik');
@@ -446,14 +500,14 @@ async function renderCaseComposer(req, res, c, over = {}) {
   else if (tpl && aud === 'klient') draft = MailTpl.forCase(c, tpl, tl);
   if (req.query.reuse && over.subject === undefined) { const prev = await db.getComm(req.query.reuse, c.id).catch(() => null); if (prev) draft = { subject: prev.subject || '', body: prev.body || '' }; }
   const templates = aud === 'dluznik' ? TONES.map((k) => ({ key: k, name: res.locals.t.app.tones[k] + ' · PL' })) : MailTpl.list('case', tl, false);
-  const history = await db.listComms(c.id, 10).catch(() => []);
+  const history = await Mailbox.refresh(await db.listComms(c.id, 10).catch(() => []));
   res.status(over.error ? 400 : 200).render('mail', common({
     page: 'app', tab: 'sprawy', user: req.user, ctx: { label: c.nr + ' · ' + c.debtor },
     action: '/app/sprawy/' + c.id + '/mail', backUrl: '/app/sprawy?sel=' + c.id, base: '/app/sprawy/' + c.id + '/mail',
     to: over.to !== undefined ? over.to : (aud === 'klient' ? (c.clientEmail || '') : (c.email || '')), subject: over.subject !== undefined ? over.subject : draft.subject, body: over.body !== undefined ? over.body : draft.body,
     tpl, tl, aud, audiences, templates, history,
     instruction: over.instruction || '', translation: over.translation || '', notes: over.notes || '', aiOk: AiMail.available(), aiPending: !!over.aiPending, aiMode: over.aiMode || 'draft',
-    error: over.error || null, fromAddr: aud === 'klient' ? Mailer.MAIL_FROM : Comms.FROM_EMAIL, replyTo: Mailer.MAIL_NOTIFY, mailOk: Mailer.configured(), live: aud === 'klient' || c.real || Comms.LIVE_COMMS,
+    error: over.error || null, fromAddr: aud === 'klient' ? Mailer.MAIL_FROM : Comms.FROM_EMAIL, replyTo: Mailbox.replyToLabel(), mailOk: Mailer.configured(), live: aud === 'klient' || c.real || Comms.LIVE_COMMS,
   }));
 }
 
@@ -502,10 +556,14 @@ app.get('/app/sprawy/:id/mail/:cid', Auth.requireAuth, async (req, res, next) =>
   if (!/^\d+$/.test(req.params.cid)) return next();
   const m = await db.getComm(req.params.cid, c.id).catch(() => null);
   if (!m) return next();
-  const history = await db.listComms(c.id, 20).catch(() => []);
-  const aud = m.recipient && c.clientEmail && m.recipient === c.clientEmail ? 'klient' : 'dluznik';
-  res.render('mail-view', common({ page: 'app', tab: 'sprawy', user: req.user, ctx: { label: c.nr + ' · ' + c.debtor }, m, history, historyBase: '/app/sprawy/' + c.id + '/mail',
-    backUrl: '/app/sprawy?sel=' + c.id, reuseUrl: m.channel === 'email' ? '/app/sprawy/' + c.id + '/mail?reuse=' + m.id + '&aud=' + aud : null,
+  await markRead(m);
+  const history = await Mailbox.refresh(await db.listComms(c.id, 20).catch(() => []));
+  const inbound = m.direction === 'in';
+  const other = inbound ? String(m.sender || '').toLowerCase() : String(m.recipient || '').toLowerCase();
+  const aud = other && c.clientEmail && other.includes(String(c.clientEmail).toLowerCase()) ? 'klient' : 'dluznik';
+  res.render('mail-view', common({ page: 'app', tab: 'sprawy', user: req.user, ctx: { label: c.nr + ' · ' + c.debtor }, m: history.find((k) => k.id === m.id) || m, history, historyBase: '/app/sprawy/' + c.id + '/mail',
+    backUrl: '/app/sprawy?sel=' + c.id, reuseUrl: m.channel === 'email' && !inbound ? '/app/sprawy/' + c.id + '/mail?reuse=' + m.id + '&aud=' + aud : null,
+    replyUrl: inbound ? '/app/sprawy/' + c.id + '/mail?reply=' + m.id + '&aud=' + aud : null,
     fromAddr: aud === 'klient' ? Mailer.MAIL_FROM : Comms.FROM_EMAIL, smsFrom: process.env.SMS_FROM || 'SprzedamFV' }));
 });
 
@@ -976,12 +1034,12 @@ app.get('/health', async (req, res) => {
   res.set('Cache-Control', 'no-store');
   const m = Mailer.status();
   const dbs = await db.stats().catch((e) => ({ connected: false, error: e.message }));
-  res.json({ ok: true, name: 'sprzedamfakture.pl', version: VER.version, commit: VER.commit, startedAt: VER.startedAt, uptimeSec: Math.round(process.uptime()), db: db.hasDb(), dbStats: dbs, mail: m.resend ? 'resend' : 'simulation', mailFrom: m.from, mailNotify: !!m.notify, mailProblems: m.problems, liveComms: m.liveComms, smsapi: m.smsapi, anthropic: m.anthropic, turnstile: Turnstile.enabled(), turnstileProblems: Turnstile.problems(), cases: D.claims.filter((c) => c.real).length, demands: await db.countDemands().catch(() => null), demoCases: D.DEMO_CASES, articles: Articles.ARTICLES.length, company: Company.complete(), research: Research.status(), seo: { verification: !!(SEO.google || SEO.bing), analytics: !!SEO.plausible } });
+  res.json({ ok: true, name: 'sprzedamfakture.pl', version: VER.version, commit: VER.commit, startedAt: VER.startedAt, uptimeSec: Math.round(process.uptime()), db: db.hasDb(), dbStats: dbs, mail: m.resend ? 'resend' : 'simulation', mailFrom: m.from, mailNotify: !!m.notify, mailProblems: m.problems, liveComms: m.liveComms, smsapi: m.smsapi, anthropic: m.anthropic, turnstile: Turnstile.enabled(), turnstileProblems: Turnstile.problems(), cases: D.claims.filter((c) => c.real).length, demands: await db.countDemands().catch(() => null), demoCases: D.DEMO_CASES, articles: Articles.ARTICLES.length, company: Company.complete(), research: Research.status(), seo: { verification: !!(SEO.google || SEO.bing), analytics: !!SEO.plausible }, mailbox: Mailbox.status() });
 });
 
 const SITE = 'https://sprzedamfakture.pl';
 app.get('/robots.txt', (req, res) => {
-  res.type('text/plain').send(['User-agent: *', 'Allow: /', 'Disallow: /app/', 'Disallow: /admin', 'Disallow: /login', 'Disallow: /2fa', 'Disallow: /api/', 'Disallow: /w/', '', 'Sitemap: ' + SITE + '/sitemap.xml', ''].join('\n'));
+  res.type('text/plain').send(['User-agent: *', 'Allow: /', 'Disallow: /app/', 'Disallow: /admin', 'Disallow: /login', 'Disallow: /2fa', 'Disallow: /api/', 'Disallow: /w/', 'Disallow: /t/', '', 'Sitemap: ' + SITE + '/sitemap.xml', ''].join('\n'));
 });
 app.get('/sitemap.xml', (req, res) => {
   const urls = [
@@ -1008,7 +1066,7 @@ app.get('/app/sprawy', Auth.requireAuth, async (req, res) => {
   const claims = Cases.visibleFor(req.user);
   const sel = claims.find((c) => c.id === req.query.sel) || claims.find((c) => c.id === 'f2') || claims[0] || null;
   const done = D.getDone();
-  const comms = sel ? await db.listComms(sel.id, 6).catch(() => []) : [];
+  const comms = sel ? await Mailbox.refresh(await db.listComms(sel.id, 8).catch(() => [])) : [];
   const timeline = sel && sel.real ? await db.listCaseEvents(sel.id, 40).catch(() => []) : [];
   const files = sel && sel.real && sel.leadId ? await db.listLeadFiles(sel.leadId).catch(() => []) : [];
   const report = sel && sel.real && sel.leadId ? await db.getLeadReport(sel.leadId).catch(() => null) : null;
@@ -1200,6 +1258,9 @@ async function start() {
   await D.initActions().catch(() => {});
   await Cases.init().catch((e) => console.error('Cases init:', e.message));
   await AiScore.init(D.claims).catch((e) => console.error('AIScore init:', e.message));
+  // Postvak: ontvangt het antwoorddomein mail? Bij de start en daarna elk kwartier
+  await Mailbox.checkMx().catch(() => {});
+  setInterval(() => Mailbox.checkMx().catch(() => {}), 15 * 60 * 1000).unref();
   // Onbevestigde wezwania opruimen: bij de start en daarna elke 24 uur
   const purgeDemands = () => Demands.purgeUnconfirmed()
     .then((n) => { if (n) console.log('Wezwanie: ' + n + ' onbevestigde wezwania ouder dan ' + Demands.PURGE_DAYS + ' dagen verwijderd'); })

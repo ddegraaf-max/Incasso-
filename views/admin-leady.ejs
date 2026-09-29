@@ -22,7 +22,7 @@
         <tr class="row <%= sel && l.id === sel.id ? 'selected' : '' %>" onclick="location.href='/admin/leady?sel=<%= l.id %>'">
           <td class="tnum"><%= new Date(l.created_at).toLocaleDateString(t.locale, { day: 'numeric', month: 'short' }) %></td>
           <td><span class="tag tag-outline"><%= src(l) %></span></td>
-          <td><%= l.company %><% if (fileCounts && fileCounts[l.id]) { %> <span title="<%= L.filesLabel %>">📎</span><% } %><% if (pendingIds && pendingIds.indexOf(l.id) !== -1) { %> <%- include('partials/hourglass', { id: 'row' + l.id }) %><% } else if (reportMap && reportMap[l.id]) { %> <span title="<%= L.research.label %>">🔎</span><% } %></td>
+          <td><%= l.company %><% if (fileCounts && fileCounts[l.id]) { %> <span title="<%= L.filesLabel %>">📎</span><% } %><% if (pendingIds && pendingIds.indexOf(l.id) !== -1) { %> <%- include('partials/hourglass', { id: 'row' + l.id }) %><% } else if (reportMap && reportMap[l.id]) { %> <span title="<%= L.research.label %>">🔎</span><% } %><% if (unread && unread['L' + l.id]) { %> <span class="nav-count tnum" title="<%= t.app.mail.st['new'] %>"><%= unread['L' + l.id] %></span><% } %></td>
           <td class="num tnum"><%= D.fmt(Number(l.kwota) || 0) %></td>
           <td><span class="tag <%= stTag(l.status) %>"><%= stTxt(l.status) %></span></td>
         </tr>
@@ -87,7 +87,7 @@
       <div class="label" style="margin-top:14px"><%= t.app.mail.history %></div>
       <ul class="timeline">
         <% mails.forEach(function (k) { %>
-        <li><span class="dot"></span><span class="t"><a href="/admin/leady/<%= sel.id %>/mail/<%= k.id %>"><%= k.subject || '—' %></a> · <%= t.tr(k.status) %><% if (k.recipient) { %> · <span class="tnum"><%= k.recipient %></span><% } %></span><span class="d tnum"><%= new Date(k.created_at).toLocaleDateString(t.locale, { day: 'numeric', month: 'short' }) %></span></li>
+        <li class="<%= k.direction === 'in' ? 'mail-in' : '' %>"><span class="dot"></span><span class="t"><%= k.direction === 'in' ? '←' : '→' %> <a href="/admin/leady/<%= sel.id %>/mail/<%= k.id %>"><%= k.subject || '—' %></a> · <%- include('partials/mail-state', { k: k }) %><% if (k.direction === 'in' ? k.sender : k.recipient) { %> · <span class="tnum"><%= k.direction === 'in' ? k.sender : k.recipient %></span><% } %></span><span class="d tnum"><%= new Date(k.created_at).toLocaleDateString(t.locale, { day: 'numeric', month: 'short' }) %></span></li>
         <% }) %>
       </ul>
       <% } %>

@@ -1,28 +1,46 @@
 <%
-// Verstuurde e-mail (of SMS) uit comm_log teruglezen: ontvanger, afzender, datum, status, volledige tekst.
-// Verwacht: ctx {label}, m (rij uit comm_log), backUrl, reuseUrl, fromAddr.
+// Bericht uit comm_log teruglezen — verstuurd (e-mail/SMS) of binnengekomen (antwoord): partijen, datum,
+// stand (afgeleverd, geopend), bijlagen en de volledige tekst.
+// Verwacht: ctx {label}, m (rij uit comm_log), backUrl, reuseUrl, replyUrl (bij een antwoord), fromAddr.
 var Mm = t.app.mail;
+var isIn = m.direction === 'in';
+var reply = typeof replyUrl !== 'undefined' ? replyUrl : null;
+var whenOf = function (d) { return new Date(d).toLocaleString(t.locale || 'pl-PL', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }); };
 var loc = t.locale || 'pl-PL';
 var when = new Date(m.created_at).toLocaleString(loc, { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 var isMail = m.channel === 'email';
 %>
-<%- include('partials/head', { title: Mm.viewTitle + ' — sprzedamfakture.pl' }) %>
+<%- include('partials/head', { title: (isIn ? Mm.viewTitleIn : Mm.viewTitle) + ' — sprzedamfakture.pl' }) %>
 <%- include('partials/nav') %>
 
 <div class="two-pane">
   <div class="pane-left">
-    <div class="kicker"><%= Mm.viewTitle %> · <%= ctx.label %></div>
+    <div class="kicker"><%= isIn ? Mm.viewTitleIn : Mm.viewTitle %> · <%= ctx.label %></div>
     <h2 style="font-size:22px; margin:6px 0 14px"><%= m.subject || (isMail ? '—' : 'SMS') %></h2>
+    <% if (isIn) { %>
+    <div class="field-row"><span class="fk"><%= Mm.fromLabel %></span><span><%= m.sender || '—' %></span></div>
+    <div class="field-row"><span class="fk"><%= Mm.to %></span><span><%= m.recipient || '—' %></span></div>
+    <div class="field-row"><span class="fk"><%= Mm.receivedOn %></span><span class="tnum"><%= when %></span></div>
+    <% } else { %>
     <div class="field-row"><span class="fk"><%= Mm.to %></span><span><%= m.recipient || '—' %></span></div>
     <div class="field-row"><span class="fk"><%= Mm.from %></span><span><%= isMail ? fromAddr : (typeof smsFrom !== 'undefined' ? smsFrom : '—') %></span></div>
     <div class="field-row"><span class="fk"><%= Mm.sentOn %></span><span class="tnum"><%= when %></span></div>
+    <% } %>
     <div class="field-row"><span class="fk"><%= Mm.channel %></span><span><span class="tag tag-outline"><%= t.tr(m.channel) %></span><%= m.tone ? ' · ' + (t.app.tones[m.tone] || m.tone) : '' %></span></div>
-    <div class="field-row"><span class="fk"><%= Mm.status %></span><span><span class="tag <%= m.status === 'wysłano' ? 'tag-accent' : 'tag-neutral' %>"><%= t.tr(m.status) %></span></span></div>
+    <div class="field-row"><span class="fk"><%= Mm.status %></span><span><%- include('partials/mail-state', { k: m }) %></span></div>
+    <% if (isMail && !isIn && (m.provider_id || m.reply_key)) { %>
+    <div class="field-row"><span class="fk"><%= Mm.deliveryLabel %></span><span><%= m.delivery ? (Mm.delivery[m.delivery] || m.delivery) : '—' %><% if (m.delivery_at) { %> <span class="tnum" style="color:var(--ink-55)">· <%= Mm.checkedOn %> <%= whenOf(m.delivery_at) %></span><% } %></span></div>
+    <div class="field-row"><span class="fk"><%= Mm.openedLabel %></span><span class="tnum"><%= m.opened_at ? whenOf(m.opened_at) + ((m.open_count || 0) > 1 ? ' · ' + m.open_count + '×' : '') : Mm.notOpened %></span></div>
+    <% } %>
+    <% if (m.attachments && m.attachments.length) { %>
+    <div class="field-row"><span class="fk"><%= Mm.attachments %></span><span><% m.attachments.forEach(function (a, i) { %><%= i ? ', ' : '' %><%= a.filename %> <span class="tnum" style="color:var(--ink-55)">(<%= Math.max(1, Math.round((a.size || 0) / 1024)) %> KB)</span><% }) %></span></div>
+    <% } %>
     <% if (m.outcome) { %><div class="field-row"><span class="fk"><%= Mm.outcome %></span><span><%= t.tr(m.outcome) %></span></div><% } %>
     <hr class="rule">
     <div class="label"><%= Mm.body %></div>
     <pre class="mail-body"><%= m.body || '' %></pre>
     <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-top:18px">
+      <% if (reply) { %><a class="btn chan-btn" href="<%= reply %>"><%= Mm.replyBtn %></a><% } %>
       <% if (reuseUrl) { %><a class="btn btn-secondary chan-btn" href="<%= reuseUrl %>"><%= Mm.reuse %></a><% } %>
       <a class="btn btn-ghost chan-btn" href="<%= backUrl %>"><%= Mm.back %></a>
     </div>
@@ -30,9 +48,10 @@ var isMail = m.channel === 'email';
   <aside class="pane-right">
     <div class="kicker"><%= Mm.history %></div>
     <p class="helper"><%= Mm.viewHelp %></p>
+    <p class="helper"><%= Mm.openedNote %></p>
     <ul class="timeline">
       <% history.forEach(function (k) { %>
-      <li><span class="dot"></span><span class="t"><% if (k.id === m.id) { %><strong><%= k.subject || t.tr(k.channel) %></strong><% } else { %><a href="<%= historyBase %>/<%= k.id %>"><%= k.subject || t.tr(k.channel) %></a><% } %> · <%= t.tr(k.status) %></span><span class="d tnum"><%= new Date(k.created_at).toLocaleDateString(loc, { day: 'numeric', month: 'short' }) %></span></li>
+      <li class="<%= k.direction === 'in' ? 'mail-in' : '' %>"><span class="dot"></span><span class="t"><%= k.direction === 'in' ? '←' : '→' %> <% if (k.id === m.id) { %><strong><%= k.subject || t.tr(k.channel) %></strong><% } else { %><a href="<%= historyBase %>/<%= k.id %>"><%= k.subject || t.tr(k.channel) %></a><% } %> · <%- include('partials/mail-state', { k: k }) %></span><span class="d tnum"><%= new Date(k.created_at).toLocaleDateString(loc, { day: 'numeric', month: 'short' }) %></span></li>
       <% }) %>
     </ul>
   </aside>

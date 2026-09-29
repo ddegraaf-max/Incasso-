@@ -4,7 +4,7 @@
   <span class="nav-right<%= (page === 'app' || page === 'admin' || page === 'auth') ? '' : ' nav-links' %>">
     <% if (page === 'app' || page === 'admin') { %>
       <%= user ? user.company : '' %><% if (user && user.totpConfirmed) { %> · 2FA<% } %>
-      <% if (user && user.role === 'admin') { %><a href="/admin"><%= A.nav.admin %></a><a href="/admin/leady"><%= A.nav.leads %></a><% } %>
+      <% if (user && user.role === 'admin') { %><a href="/admin"><%= A.nav.admin %></a><a href="/admin/leady"><%= A.nav.leads %></a><a href="/admin/poczta"><%= A.nav.inbox %><% if (typeof unreadMail !== 'undefined' && unreadMail) { %><span class="nav-count tnum"><%= unreadMail %></span><% } %></a><% } %>
       <a href="/app/sprawy"><%= A.nav.panel %></a>
       <a href="/logout"><%= A.nav.logout %></a>
     <% } else if (page === 'auth') { %>

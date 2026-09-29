@@ -204,6 +204,20 @@ async function init() {
   await pool.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS case_id TEXT');
   await pool.query('ALTER TABLE events ADD COLUMN IF NOT EXISTS case_id TEXT');
   await pool.query('ALTER TABLE comm_log ADD COLUMN IF NOT EXISTS recipient TEXT');
+  // Postvak van het paneel (src/mailbox.js): richting, afleverstatus, leesstatus en antwoorden
+  await pool.query("ALTER TABLE comm_log ADD COLUMN IF NOT EXISTS direction TEXT DEFAULT 'out'");
+  await pool.query('ALTER TABLE comm_log ADD COLUMN IF NOT EXISTS sender TEXT');
+  await pool.query('ALTER TABLE comm_log ADD COLUMN IF NOT EXISTS provider_id TEXT');
+  await pool.query('ALTER TABLE comm_log ADD COLUMN IF NOT EXISTS reply_key TEXT');
+  await pool.query('ALTER TABLE comm_log ADD COLUMN IF NOT EXISTS in_reply_to INT');
+  await pool.query('ALTER TABLE comm_log ADD COLUMN IF NOT EXISTS delivery TEXT');
+  await pool.query('ALTER TABLE comm_log ADD COLUMN IF NOT EXISTS delivery_at TIMESTAMPTZ');
+  await pool.query('ALTER TABLE comm_log ADD COLUMN IF NOT EXISTS opened_at TIMESTAMPTZ');
+  await pool.query('ALTER TABLE comm_log ADD COLUMN IF NOT EXISTS open_count INT DEFAULT 0');
+  await pool.query('ALTER TABLE comm_log ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ');
+  await pool.query('ALTER TABLE comm_log ADD COLUMN IF NOT EXISTS attachments JSONB');
+  await pool.query('CREATE INDEX IF NOT EXISTS comm_log_reply_key_idx ON comm_log (reply_key)');
+  await pool.query('CREATE INDEX IF NOT EXISTS comm_log_provider_idx ON comm_log (provider_id)');
   await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'nowy'");
   await pool.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS admin_note TEXT');
   await pool.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ');
@@ -484,14 +498,74 @@ async function purgeDemo({ caseIds = [], nips = [] }) {
 // ── Communicatielog ──────────────────────────────────────────────────────
 let memCommId = 1;
 async function logComm(e) {
-  const row = { ...e, created_at: new Date() };
+  const row = { direction: 'out', open_count: 0, ...e, created_at: new Date() };
   if (!pool) { row.id = memCommId++; mem.comms.unshift(row); mem.comms = mem.comms.slice(0, 500); return row; }
   const r = await pool.query(
-    'INSERT INTO comm_log (case_id, channel, tone, subject, body, status, outcome, recipient) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id',
-    [e.case_id, e.channel, e.tone || null, e.subject || null, e.body || null, e.status || null, e.outcome || null, e.recipient || null]
+    `INSERT INTO comm_log (case_id, channel, tone, subject, body, status, outcome, recipient, direction, sender, provider_id, reply_key, in_reply_to, delivery, attachments)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING id`,
+    [e.case_id, e.channel, e.tone || null, e.subject || null, e.body || null, e.status || null, e.outcome || null, e.recipient || null,
+      row.direction, e.sender || null, e.provider_id || null, e.reply_key || null, e.in_reply_to || null, e.delivery || null, e.attachments ? JSON.stringify(e.attachments) : null]
   );
   row.id = r.rows[0].id;
   return row;
+}
+
+// ── Postvak: leesstatus, afleverstatus en antwoorden (src/mailbox.js) ─────
+const COMM_FIELDS = ['delivery', 'delivery_at', 'opened_at', 'open_count', 'read_at', 'provider_id', 'attachments'];
+async function updateComm(id, fields) {
+  const keys = Object.keys(fields).filter((k) => COMM_FIELDS.includes(k));
+  if (!keys.length) return false;
+  if (!pool) { const c = mem.comms.find((x) => x.id === id); if (!c) return false; for (const k of keys) c[k] = fields[k]; return true; }
+  const r = await pool.query(`UPDATE comm_log SET ${keys.map((k, i) => k + '=$' + (i + 2)).join(', ')} WHERE id=$1`, [id, ...keys.map((k) => (k === 'attachments' && fields[k] ? JSON.stringify(fields[k]) : fields[k]))]);
+  return r.rowCount > 0;
+}
+async function getCommByKey(key) {
+  if (!key) return null;
+  if (!pool) return mem.comms.find((x) => x.reply_key === key) || null;
+  const r = await pool.query('SELECT * FROM comm_log WHERE reply_key=$1 LIMIT 1', [key]);
+  return r.rows[0] || null;
+}
+async function getCommByProvider(pid) {
+  if (!pid) return null;
+  if (!pool) return mem.comms.find((x) => x.provider_id === pid) || null;
+  const r = await pool.query('SELECT * FROM comm_log WHERE provider_id=$1 LIMIT 1', [pid]);
+  return r.rows[0] || null;
+}
+async function getCommById(id) {
+  const n = parseInt(id, 10);
+  if (!Number.isInteger(n)) return null;
+  if (!pool) return mem.comms.find((x) => x.id === n) || null;
+  const r = await pool.query('SELECT * FROM comm_log WHERE id=$1', [n]);
+  return r.rows[0] || null;
+}
+// Laatste e-mail die wij naar dit adres stuurden — om een losse mail van een bekende afzender bij de juiste draad te leggen
+async function lastCommTo(address) {
+  const a = String(address || '').trim().toLowerCase();
+  if (!a) return null;
+  if (!pool) return mem.comms.find((x) => x.channel === 'email' && x.direction !== 'in' && String(x.recipient || '').toLowerCase() === a) || null;
+  const r = await pool.query("SELECT * FROM comm_log WHERE channel='email' AND COALESCE(direction, 'out') <> 'in' AND lower(recipient)=$1 ORDER BY id DESC LIMIT 1", [a]);
+  return r.rows[0] || null;
+}
+// Eén open-registratie: eerste keer zet opened_at, elke keer telt mee
+async function markCommOpened(id) {
+  if (!pool) { const c = mem.comms.find((x) => x.id === id); if (!c) return false; if (!c.opened_at) c.opened_at = new Date(); c.open_count = (c.open_count || 0) + 1; return true; }
+  const r = await pool.query('UPDATE comm_log SET opened_at = COALESCE(opened_at, now()), open_count = COALESCE(open_count, 0) + 1 WHERE id=$1', [id]);
+  return r.rowCount > 0;
+}
+// Binnengekomen berichten, nieuwste eerst (voor /admin/poczta)
+async function listInbound(limit = 100) {
+  if (!pool) return mem.comms.filter((x) => x.direction === 'in').slice(0, limit);
+  const r = await pool.query("SELECT * FROM comm_log WHERE direction='in' ORDER BY id DESC LIMIT $1", [limit]);
+  return r.rows;
+}
+// Ongelezen antwoorden per draad: { 'L3': 1, 'c7': 2, … }
+async function unreadReplies() {
+  const out = {};
+  const rows = pool
+    ? (await pool.query("SELECT case_id, count(*)::int AS n FROM comm_log WHERE direction='in' AND read_at IS NULL GROUP BY case_id")).rows
+    : Object.entries(mem.comms.filter((x) => x.direction === 'in' && !x.read_at).reduce((a, x) => { a[x.case_id] = (a[x.case_id] || 0) + 1; return a; }, {})).map(([case_id, n]) => ({ case_id, n }));
+  for (const r of rows) out[r.case_id] = r.n;
+  return out;
 }
 
 // Eén bericht uit het communicatielog (om terug te lezen); caseKey moet kloppen (toegang)
@@ -708,6 +782,7 @@ module.exports = {
   listCases, insertCase, updateCase, deleteCase,
   saveScore, loadScores,
   logComm, getComm, listComms, countComms,
+  updateComm, getCommByKey, getCommByProvider, getCommById, lastCommTo, markCommOpened, listInbound, unreadReplies,
   saveLead, listLeads, getLead, updateLead, deleteLead, setLeadCase, setLeadNote,
   saveLeadFile, listLeadFiles, getLeadFile, countLeadFiles,
   saveLeadReport, getLeadReport, latestReports,
