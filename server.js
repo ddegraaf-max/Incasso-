@@ -483,7 +483,13 @@ app.post('/admin/leady/:id/mail', Auth.requireAdmin, async (req, res) => {
   if (!to || !subject || !body) return renderLeadComposer(req, res, lead, { to, subject, body, tl, tpl, error: Mm.missing });
   if (!EMAIL_OK(to)) return renderLeadComposer(req, res, lead, { to, subject, body, tl, tpl, error: Mm.badTo });
   const r = await Comms.sendLeadMail(lead, { to, subject, body, lang: tl }).catch((e) => ({ ok: false, status: 'błąd: ' + e.message }));
-  const msg = r.simulated ? res.locals.t.fill(Mm.simulated, { to }) : (r.ok ? res.locals.t.fill(Mm.sent, { to }) : res.locals.t.fill(Mm.failed, { status: res.locals.t.tr(r.status) }));
+  let msg = r.simulated ? res.locals.t.fill(Mm.simulated, { to }) : (r.ok ? res.locals.t.fill(Mm.sent, { to }) : res.locals.t.fill(Mm.failed, { status: res.locals.t.tr(r.status) }));
+  // Eerste e-mail aan de aanvrager: de lead is niet meer "nowy" maar in contact
+  if (r.ok || r.simulated) {
+    const L = res.locals.t.app.admin.leads;
+    const moved = await db.moveLeadStatus(lead.id, ['nowy'], 'kontakt').catch(() => false);
+    if (moved) msg += ' · ' + res.locals.t.fill(L.statusAuto, { status: L.statuses.kontakt });
+  }
   res.redirect('/admin/leady?sel=' + lead.id + '&msg=' + encodeURIComponent(msg));
 });
 
@@ -586,8 +592,15 @@ app.post('/app/sprawy/:id/mail', Auth.requireAuth, async (req, res) => {
 // Onderzoeksverslag (opnieuw) opstellen — draait op de achtergrond, de pagina vernieuwt zichzelf
 app.post('/admin/leady/:id/raport', Auth.requireAdmin, async (req, res) => {
   const L = res.locals.t.app.admin.leads;
-  const lead = await db.getLead(req.params.id).catch(() => null);
+  let lead = await db.getLead(req.params.id).catch(() => null);
   if (!lead) return res.redirect('/admin/leady?msg=' + encodeURIComponent(L.notFound));
+  // Aanvullende informatie van de beheerder (bv. het NIP op de bijgevoegde factuur) en een eventueel gecorrigeerd NIP gaan mee in het verslag
+  const research_note = String(req.body.hint || '').trim().slice(0, 4000) || null;
+  const nipRaw = String(req.body.nip || '').trim();
+  if (nipRaw && !validNip(nipRaw)) return res.redirect('/admin/leady?sel=' + encodeURIComponent(lead.id) + '&msg=' + encodeURIComponent(L.research.badNip));
+  const nip = nipRaw ? nipRaw.replace(/\D/g, '') : null;
+  await db.setLeadResearchInput(lead.id, { research_note, nip }).catch(() => false);
+  lead = (await db.getLead(lead.id).catch(() => null)) || { ...lead, research_note, nip: nip || lead.nip };
   Research.runForLead(lead, { lang: Research.LANG }).catch((e) => console.error('Research:', e.message));
   res.redirect('/admin/leady?sel=' + encodeURIComponent(lead.id) + '&msg=' + encodeURIComponent(L.research.started));
 });
@@ -615,6 +628,7 @@ app.post('/admin/leady/:id/sprawa', Auth.requireAdmin, async (req, res) => {
     const clientEmail = String(req.body.clientEmail || lead.email || '').trim();
     const owner = Auth.findUser(clientEmail);
     const c = await Cases.create({ ...req.body, clientCompany: req.body.clientCompany || lead.company, clientEmail }, { user: req.user, lead, source: 'lead', ownerUserId: owner ? owner.id : null });
+    await db.moveLeadStatus(lead.id, ['nowy', 'kontakt', 'oferta'], 'zaakceptowany').catch(() => false); // zaak aangemaakt = aanvraag geaccepteerd
     res.redirect('/app/sprawy?sel=' + encodeURIComponent(c.id) + '&msg=' + encodeURIComponent(res.locals.t.fill(L.caseCreated, { id: lead.id })));
   } catch (e) {
     const err = res.locals.t.app.sprawy.real.errors[e.message] || e.message;

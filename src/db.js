@@ -221,6 +221,7 @@ async function init() {
   await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'nowy'");
   await pool.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS admin_note TEXT');
   await pool.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ');
+  await pool.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS research_note TEXT');
   console.log('DB: PostgreSQL verbonden, schema klaar');
   return true;
 }
@@ -434,6 +435,34 @@ async function updateLead(id, { status, admin_note }) {
     return true;
   }
   const r = await pool.query('UPDATE leads SET status=$2, admin_note=$3, updated_at=now() WHERE id=$1', [n, status, admin_note]);
+  return r.rowCount > 0;
+}
+
+// Aanvullende informatie van de beheerder voor het onderzoeksverslag; het NIP alleen bijwerken als er een is opgegeven
+async function setLeadResearchInput(id, { research_note, nip }) {
+  const n = parseInt(id, 10);
+  if (!Number.isInteger(n)) return false;
+  if (!pool) {
+    const l = mem.leads.find((x) => x.id === n);
+    if (!l) return false;
+    l.research_note = research_note; if (nip) l.nip = nip; l.updated_at = new Date();
+    return true;
+  }
+  const r = await pool.query('UPDATE leads SET research_note=$2, nip=COALESCE($3, nip), updated_at=now() WHERE id=$1', [n, research_note, nip || null]);
+  return r.rowCount > 0;
+}
+
+// Status automatisch doorzetten (bv. nowy → kontakt na de eerste e-mail), alleen vanuit de opgegeven statussen
+async function moveLeadStatus(id, from, to) {
+  const n = parseInt(id, 10);
+  if (!Number.isInteger(n)) return false;
+  if (!pool) {
+    const l = mem.leads.find((x) => x.id === n);
+    if (!l || !(l.status == null || from.includes(l.status))) return false;
+    l.status = to; l.updated_at = new Date();
+    return true;
+  }
+  const r = await pool.query('UPDATE leads SET status=$3, updated_at=now() WHERE id=$1 AND (status IS NULL OR status = ANY($2))', [n, from, to]);
   return r.rowCount > 0;
 }
 
@@ -783,7 +812,7 @@ module.exports = {
   saveScore, loadScores,
   logComm, getComm, listComms, countComms,
   updateComm, getCommByKey, getCommByProvider, getCommById, lastCommTo, markCommOpened, listInbound, unreadReplies,
-  saveLead, listLeads, getLead, updateLead, deleteLead, setLeadCase, setLeadNote,
+  saveLead, listLeads, getLead, updateLead, deleteLead, setLeadCase, setLeadNote, setLeadResearchInput, moveLeadStatus,
   saveLeadFile, listLeadFiles, getLeadFile, countLeadFiles,
   saveLeadReport, getLeadReport, latestReports,
   insertDemand, getDemandByToken, updateDemand, countDemands,

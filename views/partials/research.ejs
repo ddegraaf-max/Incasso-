@@ -8,6 +8,14 @@ var dateFmtR = function (d) { return new Date(d).toLocaleString(loc, { day: 'num
 var usage = report.usage || {};
 %>
 <p class="helper" style="margin:0 0 10px"><%= RS.meta.replace('{date}', dateFmtR(report.created_at)).replace('{model}', report.model || '—').replace('{searches}', usage.searches != null ? usage.searches : '—') %></p>
+<% var RQ = F.request || {}; var filesRead = RQ.attachmentsRead || [], filesSkipped = RQ.attachmentsSkipped || []; %>
+<% if (RQ.analystInput) { %>
+<div class="label"><%= RS.usedInput %></div>
+<p style="font-size:13.5px; white-space:pre-wrap; margin:0 0 10px"><%= RQ.analystInput %></p>
+<% } %>
+<% if (filesRead.length || filesSkipped.length) { %>
+<p class="helper" style="margin:0 0 10px"><% if (filesRead.length) { %><%= RS.usedFiles %>: <%= filesRead.join(', ') %><% } %><% if (filesSkipped.length) { %><%= filesRead.length ? ' · ' : '' %><%= RS.skippedFiles %>: <%= filesSkipped.join(', ') %><% } %></p>
+<% } %>
 
 <div class="label"><%= RS.debtor %></div>
 <% if (mf && mf.found) { %>

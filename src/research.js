@@ -142,7 +142,7 @@ function parseNote(lead) {
   return out;
 }
 
-async function collectFacts(lead) {
+async function collectFacts(lead, files = []) {
   const note = parseNote(lead);
   const isWyrok = lead.source === 'skup-wyrokow';
   const mf = await mfLookup(lead.nip).catch(() => null);
@@ -156,6 +156,8 @@ async function collectFacts(lead) {
       id: lead.id, source: isWyrok ? 'skup-wyrokow (opkoop vonnis)' : 'sprzedaj fakturę (verkoop factuur)', submitted: lead.created_at,
       amount: Number(lead.kwota) || 0, daysOverdue: lead.dni, debtorLegalForm: lead.forma || null, offerPct: lead.oferta_pct,
       sygnatura: note.sygnatura, enforcement: note.enforcement, remarks: note.remarks, adminNote: lead.admin_note || null, status: lead.status,
+      analystInput: lead.research_note || null, // aanvullende informatie van de beheerder (bv. het NIP op de bijgevoegde factuur)
+      attachments: files.map((f) => ({ filename: f.filename, type: f.mimetype, kb: Math.max(1, Math.round((f.size || 0) / 1024)) })),
     },
     debtor: { nip: lead.nip || null, nameFromRequest: note.debtorName || note.registerName || null, mf, krs, site: debtorSite },
     client: { company: lead.company, email: lead.email, phone: lead.tel, domain, site: clientSite },
@@ -177,13 +179,15 @@ function systemPrompt(lang) {
     'You are a senior credit and collections analyst at Creditline BV (brand sprzedamfakture.pl), a Dutch company that buys and collects overdue Polish B2B receivables and old judgments. The company works exclusively in writing (e-mail), never by phone — recommended next steps must be written steps.',
     'For each incoming request you write a concise, factual due-diligence report on (1) the debtor (dłużnik) and (2) the requesting client (the creditor who wants to sell or collect).',
     'Ground truth is the official register data supplied in the message (MF VAT white list, KRS extract, website metadata). Use web search to add what the registers do not show: what the company does, size and age, website and contact channels, management, reviews and opinions (e.g. Google, GoWork, Aleo, Panorama Firm, ALEO, Rejestr.io), news, insolvency or restructuring (KRZ, MSiG, court announcements), enforcement problems, KRD/BIG mentions and any red flags. For the client: does it exist, does the invoice fit its activity, is the request plausible, any signs of fraud. Search in Polish for Polish entities and in Dutch/English for foreign ones.',
+    'The request may contain "analystInput": findings typed in by the Creditline reviewer who handles the file. Treat them as verified facts from the reviewer, build on them, and let them prevail over form data and register data where they conflict (say so when they do).',
+    'Files attached to the request (invoice, judgment, enforcement decision) are passed as documents or images. Read them: extract the debtor name and NIP, invoice or case number, amount, invoice date and due date, and compare them with the form data — flag every discrepancy. If an attachment shows a NIP that the registers were not queried for, name it explicitly as a next step.',
     'Rules: never invent facts or numbers; when something could not be verified say so explicitly; name your sources (site or URL) inline; be concise (about 500–700 words); no tables; no preamble — output only the report.',
     'Write the entire report in ' + L + '. Use Markdown with exactly these five section headers, in this order: ' + H.join(' · ') + '.',
     'In the first section give a risk score from 1 (low risk, collectable) to 5 (very high risk / uncollectable) and one recommendation: buy the receivable / collect on behalf of the client / decline / more information needed — with one sentence of reasoning.',
   ].join('\n');
 }
 
-async function aiReport(facts, lang) {
+async function aiReport(facts, lang, blocks = []) {
   if (!KEY || !Anthropic) return { text: null, sources: [], model: null, note: 'no_key' };
   const client = new Anthropic({ apiKey: KEY, timeout: 240000, maxRetries: 1 });
   const base = {
@@ -191,9 +195,13 @@ async function aiReport(facts, lang) {
     system: systemPrompt(lang),
     tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: MAX_SEARCHES }],
   };
-  const userText = 'Request (lead) data — official register data and form input as JSON:\n\n' + JSON.stringify(facts, null, 1) +
-    '\n\nResearch both parties online (at most ' + MAX_SEARCHES + ' searches) and write the report as instructed.';
-  let messages = [{ role: 'user', content: userText }];
+  const intro = 'Request (lead) data — official register data and form input as JSON:\n\n' + JSON.stringify(facts, null, 1);
+  const task = 'Research both parties online (at most ' + MAX_SEARCHES + ' searches) and write the report as instructed.';
+  // Bijlagen (factuur/vonnis) gaan als document- en afbeeldingsblokken mee, tussen de feiten en de opdracht
+  const content = blocks.length
+    ? [{ type: 'text', text: intro + '\n\nThe ' + blocks.length + ' file(s) attached to the request follow.' }, ...blocks, { type: 'text', text: task }]
+    : intro + '\n\n' + task;
+  let messages = [{ role: 'user', content }];
   let useFallbacks = true;
   let resp = null;
   const cited = new Map(); const found = new Map(); const texts = [];
@@ -231,6 +239,30 @@ async function aiReport(facts, lang) {
   };
 }
 
+// ── Bijlagen voor het AI-verslag ─────────────────────────────────────────
+// PDF als document, JPG/PNG als afbeelding (API-limiet 5 MB), XML als tekst; hooguit MAX_FILES bestanden per verslag.
+const MAX_FILES = 4, MAX_IMAGE = 5 * 1024 * 1024, MAX_XML = 1024 * 1024;
+async function attachmentBlocks(files) {
+  const blocks = [], used = [], skipped = [];
+  const list = files || [];
+  for (const f of list.slice(0, MAX_FILES)) {
+    const full = await db.getLeadFile(f.id).catch(() => null);
+    const buf = full && full.data ? Buffer.from(full.data) : null;
+    const mime = String(f.mimetype || '');
+    if (!buf || !buf.length) { skipped.push(f.filename); continue; }
+    if (mime === 'application/pdf') {
+      blocks.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: buf.toString('base64') }, title: f.filename });
+    } else if ((mime === 'image/jpeg' || mime === 'image/png') && buf.length <= MAX_IMAGE) {
+      blocks.push({ type: 'image', source: { type: 'base64', media_type: mime, data: buf.toString('base64') } });
+    } else if (/xml$/.test(mime) && buf.length <= MAX_XML) {
+      blocks.push({ type: 'document', source: { type: 'text', media_type: 'text/plain', data: buf.toString('utf8') }, title: f.filename });
+    } else { skipped.push(f.filename); continue; }
+    used.push(f.filename);
+  }
+  for (const f of list.slice(MAX_FILES)) skipped.push(f.filename);
+  return { blocks, used, skipped };
+}
+
 // ── Orchestratie ─────────────────────────────────────────────────────────
 const pending = new Set();
 function isPending(leadId) { return pending.has(parseInt(leadId, 10)); }
@@ -242,10 +274,23 @@ async function runForLead(lead, opts = {}) {
   pending.add(id);
   const lang = (opts.lang || LANG);
   try {
-    const facts = await collectFacts(lead);
-    let ai;
-    try { ai = await aiReport(facts, lang); }
+    const files = await db.listLeadFiles(id).catch(() => []);
+    const facts = await collectFacts(lead, files);
+    const att = KEY && Anthropic ? await attachmentBlocks(files).catch(() => ({ blocks: [], used: [], skipped: files.map((f) => f.filename) })) : { blocks: [], used: [], skipped: [] };
+    facts.request.attachmentsRead = att.used; facts.request.attachmentsSkipped = att.skipped;
+    let ai = null, err = null;
+    try { ai = await aiReport(facts, lang, att.blocks); }
     catch (e) {
+      err = e;
+      // bijlage door de API geweigerd (bv. meer dan 100 pagina's of een beschadigd bestand): nog één keer zonder bijlagen
+      if (att.blocks.length && e && e.status === 400) {
+        facts.request.attachmentsRead = []; facts.request.attachmentsSkipped = files.map((f) => f.filename);
+        facts.request.attachmentsError = String((e && e.message) || e).slice(0, 200);
+        try { ai = await aiReport(facts, lang, []); err = null; } catch (e2) { err = e2; }
+      }
+    }
+    if (err) {
+      const e = err;
       const msg = (e && e.message) || String(e);
       const lim = /regain access on ([0-9]{4}-[0-9]{2}-[0-9]{2}(?: at [0-9:]+ UTC)?)/.exec(msg);
       const friendly = lim || /usage limits?/i.test(msg) ? 'Anthropic usage limit reached' + (lim ? ' — access resumes ' + lim[1] : '') : (e && e.status === 429 ? 'Anthropic rate limit — try again in a minute' : msg.slice(0, 300));
@@ -265,4 +310,4 @@ async function runForLead(lead, opts = {}) {
 
 function status() { return { ai: !!(KEY && Anthropic), auto: AUTO, model: MODEL, lang: LANG, pending: pending.size }; }
 
-module.exports = { AUTO, LANG, MODEL, runForLead, isPending, status, collectFacts, mfLookup, krsLookup, siteInfo, domainFromEmail, parseNote };
+module.exports = { AUTO, LANG, MODEL, runForLead, isPending, status, collectFacts, attachmentBlocks, mfLookup, krsLookup, siteInfo, domainFromEmail, parseNote };
