@@ -14,6 +14,11 @@ const KEY = process.env.ANTHROPIC_API_KEY || '';
 const MODEL = process.env.RESEARCH_MODEL || 'claude-opus-5';
 const FAKE = process.env.AIMAIL_FAKE === '1'; // alleen voor tests: vast antwoord zonder API
 const client = KEY && Anthropic ? new Anthropic({ apiKey: KEY, timeout: 150000, maxRetries: 1 }) : null;
+// Uitvoerlimiet: concept + vertaling + notities. Bij 6000 werd een lang antwoord afgekapt en bleef er geen sluithaakje
+// over ("geen JSON in het antwoord", v0.18.0). AIMAIL_MAX_TOKENS overschrijft.
+const MAX_OUT = parseInt(process.env.AIMAIL_MAX_TOKENS || '', 10) || 16000;
+let createMessage = (params) => client.messages.create(params);
+function _setCreate(fn) { createMessage = fn; } // alleen voor tests
 
 const LANG_NAME = { pl: 'Polish', en: 'English', nl: 'Dutch' };
 const SCHEMA = {
@@ -36,6 +41,8 @@ function mapApiError(e) {
   return e;
 }
 
+function textOf(resp) { return (resp.content || []).filter((b) => b.type === 'text').map((b) => b.text).join(''); }
+
 function parseJson(text) {
   try { return JSON.parse(text); } catch { /* val terug op het eerste JSON-object in de tekst */ }
   const m = /\{[\s\S]*\}/.exec(text || '');
@@ -51,20 +58,43 @@ async function call(system, user) {
   }
   if (!client) throw new Error('AI niet beschikbaar (geen ANTHROPIC_API_KEY)');
   const t0 = Date.now();
-  const params = { model: MODEL, max_tokens: 6000, system, messages: [{ role: 'user', content: user }] };
-  let resp;
+  const JSON_FORMAT = { format: { type: 'json_schema', schema: SCHEMA } };
+  const params = { model: MODEL, max_tokens: MAX_OUT, system, messages: [{ role: 'user', content: user }] };
+  let resp, structured = true;
   try {
-    resp = await client.messages.create({ ...params, output_config: { format: { type: 'json_schema', schema: SCHEMA } } });
+    resp = await createMessage({ ...params, output_config: JSON_FORMAT });
   } catch (e) {
     const mapped = mapApiError(e);
     if (mapped.code) throw mapped;
-    if (e instanceof Anthropic.BadRequestError) {
-      try { resp = await client.messages.create(params); } catch (e2) { throw mapApiError(e2); } // oudere API zonder structured outputs
-    } else throw e;
+    if (!(e instanceof Anthropic.BadRequestError)) throw e;
+    // oudere API/proxy zonder structured outputs: gewone aanroep met nadrukkelijke JSON-instructie
+    console.warn('[aimail] structured output geweigerd (400), gewone aanroep —', String((e && e.message) || e).slice(0, 200));
+    structured = false;
+    try { resp = await createMessage({ ...params, system: system + '\nOutput only the JSON object — no prose before or after it.' }); } catch (e2) { throw mapApiError(e2); }
   }
   if (resp.stop_reason === 'refusal') throw new Error('geweigerd door het model');
-  const text = (resp.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('');
-  const j = parseJson(text);
+  if (resp.stop_reason === 'max_tokens') throw new Error('antwoord afgebroken: langer dan ' + MAX_OUT + ' tokens — maak de instructie korter of vraag een beknopter antwoord');
+  let text = textOf(resp);
+  let j;
+  try { j = parseJson(text); }
+  catch (e) {
+    // geen (geldige) JSON: loggen wat er wél kwam en één herstelronde — de tekst zelf laten omzetten (documenten gaan niet opnieuw mee)
+    const types = (resp.content || []).map((b) => b.type).join(',') || 'leeg';
+    console.warn('[aimail] geen JSON (stop=' + resp.stop_reason + ', structured=' + structured + ', blokken=' + types + ', ' + text.length + ' tekens):', text.slice(0, 300).replace(/\s+/g, ' '));
+    if (!text.trim()) throw new Error('leeg antwoord van het model (stop_reason ' + resp.stop_reason + ', blokken: ' + types + ')');
+    let fix;
+    try {
+      fix = await createMessage({
+        model: MODEL, max_tokens: MAX_OUT, ...(structured ? { output_config: JSON_FORMAT } : {}),
+        system: 'Convert the e-mail draft below into a JSON object with exactly the keys "subject", "body", "translation" and "notes" (all strings). Copy the texts faithfully and completely; use an empty string for a part that is missing. Return only the JSON object.',
+        messages: [{ role: 'user', content: text }],
+      });
+    } catch (e2) { throw mapApiError(e2); }
+    if (fix.stop_reason === 'max_tokens') throw new Error('antwoord afgebroken: langer dan ' + MAX_OUT + ' tokens');
+    text = textOf(fix);
+    try { j = parseJson(text); } catch { throw new Error('geen JSON in het antwoord (ook niet na herstelronde; stop_reason ' + resp.stop_reason + ')'); }
+    console.log('[aimail] JSON hersteld in tweede ronde');
+  }
   console.log('[aimail] ok model=' + resp.model + ' in=' + (resp.usage ? resp.usage.input_tokens : '?') + ' out=' + (resp.usage ? resp.usage.output_tokens : '?') + ' ' + (Date.now() - t0) + 'ms');
   return { subject: String(j.subject || '').trim(), body: String(j.body || '').trim(), translation: String(j.translation || '').trim(), notes: String(j.notes || '').trim(), model: resp.model };
 }
@@ -151,4 +181,4 @@ async function translate({ subject, body, from, to }) {
   return call(system, user);
 }
 
-module.exports = { available, draft, translate, translateInbound, startJob, getJob, finishJob, mapApiError, MODEL };
+module.exports = { available, draft, translate, translateInbound, startJob, getJob, finishJob, mapApiError, MODEL, MAX_OUT, _setCreate };
