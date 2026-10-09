@@ -4,7 +4,7 @@
 // templates [{key,name}], history, error, fromAddr, replyTo, mailOk, live.
 var Mm = t.app.mail, fill = t.fill;
 var mkUrl = function (over) {
-  var q = { tpl: tpl, tl: tl, aud: aud };
+  var q = { tpl: tpl, tl: tl, aud: aud, reply: (typeof reply !== 'undefined' && reply) ? reply : '' };
   Object.keys(over).forEach(function (k) { q[k] = over[k]; });
   var parts = [];
   Object.keys(q).forEach(function (k) { if (q[k]) parts.push(k + '=' + encodeURIComponent(q[k])); });
@@ -23,6 +23,7 @@ var mkUrl = function (over) {
       <input type="hidden" name="tpl" value="<%= tpl %>">
       <input type="hidden" name="tl" value="<%= tl %>">
       <input type="hidden" name="aud" value="<%= aud %>">
+      <input type="hidden" name="reply" value="<%= (typeof reply !== 'undefined' && reply) ? reply : '' %>">
       <div class="fg"><label for="m-to"><%= Mm.to %></label><input id="m-to" name="to" type="email" value="<%= to %>" required></div>
       <div class="fg"><label for="m-subject"><%= Mm.subject %></label><input id="m-subject" name="subject" value="<%= subject %>" required maxlength="200"></div>
       <div class="fg"><label for="m-body"><%= Mm.body %></label><textarea id="m-body" name="body" rows="18" required><%= body %></textarea></div>
@@ -41,6 +42,7 @@ var mkUrl = function (over) {
       <div class="ai-box">
         <div class="label"><%= Mm.aiLabel %></div>
         <p class="helper" style="margin:0 0 10px"><%= Mm.aiHelp %></p>
+        <% if (typeof reply !== 'undefined' && reply) { %><p class="helper" style="margin:0 0 10px"><strong><%= fill(Mm.aiReplyNote, { from: (typeof replyFrom !== 'undefined' && replyFrom) || '—', subject: (typeof replySubject !== 'undefined' && replySubject) || '—' }) %></strong></p><% } %>
         <div class="fg"><label for="m-instr"><%= Mm.aiInstruction %></label><textarea id="m-instr" name="instruction" rows="3" placeholder="<%= Mm.aiPlaceholder %>"><%= instruction %></textarea></div>
         <% var busyDraft = aiPending && aiMode !== 'translate', busyTr = aiPending && aiMode === 'translate'; %>
         <% if (aiPending) { %><p class="research-busy" role="status" id="ai-status"><%- include('partials/hourglass', { id: 'ai' }) %><span><%= busyTr ? Mm.aiPendingTranslate : Mm.aiPending %></span></p><% } else { %><p class="research-busy" role="status" id="ai-status" hidden><%- include('partials/hourglass', { id: 'ai' }) %><span data-draft="<%= Mm.aiPending %>" data-translate="<%= Mm.aiPendingTranslate %>"></span></p><% } %>

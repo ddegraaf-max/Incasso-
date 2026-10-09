@@ -365,8 +365,24 @@ app.get('/admin/poczta/:cid', Auth.requireAdmin, async (req, res, next) => {
   if (!m) return next();
   await markRead(m);
   res.render('mail-view', common({ page: 'admin', user: req.user, ctx: { label: res.locals.t.app.mail.inbox }, m, history: [], historyBase: '/admin/poczta',
-    backUrl: '/admin/poczta', reuseUrl: null, replyUrl: null, fromAddr: Mailer.MAIL_FROM }));
+    backUrl: '/admin/poczta', reuseUrl: null, replyUrl: null, fromAddr: Mailer.MAIL_FROM, ...translationView(req, res, m) }));
 });
+// Binnengekomen bericht (opnieuw) vertalen naar de paneltaal — op de achtergrond; het scherm vernieuwt zichzelf
+app.post('/admin/mail/:cid/vertaal', Auth.requireAdmin, async (req, res, next) => {
+  const m = await db.getCommById(req.params.cid).catch(() => null);
+  if (!m || m.direction !== 'in') return next();
+  Mailbox.translateInbound(m, panelTrLang(res)).catch(() => null);
+  res.redirect(Mailbox.panelPath(m) + '?tr=1');
+});
+// Vertaaltaal voor binnengekomen mail: de paneltaal (nl/en); bij een Pools panel Nederlands
+function panelTrLang(res) { const p = res.locals.panelLang || 'nl'; return p === 'en' ? 'en' : 'nl'; }
+// Vertaling op het berichtscherm (alleen admin): ontbreekt die, dan start hij vanzelf; na een mislukking pas na 10 minuten weer
+function translationView(req, res, m) {
+  const admin = !!(req.user && req.user.role === 'admin');
+  const can = admin && m.direction === 'in' && AiMail.available();
+  if (can && !m.translation && Mailbox.TR_AUTO && !Mailbox.isTranslating(m.id) && Mailbox.canAuto(m.id)) Mailbox.translateInbound(m, panelTrLang(res)).catch(() => null);
+  return { showTranslation: admin, canTranslate: can, translating: can && !m.translation && Mailbox.isTranslating(m.id), translateUrl: '/admin/mail/' + m.id + '/vertaal' };
+}
 async function markRead(m) {
   if (m.direction !== 'in' || m.read_at) return;
   m.read_at = new Date();
@@ -376,7 +392,7 @@ async function markRead(m) {
 async function replyOver(req, caseKey, over) {
   if (!req.query.reply || over.subject !== undefined) return over;
   const m = await db.getComm(req.query.reply, caseKey).catch(() => null);
-  return m && m.direction === 'in' ? { ...over, ...Mailbox.replyDraft(m) } : over;
+  return m && m.direction === 'in' ? { ...over, ...Mailbox.replyDraft(m), reply: m.id } : over;
 }
 
 // ── E-mailcomposer ───────────────────────────────────────────────────────
@@ -409,6 +425,7 @@ function applyJob(req, res, over) {
 async function renderLeadComposer(req, res, lead, over = {}) {
   const Mm = res.locals.t.app.mail;
   over = await replyOver(req, 'L' + lead.id, applyJob(req, res, over));
+  const replyMsg = over.reply ? await db.getComm(over.reply, 'L' + lead.id).catch(() => null) : null;
   const tl = over.tl || tplLang(req, Research.parseNote(lead).lang === 'en' ? 'en' : 'pl');
   const tpl = over.tpl !== undefined ? over.tpl : String(req.query.tpl || '');
   let draft = tpl ? MailTpl.forLead(lead, tpl, tl) : { subject: '', body: '' };
@@ -421,13 +438,14 @@ async function renderLeadComposer(req, res, lead, over = {}) {
     tpl, tl, aud: 'klient', audiences: [], templates: MailTpl.list('lead', tl, lead.source === 'skup-wyrokow'), history,
     instruction: over.instruction || '', translation: over.translation || '', notes: over.notes || '', aiOk: AiMail.available(), aiPending: !!over.aiPending, aiMode: over.aiMode || 'draft',
     error: over.error || null, fromAddr: Mailer.MAIL_FROM, replyTo: Mailbox.replyToLabel(), mailOk: Mailer.configured(), live: true,
+    reply: replyMsg ? replyMsg.id : '', replyFrom: replyMsg ? replyMsg.sender : '', replySubject: replyMsg ? replyMsg.subject : '',
   }));
 }
 
 // Vertaaltaal voor het AI-concept: de paneltaal, tenzij die gelijk is aan de mailtaal
 function trLangFor(res, mailLang) { const p = res.locals.panelLang || 'pl'; return p === mailLang ? null : p; }
 function composerState(req) {
-  return { to: String(req.body.to || '').trim(), subject: String(req.body.subject || '').trim().slice(0, 200), body: String(req.body.body || '').trim().slice(0, 20000), instruction: String(req.body.instruction || '').trim().slice(0, 2000), tpl: String(req.body.tpl || '') };
+  return { to: String(req.body.to || '').trim(), subject: String(req.body.subject || '').trim().slice(0, 200), body: String(req.body.body || '').trim().slice(0, 20000), instruction: String(req.body.instruction || '').trim().slice(0, 2000), tpl: String(req.body.tpl || ''), reply: String(req.body.reply || '').replace(/\D/g, '') };
 }
 
 // AI-concept / vertaling voor een lead-mail (aan de klant)
@@ -444,10 +462,11 @@ app.post('/admin/leady/:id/mail/ai', Auth.requireAdmin, async (req, res) => {
   const report = await db.getLeadReport(lead.id).catch(() => null);
   const files = await db.listLeadFiles(lead.id).catch(() => []);
   const data = { ...lead, attachments: files.map((f) => f.filename), noteParsed: Research.parseNote(lead) };
+  const ctx = mode === 'draft' ? await Mailbox.draftContext('L' + lead.id, st.reply, files) : {}; // correspondentie, te beantwoorden mail, documenten
   const jobId = AiMail.startJob(
     () => (mode === 'translate'
       ? AiMail.translate({ subject: st.subject, body: st.body, from: tl, to: trLang || 'nl' })
-      : AiMail.draft({ kind: 'lead', data, report, instruction: st.instruction, lang: tl, trLang, audience: 'klient', signature: MailTpl.signature(tl), to: st.to || lead.email })),
+      : AiMail.draft({ kind: 'lead', data, report, instruction: st.instruction, lang: tl, trLang, audience: 'klient', signature: MailTpl.signature(tl), to: st.to || lead.email, ...ctx })),
     { ...st, tl, mode }
   );
   res.redirect('/admin/leady/' + lead.id + '/mail?job=' + jobId);
@@ -471,7 +490,7 @@ app.get('/admin/leady/:id/mail/:cid', Auth.requireAdmin, async (req, res, next) 
   const inbound = m.direction === 'in';
   res.render('mail-view', common({ page: 'admin', user: req.user, ctx: { label: lead.company + ' · #' + lead.id }, m: history.find((k) => k.id === m.id) || m, history, historyBase: '/admin/leady/' + lead.id + '/mail',
     backUrl: '/admin/leady?sel=' + lead.id, reuseUrl: m.channel === 'email' && !inbound ? '/admin/leady/' + lead.id + '/mail?reuse=' + m.id : null,
-    replyUrl: inbound ? '/admin/leady/' + lead.id + '/mail?reply=' + m.id : null, fromAddr: Mailer.MAIL_FROM }));
+    replyUrl: inbound ? '/admin/leady/' + lead.id + '/mail?reply=' + m.id : null, fromAddr: Mailer.MAIL_FROM, ...translationView(req, res, m) }));
 });
 
 app.post('/admin/leady/:id/mail', Auth.requireAdmin, async (req, res) => {
@@ -496,6 +515,7 @@ app.post('/admin/leady/:id/mail', Auth.requireAdmin, async (req, res) => {
 async function renderCaseComposer(req, res, c, over = {}) {
   const Mm = res.locals.t.app.mail;
   over = await replyOver(req, c.id, applyJob(req, res, over));
+  const replyMsg = over.reply ? await db.getComm(over.reply, c.id).catch(() => null) : null;
   const isAdmin = req.user.role === 'admin';
   const audiences = isAdmin ? [{ key: 'dluznik', label: Mm.audDebtor }, { key: 'klient', label: Mm.audClient }] : [{ key: 'dluznik', label: Mm.audDebtor }];
   const aud = over.aud || (req.query.aud === 'klient' && isAdmin ? 'klient' : 'dluznik');
@@ -514,6 +534,7 @@ async function renderCaseComposer(req, res, c, over = {}) {
     tpl, tl, aud, audiences, templates, history,
     instruction: over.instruction || '', translation: over.translation || '', notes: over.notes || '', aiOk: AiMail.available(), aiPending: !!over.aiPending, aiMode: over.aiMode || 'draft',
     error: over.error || null, fromAddr: aud === 'klient' ? Mailer.MAIL_FROM : Comms.FROM_EMAIL, replyTo: Mailbox.replyToLabel(), mailOk: Mailer.configured(), live: aud === 'klient' || c.real || Comms.LIVE_COMMS,
+    reply: replyMsg ? replyMsg.id : '', replyFrom: replyMsg ? replyMsg.sender : '', replySubject: replyMsg ? replyMsg.subject : '',
   }));
 }
 
@@ -539,10 +560,12 @@ app.post('/app/sprawy/:id/mail/ai', Auth.requireAuth, async (req, res) => {
       client: { company: c.clientCompany, email: c.clientEmail }, note: c.note,
       history: comms.map((k) => ({ date: k.created_at, channel: k.channel, tone: k.tone, subject: k.subject, outcome: k.outcome, status: k.status })),
     };
+    const files = c.real && c.leadId ? await db.listLeadFiles(c.leadId).catch(() => []) : [];
+    const ctx = mode === 'draft' ? await Mailbox.draftContext(c.id, st.reply, files) : {}; // correspondentie, te beantwoorden mail, documenten van de lead
     const jobId = AiMail.startJob(
       () => (mode === 'translate'
         ? AiMail.translate({ subject: st.subject, body: st.body, from: tl, to: trLang || 'nl' })
-        : AiMail.draft({ kind: 'case', data, report, instruction: st.instruction, lang: tl, trLang, audience: aud, signature: aud === 'klient' ? MailTpl.signature(tl) : 'sprzedamfakture.pl — dział windykacji\nw imieniu wierzyciela', to: st.to })),
+        : AiMail.draft({ kind: 'case', data, report, instruction: st.instruction, lang: tl, trLang, audience: aud, signature: aud === 'klient' ? MailTpl.signature(tl) : 'sprzedamfakture.pl — dział windykacji\nw imieniu wierzyciela', to: st.to, ...ctx })),
       { ...st, tl, aud, mode }
     );
     res.redirect('/app/sprawy/' + encodeURIComponent(c.id) + '/mail?job=' + jobId);
@@ -570,7 +593,7 @@ app.get('/app/sprawy/:id/mail/:cid', Auth.requireAuth, async (req, res, next) =>
   res.render('mail-view', common({ page: 'app', tab: 'sprawy', user: req.user, ctx: { label: c.nr + ' · ' + c.debtor }, m: history.find((k) => k.id === m.id) || m, history, historyBase: '/app/sprawy/' + c.id + '/mail',
     backUrl: '/app/sprawy?sel=' + c.id, reuseUrl: m.channel === 'email' && !inbound ? '/app/sprawy/' + c.id + '/mail?reuse=' + m.id + '&aud=' + aud : null,
     replyUrl: inbound ? '/app/sprawy/' + c.id + '/mail?reply=' + m.id + '&aud=' + aud : null,
-    fromAddr: aud === 'klient' ? Mailer.MAIL_FROM : Comms.FROM_EMAIL, smsFrom: process.env.SMS_FROM || 'SprzedamFV' }));
+    fromAddr: aud === 'klient' ? Mailer.MAIL_FROM : Comms.FROM_EMAIL, smsFrom: process.env.SMS_FROM || 'SprzedamFV', ...translationView(req, res, m) }));
 });
 
 app.post('/app/sprawy/:id/mail', Auth.requireAuth, async (req, res) => {

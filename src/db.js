@@ -216,6 +216,8 @@ async function init() {
   await pool.query('ALTER TABLE comm_log ADD COLUMN IF NOT EXISTS open_count INT DEFAULT 0');
   await pool.query('ALTER TABLE comm_log ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ');
   await pool.query('ALTER TABLE comm_log ADD COLUMN IF NOT EXISTS attachments JSONB');
+  await pool.query('ALTER TABLE comm_log ADD COLUMN IF NOT EXISTS translation TEXT');
+  await pool.query('ALTER TABLE comm_log ADD COLUMN IF NOT EXISTS translation_lang TEXT');
   await pool.query('CREATE INDEX IF NOT EXISTS comm_log_reply_key_idx ON comm_log (reply_key)');
   await pool.query('CREATE INDEX IF NOT EXISTS comm_log_provider_idx ON comm_log (provider_id)');
   await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'nowy'");
@@ -540,7 +542,7 @@ async function logComm(e) {
 }
 
 // ── Postvak: leesstatus, afleverstatus en antwoorden (src/mailbox.js) ─────
-const COMM_FIELDS = ['delivery', 'delivery_at', 'opened_at', 'open_count', 'read_at', 'provider_id', 'attachments'];
+const COMM_FIELDS = ['delivery', 'delivery_at', 'opened_at', 'open_count', 'read_at', 'provider_id', 'attachments', 'translation', 'translation_lang'];
 async function updateComm(id, fields) {
   const keys = Object.keys(fields).filter((k) => COMM_FIELDS.includes(k));
   if (!keys.length) return false;

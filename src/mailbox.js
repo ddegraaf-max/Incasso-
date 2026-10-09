@@ -205,6 +205,7 @@ async function receive(d) {
 
   const row = await db.logComm({ case_id: caseId, channel: 'email', direction: 'in', subject, body, status: 'odebrano', outcome: verified ? null : UNVERIFIED, sender: String(fromRaw || from).slice(0, 300), recipient: rcpts[0] || null,
     provider_id: d.email_id, in_reply_to: parent ? parent.id : null, attachments: attachments.length ? attachments : null });
+  if (TR_AUTO) translateInbound(row, TR_LANG).catch(() => null); // vertaling op de achtergrond; de webhook wacht er niet op
   await db.insertEvent({ nip: null, debtor: null, type: 'email', case_id: /^L\d+$|^INBOX$/.test(caseId) ? null : caseId,
     title: `Odpowiedź e-mail od ${from || '—'}: ${subject || '—'}`, source: 'poczta przychodząca' }).catch(() => {});
   await notify(row, { from, fromRaw, subject, body, caseId, attachments, forward, verified }).catch((e) => console.error('[postvak] kopie naar MAIL_NOTIFY mislukt —', e.message));
@@ -239,6 +240,56 @@ async function notify(row, m) {
     attachments: m.forward.map((f) => ({ filename: f.filename, content: f.content })) });
 }
 
+// ── Vertaling van binnengekomen mail (AI) ────────────────────────────────
+// Bij ontvangst automatisch naar TR_LANG (INBOUND_LANG, anders RESEARCH_LANG, anders nl); INBOUND_TRANSLATE=0 zet dat uit.
+// Op het scherm ook vanzelf of op verzoek, in de paneltaal. De uitkomst staat in comm_log.translation.
+const TR_LANG = (process.env.INBOUND_LANG || process.env.RESEARCH_LANG || 'nl').toLowerCase();
+const TR_AUTO = process.env.INBOUND_TRANSLATE !== '0';
+const RETRY_MS = 10 * 60 * 1000;
+const translating = new Set(); // comm-id's waarvan de vertaling loopt
+const failedAt = new Map();    // comm-id → tijdstip van de laatste mislukte poging (automaat wacht RETRY_MS)
+function isTranslating(id) { return translating.has(parseInt(id, 10)); }
+function canAuto(id) { const t = failedAt.get(parseInt(id, 10)); return !t || Date.now() - t > RETRY_MS; }
+async function translateInbound(c, lang) {
+  const AiMail = require('./aimail');
+  const id = c ? parseInt(c.id, 10) : NaN;
+  if (!Number.isInteger(id) || c.direction !== 'in' || !AiMail.available() || translating.has(id)) return null;
+  const body = String(c.body || '').trim();
+  if (!body) return null;
+  const to = lang || TR_LANG;
+  translating.add(id);
+  try {
+    const r = await AiMail.translateInbound({ subject: c.subject || '', body: body.slice(0, 15000), to });
+    const text = r && String(r.translation || '').trim();
+    if (!text) { failedAt.set(id, Date.now()); return null; }
+    await db.updateComm(id, { translation: text, translation_lang: to });
+    c.translation = text; c.translation_lang = to;
+    failedAt.delete(id);
+    return text;
+  } catch (e) {
+    failedAt.set(id, Date.now());
+    console.error('[postvak] vertaling mislukt —', (e && e.message) || e);
+    return null;
+  } finally { translating.delete(id); }
+}
+
+// Context voor een AI-concept: de correspondentie tot nu toe, het bericht dat beantwoord wordt (replyId, anders de
+// nieuwste mail van de ander als die het laatste bericht is) en de bijlagen van de lead als blokken, nieuwste eerst
+async function draftContext(caseKey, replyId, files) {
+  const Research = require('./research');
+  const comms = (await db.listComms(caseKey, 8).catch(() => [])).filter((k) => k.channel === 'email');
+  const stamp = (d) => new Date(d).toISOString().slice(0, 16).replace('T', ' ');
+  const thread = comms.slice().reverse().map((k) => (k.direction === 'in'
+    ? { direction: 'in', date: stamp(k.created_at), from: k.sender || '', subject: k.subject, body: k.body }
+    : { direction: 'out', date: stamp(k.created_at), to: k.recipient || '', subject: k.subject, body: k.body }));
+  let m = replyId ? comms.find((k) => String(k.id) === String(replyId) && k.direction === 'in') : null;
+  if (!m && replyId) { const g = await db.getComm(replyId, caseKey).catch(() => null); if (g && g.direction === 'in') m = g; }
+  if (!m && !replyId && comms.length && comms[0].direction === 'in') m = comms[0];
+  const replyTo = m ? { from: m.sender || '', date: stamp(m.created_at), subject: m.subject, body: m.body, attachments: (m.attachments || []).map((a) => a.filename) } : null;
+  const att = await Research.attachmentBlocks((files || []).slice().sort((a, b) => b.id - a.id)).catch(() => ({ blocks: [], used: [] }));
+  return { thread, replyTo, docs: att.blocks, docNames: att.used };
+}
+
 // Antwoord vanuit het paneel op een binnengekomen bericht: onderwerp en geciteerde tekst
 function replyDraft(m) {
   const subject = /^\s*(re|odp)\s*:/i.test(m.subject || '') ? m.subject : 'Re: ' + (m.subject || '');
@@ -247,4 +298,4 @@ function replyDraft(m) {
   return { to: addressOf(m.sender), subject: String(subject).slice(0, 200), body: `\n\n${when}, ${m.sender || ''}:\n${quoted}` };
 }
 
-module.exports = { enabled, status, checkMx, send, replyToLabel, replyAddress, keyFromAddress, recordOpen, refresh, applyDelivery, stateOf, verifyWebhook, handleEvent, receive, panelPath, replyDraft, PIXEL, INBOX, INBOUND_DOMAIN };
+module.exports = { enabled, status, checkMx, send, replyToLabel, replyAddress, keyFromAddress, recordOpen, refresh, applyDelivery, stateOf, verifyWebhook, handleEvent, receive, panelPath, replyDraft, translateInbound, isTranslating, canAuto, draftContext, TR_LANG, TR_AUTO, PIXEL, INBOX, INBOUND_DOMAIN };

@@ -46,7 +46,8 @@ function parseJson(text) {
 async function call(system, user) {
   if (FAKE) {
     await new Promise((r) => setTimeout(r, 400));
-    return { subject: 'FAKE: temat', body: 'FAKE: treść\n\n' + user.slice(0, 40), translation: 'FAKE: vertaling', notes: 'FAKE: notities', model: 'fake' };
+    const u = Array.isArray(user) ? user.filter((b) => b.type === 'text').map((b) => b.text).join('\n') : String(user);
+    return { subject: 'FAKE: temat', body: 'FAKE: treść\n\n' + u.slice(0, 40), translation: 'FAKE: vertaling', notes: 'FAKE: notities', model: 'fake', docs: Array.isArray(user) ? user.filter((b) => b.type !== 'text').length : 0 };
   }
   if (!client) throw new Error('AI niet beschikbaar (geen ANTHROPIC_API_KEY)');
   const t0 = Date.now();
@@ -89,7 +90,9 @@ function finishJob(id) { jobs.delete(String(id)); }
 function trim(s, n) { const t = String(s == null ? '' : s); return t.length > n ? t.slice(0, n) + '\n[…]' : t; }
 
 // kind: 'lead' | 'case'; audience: 'klient' | 'dluznik'; lang: 'pl'|'en' (taal van de mail); trLang: 'nl'|'en'|null
-async function draft({ kind, data, report, instruction, lang, trLang, audience, signature, to }) {
+// thread: correspondentie tot nu toe [{direction,date,from|to,subject,body}]; replyTo: het bericht dat beantwoord wordt;
+// docs: document-/afbeeldingsblokken van de bijlagen (Research.attachmentBlocks), docNames: hun bestandsnamen
+async function draft({ kind, data, report, instruction, lang, trLang, audience, signature, to, thread, replyTo, docs, docNames }) {
   const L = LANG_NAME[lang] || 'Polish';
   const TR = trLang && trLang !== lang ? LANG_NAME[trLang] : null;
   const system = [
@@ -101,6 +104,8 @@ async function draft({ kind, data, report, instruction, lang, trLang, audience, 
       : 'The recipient is the CLIENT (the creditor who submitted the request). Tone: helpful, professional, commercial; explain clearly what we offer or need and what happens next.',
     'Use only facts from the provided data (request/case data, official register data, due-diligence report). Never invent amounts, dates, percentages or promises. If the instruction asks for something the data does not support, phrase it neutrally and flag it in notes.',
     'Do not reveal internal risk scores, internal notes or the fact that a due-diligence report exists; use its facts naturally.',
+    'When an "Incoming e-mail to answer" is provided, write a reply to it: address every question and point it raises, in order, and do not repeat the quoted text. Use the earlier correspondence for context and consistency.',
+    'Documents attached after the data (invoice, judgment, enforcement decision, correspondence) must be read and used precisely: invoice number, dates, amounts, debtor name and NIP; say which document a fact comes from. If a document contradicts the request data, point it out neutrally to the recipient and in the notes.',
     'End the body with exactly this signature (verbatim, on its own lines):\n' + signature,
     'Return JSON with: "subject" (in ' + L + '), "body" (in ' + L + ', including the signature), "translation" (' + (TR ? 'a faithful, complete translation of subject and body into ' + TR + ', subject on the first line' : 'an empty string') + '), "notes" (2–3 sentences in ' + (TR || L) + ': which facts from the report or registers you used and what the sender should double-check before sending).',
   ].join('\n');
@@ -113,7 +118,29 @@ async function draft({ kind, data, report, instruction, lang, trLang, audience, 
     'Official register facts (MF VAT white list / KRS / websites):', report && report.facts ? trim(JSON.stringify(report.facts, null, 1), 6000) : '(none)',
     '',
     'Due-diligence report:', report && report.report ? trim(report.report, 9000) : '(none)',
+    '',
+    'Correspondence so far (oldest first):', thread && thread.length
+      ? thread.map((m) => '--- ' + (m.direction === 'in' ? 'FROM ' + (m.from || 'recipient') : 'TO ' + (m.to || 'recipient')) + ' · ' + m.date + ' · ' + (m.subject || '—') + '\n' + trim(m.body, 2500)).join('\n\n')
+      : '(none)',
+    '',
+    'Incoming e-mail to answer:', replyTo
+      ? 'From: ' + (replyTo.from || '—') + '\nDate: ' + replyTo.date + '\nSubject: ' + (replyTo.subject || '—') + (replyTo.attachments && replyTo.attachments.length ? '\nAttachments: ' + replyTo.attachments.join(', ') : '') + '\n\n' + trim(replyTo.body, 8000)
+      : '(none — this is a new message, not a reply)',
   ].join('\n');
+  const blocks = Array.isArray(docs) ? docs : [];
+  if (!blocks.length) return call(system, user);
+  return call(system, [
+    { type: 'text', text: user + '\n\nAttached documents (' + (docNames && docNames.length ? docNames.join(', ') : blocks.length) + ') follow.' },
+    ...blocks,
+    { type: 'text', text: 'Now write the e-mail as instructed and return the JSON.' },
+  ]);
+}
+
+// Binnengekomen mail vertalen naar de paneltaal — alleen de vertaling telt; subject/body in het JSON blijven leeg
+async function translateInbound({ subject, body, to }) {
+  const TR = LANG_NAME[to] || 'Dutch';
+  const system = 'Translate the incoming e-mail below faithfully and completely into ' + TR + '. Keep names, amounts, dates, invoice numbers, legal references and the signature unchanged; keep the paragraph structure. Return JSON: "subject" and "body" = empty strings, "translation" = the translated subject on the first line, then a blank line, then the translated body, "notes" = an empty string.';
+  const user = 'Subject:\n' + (subject || '—') + '\n\nBody:\n' + body;
   return call(system, user);
 }
 
@@ -124,4 +151,4 @@ async function translate({ subject, body, from, to }) {
   return call(system, user);
 }
 
-module.exports = { available, draft, translate, startJob, getJob, finishJob, mapApiError, MODEL };
+module.exports = { available, draft, translate, translateInbound, startJob, getJob, finishJob, mapApiError, MODEL };
