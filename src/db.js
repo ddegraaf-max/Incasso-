@@ -224,6 +224,7 @@ async function init() {
   await pool.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS admin_note TEXT');
   await pool.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ');
   await pool.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS research_note TEXT');
+  await pool.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS client_nip TEXT');
   console.log('DB: PostgreSQL verbonden, schema klaar');
   return true;
 }
@@ -441,16 +442,16 @@ async function updateLead(id, { status, admin_note }) {
 }
 
 // Aanvullende informatie van de beheerder voor het onderzoeksverslag; het NIP alleen bijwerken als er een is opgegeven
-async function setLeadResearchInput(id, { research_note, nip }) {
+async function setLeadResearchInput(id, { research_note, nip, client_nip }) {
   const n = parseInt(id, 10);
   if (!Number.isInteger(n)) return false;
   if (!pool) {
     const l = mem.leads.find((x) => x.id === n);
     if (!l) return false;
-    l.research_note = research_note; if (nip) l.nip = nip; l.updated_at = new Date();
+    l.research_note = research_note; if (nip) l.nip = nip; if (client_nip) l.client_nip = client_nip; l.updated_at = new Date();
     return true;
   }
-  const r = await pool.query('UPDATE leads SET research_note=$2, nip=COALESCE($3, nip), updated_at=now() WHERE id=$1', [n, research_note, nip || null]);
+  const r = await pool.query('UPDATE leads SET research_note=$2, nip=COALESCE($3, nip), client_nip=COALESCE($4, client_nip), updated_at=now() WHERE id=$1', [n, research_note, nip || null, client_nip || null]);
   return r.rowCount > 0;
 }
 

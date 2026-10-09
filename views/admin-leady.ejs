@@ -104,6 +104,10 @@
           <label for="r-nip"><%= L.research.nipLabel %></label>
           <input id="r-nip" name="nip" type="text" inputmode="numeric" autocomplete="off" maxlength="20" value="<%= sel.nip || '' %>" placeholder="0000000000">
         </div>
+        <div class="fg">
+          <label for="r-cnip"><%= L.research.clientNipLabel %></label>
+          <input id="r-cnip" name="client_nip" type="text" inputmode="numeric" autocomplete="off" maxlength="20" value="<%= sel.client_nip || '' %>" placeholder="0000000000">
+        </div>
         <button class="btn btn-secondary chan-btn" type="submit" <% if (researchPending) { %>disabled aria-busy="true"<% } %>><% if (researchPending) { %><%- include('partials/hourglass', { id: 'btn' }) %><%= L.research.busy %><% } else { %><%= report ? L.research.redo : L.research.run %><% } %></button>
       </form>
       <% if (researchPending) { %><p class="research-busy" role="status"><%- include('partials/hourglass', { id: 'txt' }) %><span><%= L.research.pending %></span></p><% } %>

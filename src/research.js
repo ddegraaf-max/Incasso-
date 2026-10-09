@@ -61,7 +61,37 @@ async function mfLookup(nip) {
     vatRemoved: !!(s.removalDate && !s.restorationDate),
     representatives: (s.representatives || []).map(person).filter(Boolean),
     partners: (s.partners || []).map(person).filter(Boolean),
-    accounts: (s.accountNumbers || []).length, hasVirtualAccounts: !!s.hasVirtualAccounts,
+    accounts: (s.accountNumbers || []).length, accountNumbers: (s.accountNumbers || []).slice(0, 50), hasVirtualAccounts: !!s.hasVirtualAccounts,
+  };
+}
+
+// ── 1b. CEIDG — eenmanszaken en spółki cywilne ──────────────────────────
+// Open API van dane.biznes.gov.pl, vereist een JWT-sleutel (CEIDG_API_KEY). Zonder sleutel → null (niet geraadpleegd).
+// Btw-vrijgestelde eenmanszaken (art. 113) staan niet op de witte lijst; CEIDG is dan de enige registercontrole van de aanvrager.
+const CEIDG_KEY = process.env.CEIDG_API_KEY || '';
+const CEIDG_STATUS = { AKTYWNY: 'aktywny', ZAWIESZONY: 'zawieszony', WYKRESLONY: 'wykreślony', OCZEKUJE_NA_ROZPOCZECIE_DZIALALNOSCI: 'oczekuje na rozpoczęcie', NIEAKTYWNY: 'nieaktywny' };
+async function ceidgLookup(nip) {
+  const clean = String(nip || '').replace(/\D/g, '');
+  if (!CEIDG_KEY || clean.length !== 10) return null;
+  let j;
+  try {
+    const r = await fetch('https://dane.biznes.gov.pl/api/ceidg/v2/firmy?nip=' + clean, { headers: { Authorization: 'Bearer ' + CEIDG_KEY, Accept: 'application/json', 'User-Agent': UA }, signal: AbortSignal.timeout(9000) });
+    if (r.status === 204 || r.status === 404) return { found: false, nip: clean };
+    if (!r.ok) return { found: false, nip: clean, error: 'HTTP ' + r.status };
+    j = await r.json();
+  } catch (e) { return { found: false, nip: clean, error: String((e && e.message) || e).slice(0, 120) }; }
+  const list = (j && (j.firmy || j.firma)) || [];
+  const f = Array.isArray(list) ? list[0] : list;
+  if (!f || typeof f !== 'object') return { found: false, nip: clean };
+  const adr = f.adresDzialalnosci || {};
+  const street = [adr.ulica, adr.budynek].filter(Boolean).join(' ') + (adr.lokal ? '/' + adr.lokal : '');
+  const owner = f.wlasciciel ? [f.wlasciciel.imie, f.wlasciciel.nazwisko].filter(Boolean).join(' ') : '';
+  return {
+    found: true, nip: clean, name: f.nazwa || null, owner: owner || null, status: f.status || null, statusLabel: CEIDG_STATUS[f.status] || f.status || null,
+    started: f.dataRozpoczecia || null, suspended: f.dataZawieszenia || null, ended: f.dataZakonczenia || null,
+    address: [street.trim(), [adr.kod, adr.miasto].filter(Boolean).join(' ')].filter(Boolean).join(', ') || null,
+    pkd: f.pkdGlowny ? [f.pkdGlowny.kod, f.pkdGlowny.nazwa].filter(Boolean).join(' ') : null,
+    email: f.email ? String(f.email).toLowerCase() : null, website: f.www ? String(f.www).toLowerCase() : null, phone: f.telefon || null,
   };
 }
 
@@ -165,6 +195,56 @@ function docChecks(lead, doc) {
   return out;
 }
 
+// ── Klantcontrole (fraude) ───────────────────────────────────────────────
+// Wie verkoopt de factuur? Naam formulier ↔ wystawca ↔ register, bestaat en leeft de onderneming, hoort de rekening
+// op de factuur bij de wystawca, zijn aanvrager en dłużnik verwant (zelfde achternaam, zelfde adres), KSeF-nummer.
+const LEGAL_WORDS = /\b(sp(ółka|olka)?\.?\s*z\s*o\.?\s*o\.?|spółka z ograniczoną odpowiedzialnością|spółka akcyjna|spółka jawna|spółka komandytowa|spółka cywilna|s\.?a\.?|sp\.?\s*j\.?|sp\.?\s*k\.?|s\.?c\.?|p\.?p\.?h\.?u\.?|f\.?h\.?u\.?|p\.?h\.?u\.?|firma|przedsiębiorstwo|handlowo|handlowe?|usługowe?|produkcyjne?|budowlane?|zakład)\b/gi;
+function nameTokens(s) { return String(s || '').toLowerCase().replace(LEGAL_WORDS, ' ').replace(/[^a-z0-9ąćęłńóśźż]+/gi, ' ').split(' ').filter((t) => t.length >= 2); }
+// Dezelfde onderneming? Minstens de helft van de kortste naam komt terug in de andere; null als een naam ontbreekt
+function sameName(a, b) {
+  const A = nameTokens(a), B = nameTokens(b);
+  if (!A.length || !B.length) return null;
+  const [s, l] = A.length <= B.length ? [A, B] : [B, A];
+  return s.filter((t) => l.includes(t)).length >= Math.ceil(s.length / 2);
+}
+// Achternaam uit een persoonsnaam ("Imię Nazwisko", KRS: "Imiona Nazwisko — funkcja"); bedrijfsnamen leveren niets op
+function personSurname(s) {
+  const t = String(s || '').split(' — ')[0].trim();
+  if (!t || /\d/.test(t) || LEGAL_WORDS.test(t)) { LEGAL_WORDS.lastIndex = 0; return null; }
+  LEGAL_WORDS.lastIndex = 0;
+  const w = t.split(/\s+/);
+  if (w.length < 2 || w.length > 4) return null;
+  const last = w[w.length - 1].toLowerCase();
+  return last.length >= 4 ? last : null;
+}
+const normAddr = (s) => String(s || '').toLowerCase().replace(/\b(ul|ulica|al|aleja|pl|plac|os|osiedle)\.?\s+/g, '').replace(/[^a-z0-9ąćęłńóśźż]+/g, '');
+function clientChecks(lead, doc, client, debtor) {
+  const out = [];
+  const cred = doc && doc.creditor ? doc.creditor : null;
+  if (cred && cred.name && lead.company && sameName(lead.company, cred.name) === false) out.push({ code: 'clientNameDiffers', form: lead.company, doc: cred.name });
+  const regName = (client.ceidg && client.ceidg.found && (client.ceidg.name || client.ceidg.owner)) || (client.mf && client.mf.found && client.mf.name) || null;
+  if (regName && cred && cred.name && sameName(regName, cred.name) === false) out.push({ code: 'creditorNameRegisterDiffers', doc: cred.name, register: regName });
+  if (client.nip) {
+    const inMf = !!(client.mf && client.mf.found), inCeidg = !!(client.ceidg && client.ceidg.found);
+    if (!inMf && !inCeidg) out.push({ code: CEIDG_KEY ? 'clientNotInRegisters' : 'clientNotOnWhiteList', nip: client.nip });
+    if (inCeidg && client.ceidg.status && client.ceidg.status !== 'AKTYWNY') out.push({ code: 'clientInactive', status: client.ceidg.statusLabel || client.ceidg.status, nip: client.nip });
+    else if (inMf && client.mf.vatRemoved) out.push({ code: 'clientInactive', status: 'VAT wykreślony ' + (client.mf.removalDate || ''), nip: client.nip });
+    const since = (inCeidg && client.ceidg.started) || (inMf && client.mf.registrationLegalDate) || null;
+    if (since && /^\d{4}-\d{2}-\d{2}/.test(since) && Date.now() - new Date(since.slice(0, 10) + 'T00:00:00Z').getTime() < 365 * 86400000) out.push({ code: 'clientNew', since: since.slice(0, 10) });
+    if (client.accountCheck === false) out.push({ code: 'accountNotOnWhiteList', account: doc.bankAccount, nip: client.nip });
+  }
+  const cNames = [].concat(client.ceidg && client.ceidg.owner ? [client.ceidg.owner] : [], (client.mf && client.mf.representatives) || [], (client.mf && client.mf.partners) || [], (client.krs && client.krs.board) || [], cred && cred.name ? [cred.name] : [], lead.company ? [lead.company] : []).map(personSurname).filter(Boolean);
+  const dNames = [].concat((debtor.mf && debtor.mf.representatives) || [], (debtor.mf && debtor.mf.partners) || [], (debtor.krs && debtor.krs.board) || [], doc && doc.debtor && doc.debtor.name ? [doc.debtor.name] : []).map(personSurname).filter(Boolean);
+  const shared = [...new Set(cNames.filter((n) => dNames.includes(n)))];
+  if (shared.length) out.push({ code: 'relatedParties', names: shared.join(', ') });
+  const cAddrRaw = (client.ceidg && client.ceidg.address) || (client.mf && client.mf.address) || (cred && cred.address) || '';
+  const dAddrRaw = (debtor.mf && debtor.mf.address) || (debtor.krs && debtor.krs.address) || (doc && doc.debtor && doc.debtor.address) || '';
+  const cAddr = normAddr(cAddrRaw), dAddr = normAddr(dAddrRaw);
+  if (cAddr && dAddr && cAddr.length > 8 && cAddr === dAddr) out.push({ code: 'sameAddress', address: cAddrRaw });
+  if (doc && doc.docType === 'invoice' && doc.issueDate >= '2026-04-01' && !doc.ksefNumber) out.push({ code: 'noKsef', issueDate: doc.issueDate });
+  return out;
+}
+
 async function collectFacts(lead, files = [], docs = []) {
   const note = parseNote(lead);
   const isWyrok = lead.source === 'skup-wyrokow';
@@ -176,16 +256,23 @@ async function collectFacts(lead, files = [], docs = []) {
   const docCreditorNip = doc ? cleanNip(doc.creditor && doc.creditor.nip) : null;
   const useDoc = !!docDebtorNip && docDebtorNip !== formNip;
   const nip = useDoc ? docDebtorNip : formNip;
-  const [mf, formMf, clientMf] = await Promise.all([
+  // NIP van de aanvrager: door de analist ingevuld, anders de wystawca van het document
+  const clientNip = cleanNip(lead.client_nip) || docCreditorNip;
+  const [mf, formMf, clientMf, clientCeidg] = await Promise.all([
     nip ? mfLookup(nip).catch(() => null) : null,
-    useDoc && formNip && formNip !== docCreditorNip ? mfLookup(formNip).catch(() => null) : null, // wie is het formulier-NIP dan wel?
-    docCreditorNip ? mfLookup(docCreditorNip).catch(() => null) : null, // de wystawca van het document = de aanvrager
+    useDoc && formNip && formNip !== clientNip ? mfLookup(formNip).catch(() => null) : null, // wie is het formulier-NIP dan wel?
+    clientNip ? mfLookup(clientNip).catch(() => null) : null,
+    clientNip ? ceidgLookup(clientNip).catch(() => null) : null,
   ]);
   const krs = mf && mf.found && mf.krs ? await krsLookup(mf.krs).catch(() => null) : null;
+  const clientKrs = clientMf && clientMf.found && clientMf.krs ? await krsLookup(clientMf.krs).catch(() => null) : null;
+  // rekening op de factuur ↔ witte lijst van de wystawca (alleen te controleren bij een btw-plichtige wystawca)
+  const acct = doc && doc.bankAccount ? String(doc.bankAccount).replace(/\D/g, '') : '';
+  const accountCheck = clientMf && clientMf.found && acct.length === 26 && clientNip === docCreditorNip ? (clientMf.accountNumbers || []).some((a) => String(a).replace(/\D/g, '') === acct) : null;
   const debtorSite = krs && krs.found && krs.website ? await siteInfo(krs.website).catch(() => null) : null;
   const domain = domainFromEmail(lead.email);
   const clientSite = domain ? await siteInfo(domain).catch(() => null) : null;
-  return {
+  const out = {
     collectedAt: new Date().toISOString(),
     request: {
       id: lead.id, source: isWyrok ? 'skup-wyrokow (opkoop vonnis)' : 'sprzedaj fakturę (verkoop factuur)', submitted: lead.created_at,
@@ -195,11 +282,13 @@ async function collectFacts(lead, files = [], docs = []) {
       attachments: files.map((f) => ({ filename: f.filename, type: f.mimetype, kb: Math.max(1, Math.round((f.size || 0) / 1024)) })),
     },
     debtor: { nip, nipSource: nip ? (useDoc ? 'document' : 'form') : null, formNip: formNip || null, formMf, nameFromRequest: note.debtorName || note.registerName || null, mf, krs, site: debtorSite },
-    client: { company: lead.company, email: lead.email, phone: lead.tel, domain, site: clientSite, nipFromDocument: docCreditorNip, mf: clientMf },
+    client: { company: lead.company, email: lead.email, phone: lead.tel, domain, site: clientSite, nip: clientNip, nipSource: clientNip ? (cleanNip(lead.client_nip) ? 'form' : 'document') : null, nipFromDocument: docCreditorNip, mf: clientMf, ceidg: clientCeidg, krs: clientKrs, accountCheck },
     documents: docs,
     document: doc,
-    checks: docChecks(lead, doc),
+    checks: [],
   };
+  out.checks = [...docChecks(lead, doc), ...clientChecks(lead, doc, out.client, out.debtor)];
+  return out;
 }
 
 // ── 4. AI-verslag met webonderzoek ───────────────────────────────────────
@@ -220,6 +309,7 @@ function systemPrompt(lang) {
     'The request may contain "analystInput": findings typed in by the Creditline reviewer who handles the file. Treat them as verified facts from the reviewer, build on them, and let them prevail over form data and register data where they conflict (say so when they do).',
     'Files attached to the request (invoice, judgment, enforcement decision) are passed as documents or images. Read them: extract the debtor name and NIP, invoice or case number, amount, invoice date and due date, and compare them with the form data — flag every discrepancy. If an attachment shows a NIP that the registers were not queried for, name it explicitly as a next step.',
     'The JSON may contain "documents" (facts already extracted from the attached files) and "document" (the primary one). "debtor.nipSource" says whether the registers were queried on the NIP from the form or on the debtor NIP found in the document; "debtor.formMf" is the register result for the form NIP when it differs; "client.mf" is the register result for the issuer of the document (the client). "checks" lists discrepancies between the web form and the document — codes: formNipIsCreditor (the NIP typed in the form is the issuer of the invoice, i.e. the client itself, so the registers were queried on the buyer), nipDiffers (form NIP and document debtor NIP differ), amountDiffers, notDue (the invoice is not yet due, so the receivable is not overdue at all), daysDiffer (days overdue in the form vs. computed from the due date), markedPaid (the document says it was paid). Discuss every check explicitly under signals and let it weigh in the recommendation.',
+    'Client verification (fraud): "client.nip" (with "client.nipSource"), "client.mf" (VAT white list), "client.ceidg" (CEIDG register of sole traders: status, start date, owner, address), "client.krs", "client.accountCheck" (true = the bank account on the invoice is on the VAT white list of the issuer, false = it is not, null = not verifiable) and the check codes clientNameDiffers (company name in the form vs. the invoice issuer), creditorNameRegisterDiffers, clientNotInRegisters / clientNotOnWhiteList, clientInactive, clientNew (registered less than a year ago), accountNotOnWhiteList, relatedParties (the same surname among the client and the debtor representatives), sameAddress, noKsef (invoice issued after 2026-03-31 without a KSeF number). Treat these as fraud indicators: an invoice offered by someone other than its issuer, a freshly registered, suspended or deregistered seller, a bank account that does not belong to the issuer, related parties on both sides, a free e-mail address without any web presence, an invoice that is not yet due or was issued only days before the request. In the first section give, next to the risk score, a separate fraud-risk assessment of the client (low / medium / high) with the reasons.',
     'Rules: never invent facts or numbers; when something could not be verified say so explicitly; name your sources (site or URL) inline; be concise (about 500–700 words); no tables; no preamble — output only the report.',
     'Write the entire report in ' + L + '. Use Markdown with exactly these five section headers, in this order: ' + H.join(' · ') + '.',
     'In the first section give a risk score from 1 (low risk, collectable) to 5 (very high risk / uncollectable) and one recommendation: buy the receivable / collect on behalf of the client / decline / more information needed — with one sentence of reasoning.',
@@ -396,6 +486,6 @@ async function runForLead(lead, opts = {}) {
   }
 }
 
-function status() { return { ai: !!(KEY && Anthropic), auto: AUTO, model: MODEL, lang: LANG, pending: pending.size }; }
+function status() { return { ai: !!(KEY && Anthropic), auto: AUTO, model: MODEL, lang: LANG, ceidg: !!CEIDG_KEY, pending: pending.size }; }
 
-module.exports = { AUTO, LANG, MODEL, EXTRACT_MODEL, runForLead, isPending, status, collectFacts, attachmentBlocks, extractDocs, docChecks, primaryDoc, mfLookup, krsLookup, siteInfo, domainFromEmail, parseNote, _setCreate };
+module.exports = { AUTO, LANG, MODEL, EXTRACT_MODEL, runForLead, isPending, status, collectFacts, attachmentBlocks, extractDocs, docChecks, clientChecks, sameName, personSurname, primaryDoc, mfLookup, krsLookup, ceidgLookup, siteInfo, domainFromEmail, parseNote, _setCreate };

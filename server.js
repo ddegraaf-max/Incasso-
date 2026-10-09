@@ -622,8 +622,11 @@ app.post('/admin/leady/:id/raport', Auth.requireAdmin, async (req, res) => {
   const nipRaw = String(req.body.nip || '').trim();
   if (nipRaw && !validNip(nipRaw)) return res.redirect('/admin/leady?sel=' + encodeURIComponent(lead.id) + '&msg=' + encodeURIComponent(L.research.badNip));
   const nip = nipRaw ? nipRaw.replace(/\D/g, '') : null;
-  await db.setLeadResearchInput(lead.id, { research_note, nip }).catch(() => false);
-  lead = (await db.getLead(lead.id).catch(() => null)) || { ...lead, research_note, nip: nip || lead.nip };
+  const cnipRaw = String(req.body.client_nip || '').trim(); // NIP van de aanvrager, voor de klantcontrole
+  if (cnipRaw && !validNip(cnipRaw)) return res.redirect('/admin/leady?sel=' + encodeURIComponent(lead.id) + '&msg=' + encodeURIComponent(L.research.badNip));
+  const client_nip = cnipRaw ? cnipRaw.replace(/\D/g, '') : null;
+  await db.setLeadResearchInput(lead.id, { research_note, nip, client_nip }).catch(() => false);
+  lead = (await db.getLead(lead.id).catch(() => null)) || { ...lead, research_note, nip: nip || lead.nip, client_nip: client_nip || lead.client_nip };
   Research.runForLead(lead, { lang: Research.LANG }).catch((e) => console.error('Research:', e.message));
   res.redirect('/admin/leady?sel=' + encodeURIComponent(lead.id) + '&msg=' + encodeURIComponent(L.research.started));
 });
