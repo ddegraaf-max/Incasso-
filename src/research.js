@@ -21,6 +21,9 @@ const MODEL = process.env.RESEARCH_MODEL || 'claude-opus-5';
 const LANG = (process.env.RESEARCH_LANG || 'nl').toLowerCase();
 const AUTO = process.env.LEAD_RESEARCH !== '0';
 const MAX_SEARCHES = Math.max(1, parseInt(process.env.RESEARCH_MAX_SEARCHES || '8', 10));
+const EXTRACT_MODEL = process.env.RESEARCH_EXTRACT_MODEL || MODEL; // documenten uitlezen (structured output)
+let createMessage = (client, params) => client.messages.create(params);
+function _setCreate(fn) { createMessage = fn; } // alleen voor tests
 const UA = 'Mozilla/5.0 (compatible; sprzedamfakture-research/1.0; +https://sprzedamfakture.pl)';
 const FREE_MAIL = new Set(['gmail.com', 'googlemail.com', 'wp.pl', 'onet.pl', 'onet.eu', 'o2.pl', 'interia.pl', 'interia.eu', 'op.pl', 'poczta.fm', 'poczta.onet.pl', 'tlen.pl', 'vp.pl', 'gazeta.pl', 'go2.pl', 'outlook.com', 'hotmail.com', 'live.com', 'msn.com', 'yahoo.com', 'yahoo.pl', 'icloud.com', 'me.com', 'proton.me', 'protonmail.com', 'ziggo.nl', 'kpnmail.nl', 'hetnet.nl', 'planet.nl', 'home.nl', 'hotmail.nl', 'live.nl', 'outlook.nl', 'gmx.de', 'gmx.net', 'web.de', 'mail.com']);
 
@@ -142,10 +145,42 @@ function parseNote(lead) {
   return out;
 }
 
-async function collectFacts(lead, files = []) {
+const cleanNip = (s) => String(s || '').replace(/\D/g, '') || null;
+// Het document dat de vordering onderbouwt: het eerste met een NIP van de dłużnik, anders het eerste document
+function primaryDoc(docs) { return (docs || []).find((d) => d && d.debtor && cleanNip(d.debtor.nip)) || (docs || [])[0] || null; }
+// Afwijkingen formulier ↔ document; de codes worden vertaald in views/partials/research.ejs en uitgelegd aan het model
+function docChecks(lead, doc) {
+  const out = [];
+  if (!doc) return out;
+  const formNip = cleanNip(lead.nip), cred = cleanNip(doc.creditor && doc.creditor.nip), debt = cleanNip(doc.debtor && doc.debtor.nip);
+  if (formNip && cred && formNip === cred) out.push({ code: 'formNipIsCreditor', nip: formNip, name: (doc.creditor && doc.creditor.name) || '', debtorNip: debt || '—' });
+  else if (formNip && debt && formNip !== debt) out.push({ code: 'nipDiffers', form: formNip, doc: debt, name: (doc.debtor && doc.debtor.name) || '' });
+  const kw = Number(lead.kwota) || 0, gross = Number(doc.amountGross) || 0;
+  if (kw > 0 && gross > 0 && Math.abs(kw - gross) > 0.5) out.push({ code: 'amountDiffers', form: kw, doc: gross, currency: doc.currency || 'PLN' });
+  if (doc.daysOverdueToday != null) {
+    if (doc.daysOverdueToday < 0) out.push({ code: 'notDue', dueDate: doc.dueDate, days: -doc.daysOverdueToday });
+    else if (lead.dni != null && lead.source !== 'skup-wyrokow' && Math.abs(doc.daysOverdueToday - Number(lead.dni)) > 7) out.push({ code: 'daysDiffer', form: Number(lead.dni), doc: doc.daysOverdueToday, dueDate: doc.dueDate });
+  }
+  if (doc.paymentStatus === 'paid') out.push({ code: 'markedPaid', number: doc.number || '' });
+  return out;
+}
+
+async function collectFacts(lead, files = [], docs = []) {
   const note = parseNote(lead);
   const isWyrok = lead.source === 'skup-wyrokow';
-  const mf = await mfLookup(lead.nip).catch(() => null);
+  const doc = primaryDoc(docs);
+  if (doc && doc.dueDate && /^\d{4}-\d{2}-\d{2}$/.test(doc.dueDate)) doc.daysOverdueToday = Math.floor((Date.now() - new Date(doc.dueDate + 'T00:00:00Z').getTime()) / 86400000);
+  // NIP van de dłużnik: uit het formulier, tenzij het document een andere nabywca noemt (bv. het formulier-NIP is de wystawca zelf)
+  const formNip = cleanNip(lead.nip);
+  const docDebtorNip = doc ? cleanNip(doc.debtor && doc.debtor.nip) : null;
+  const docCreditorNip = doc ? cleanNip(doc.creditor && doc.creditor.nip) : null;
+  const useDoc = !!docDebtorNip && docDebtorNip !== formNip;
+  const nip = useDoc ? docDebtorNip : formNip;
+  const [mf, formMf, clientMf] = await Promise.all([
+    nip ? mfLookup(nip).catch(() => null) : null,
+    useDoc && formNip && formNip !== docCreditorNip ? mfLookup(formNip).catch(() => null) : null, // wie is het formulier-NIP dan wel?
+    docCreditorNip ? mfLookup(docCreditorNip).catch(() => null) : null, // de wystawca van het document = de aanvrager
+  ]);
   const krs = mf && mf.found && mf.krs ? await krsLookup(mf.krs).catch(() => null) : null;
   const debtorSite = krs && krs.found && krs.website ? await siteInfo(krs.website).catch(() => null) : null;
   const domain = domainFromEmail(lead.email);
@@ -159,8 +194,11 @@ async function collectFacts(lead, files = []) {
       analystInput: lead.research_note || null, // aanvullende informatie van de beheerder (bv. het NIP op de bijgevoegde factuur)
       attachments: files.map((f) => ({ filename: f.filename, type: f.mimetype, kb: Math.max(1, Math.round((f.size || 0) / 1024)) })),
     },
-    debtor: { nip: lead.nip || null, nameFromRequest: note.debtorName || note.registerName || null, mf, krs, site: debtorSite },
-    client: { company: lead.company, email: lead.email, phone: lead.tel, domain, site: clientSite },
+    debtor: { nip, nipSource: nip ? (useDoc ? 'document' : 'form') : null, formNip: formNip || null, formMf, nameFromRequest: note.debtorName || note.registerName || null, mf, krs, site: debtorSite },
+    client: { company: lead.company, email: lead.email, phone: lead.tel, domain, site: clientSite, nipFromDocument: docCreditorNip, mf: clientMf },
+    documents: docs,
+    document: doc,
+    checks: docChecks(lead, doc),
   };
 }
 
@@ -181,6 +219,7 @@ function systemPrompt(lang) {
     'Ground truth is the official register data supplied in the message (MF VAT white list, KRS extract, website metadata). Use web search to add what the registers do not show: what the company does, size and age, website and contact channels, management, reviews and opinions (e.g. Google, GoWork, Aleo, Panorama Firm, ALEO, Rejestr.io), news, insolvency or restructuring (KRZ, MSiG, court announcements), enforcement problems, KRD/BIG mentions and any red flags. For the client: does it exist, does the invoice fit its activity, is the request plausible, any signs of fraud. Search in Polish for Polish entities and in Dutch/English for foreign ones.',
     'The request may contain "analystInput": findings typed in by the Creditline reviewer who handles the file. Treat them as verified facts from the reviewer, build on them, and let them prevail over form data and register data where they conflict (say so when they do).',
     'Files attached to the request (invoice, judgment, enforcement decision) are passed as documents or images. Read them: extract the debtor name and NIP, invoice or case number, amount, invoice date and due date, and compare them with the form data — flag every discrepancy. If an attachment shows a NIP that the registers were not queried for, name it explicitly as a next step.',
+    'The JSON may contain "documents" (facts already extracted from the attached files) and "document" (the primary one). "debtor.nipSource" says whether the registers were queried on the NIP from the form or on the debtor NIP found in the document; "debtor.formMf" is the register result for the form NIP when it differs; "client.mf" is the register result for the issuer of the document (the client). "checks" lists discrepancies between the web form and the document — codes: formNipIsCreditor (the NIP typed in the form is the issuer of the invoice, i.e. the client itself, so the registers were queried on the buyer), nipDiffers (form NIP and document debtor NIP differ), amountDiffers, notDue (the invoice is not yet due, so the receivable is not overdue at all), daysDiffer (days overdue in the form vs. computed from the due date), markedPaid (the document says it was paid). Discuss every check explicitly under signals and let it weigh in the recommendation.',
     'Rules: never invent facts or numbers; when something could not be verified say so explicitly; name your sources (site or URL) inline; be concise (about 500–700 words); no tables; no preamble — output only the report.',
     'Write the entire report in ' + L + '. Use Markdown with exactly these five section headers, in this order: ' + H.join(' · ') + '.',
     'In the first section give a risk score from 1 (low risk, collectable) to 5 (very high risk / uncollectable) and one recommendation: buy the receivable / collect on behalf of the client / decline / more information needed — with one sentence of reasoning.',
@@ -263,6 +302,48 @@ async function attachmentBlocks(files) {
   return { blocks, used, skipped };
 }
 
+// ── Documenten uitlezen (AI, gestructureerd) ─────────────────────────────
+// Factuur, vonnis, nakaz zapłaty, postanowienie komornika: partijen met NIP, nummer, data, bedragen, KSeF, rekening.
+// De uitkomst stuurt de registercontroles (NIP van de nabywca) en de vergelijking met het formulier (docChecks).
+const PARTY = { type: 'object', properties: { name: { type: 'string' }, nip: { type: 'string' }, address: { type: 'string' } }, required: ['name', 'nip', 'address'], additionalProperties: false };
+const DOC_FIELDS = ['file', 'docType', 'number', 'issueDate', 'dueDate', 'amountGross', 'amountNet', 'currency', 'creditor', 'debtor', 'court', 'caseNumber', 'ksefNumber', 'bankAccount', 'paymentStatus', 'vatNote', 'description', 'notes'];
+const DOC_SCHEMA = {
+  type: 'object',
+  properties: {
+    documents: { type: 'array', items: { type: 'object', properties: {
+      file: { type: 'string' }, docType: { type: 'string', enum: ['invoice', 'judgment', 'payment_order', 'enforcement', 'correspondence', 'other'] },
+      number: { type: 'string' }, issueDate: { type: 'string' }, dueDate: { type: 'string' }, amountGross: { type: 'number' }, amountNet: { type: 'number' }, currency: { type: 'string' },
+      creditor: PARTY, debtor: PARTY, court: { type: 'string' }, caseNumber: { type: 'string' }, ksefNumber: { type: 'string' }, bankAccount: { type: 'string' },
+      paymentStatus: { type: 'string', enum: ['paid', 'unpaid', 'partly_paid', 'unknown'] }, vatNote: { type: 'string' }, description: { type: 'string' }, notes: { type: 'string' },
+    }, required: DOC_FIELDS, additionalProperties: false } },
+  },
+  required: ['documents'], additionalProperties: false,
+};
+const EXTRACT_SYSTEM = 'You extract facts from Polish B2B collection documents (invoices, judgments, payment orders, bailiff decisions, correspondence) attached by a creditor who wants to sell or collect a receivable. Return one entry per document, in the order given, with "file" = the file name. Copy identifiers exactly: NIP as 10 digits without country prefix or dashes, invoice and case numbers, KSeF numbers, bank account numbers. Dates as YYYY-MM-DD, empty string when unknown. Amounts as numbers with a decimal point, 0 when unknown; currency as ISO code (PLN unless stated otherwise). For an invoice: creditor = wystawca/sprzedawca (issuer), debtor = nabywca (buyer). For a judgment or payment order: creditor = powód/wierzyciel, debtor = pozwany/dłużnik; fill court and caseNumber (sygnatura) and put the awarded principal in amountGross. paymentStatus = "paid" only when the document itself states the amount was paid. "description" = what was sold or awarded, in one line. "notes" = remarks that matter for collection (reservation of title, interest clause, partial payments, enforceability clause, reason enforcement was discontinued), or an empty string. Never invent values.';
+
+async function extractDocs(blocks, names) {
+  if (!KEY || !Anthropic || !blocks || !blocks.length) return [];
+  const client = new Anthropic({ apiKey: KEY, timeout: 120000, maxRetries: 1 });
+  const content = [{ type: 'text', text: 'Attached: ' + blocks.length + ' file(s)' + (names && names.length ? ' — ' + names.join(', ') : '') + '. Extract the facts of each document.' }, ...blocks];
+  const params = { model: EXTRACT_MODEL, max_tokens: 4000, system: EXTRACT_SYSTEM, messages: [{ role: 'user', content }] };
+  let resp;
+  try { resp = await createMessage(client, { ...params, output_config: { format: { type: 'json_schema', schema: DOC_SCHEMA } } }); }
+  catch (e) {
+    if (!(e instanceof Anthropic.BadRequestError)) throw e;
+    console.warn('Research: structured output geweigerd (400), gewone aanroep —', String((e && e.message) || e).slice(0, 200));
+    resp = await createMessage(client, { ...params, system: EXTRACT_SYSTEM + '\nReturn only a JSON object {"documents": [...]} where each entry has the fields ' + DOC_FIELDS.join(', ') + ' (creditor and debtor are objects with name, nip, address).' });
+  }
+  if (resp.stop_reason === 'refusal') return [];
+  const text = (resp.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('');
+  let j;
+  try { j = JSON.parse(text); }
+  catch { const m = /\{[\s\S]*\}/.exec(text); if (!m) throw new Error('geen JSON bij het uitlezen van de documenten (stop_reason ' + resp.stop_reason + ')'); j = JSON.parse(m[0]); }
+  const list = Array.isArray(j.documents) ? j.documents : [];
+  console.log('Research: ' + list.length + ' document(en) uitgelezen (' + resp.model + ', out=' + (resp.usage ? resp.usage.output_tokens : '?') + ')');
+  const party = (p) => ({ name: String((p && p.name) || '').trim(), nip: cleanNip(p && p.nip) || '', address: String((p && p.address) || '').trim() });
+  return list.map((d, i) => ({ ...d, file: d.file || (names && names[i]) || '', creditor: party(d.creditor), debtor: party(d.debtor) }));
+}
+
 // ── Orchestratie ─────────────────────────────────────────────────────────
 const pending = new Set();
 function isPending(leadId) { return pending.has(parseInt(leadId, 10)); }
@@ -275,9 +356,16 @@ async function runForLead(lead, opts = {}) {
   const lang = (opts.lang || LANG);
   try {
     const files = await db.listLeadFiles(id).catch(() => []);
-    const facts = await collectFacts(lead, files);
     const att = KEY && Anthropic ? await attachmentBlocks(files).catch(() => ({ blocks: [], used: [], skipped: files.map((f) => f.filename) })) : { blocks: [], used: [], skipped: [] };
+    // eerst de documenten uitlezen: de NIP van de nabywca uit de factuur stuurt de registercontroles
+    let docs = [], docError = null;
+    if (att.blocks.length) {
+      try { docs = await extractDocs(att.blocks, att.used); }
+      catch (e) { docError = String((e && e.message) || e).slice(0, 200); console.error('Research: documenten uitlezen mislukt —', docError); }
+    }
+    const facts = await collectFacts(lead, files, docs);
     facts.request.attachmentsRead = att.used; facts.request.attachmentsSkipped = att.skipped;
+    if (docError) facts.request.documentsError = docError;
     let ai = null, err = null;
     try { ai = await aiReport(facts, lang, att.blocks); }
     catch (e) {
@@ -310,4 +398,4 @@ async function runForLead(lead, opts = {}) {
 
 function status() { return { ai: !!(KEY && Anthropic), auto: AUTO, model: MODEL, lang: LANG, pending: pending.size }; }
 
-module.exports = { AUTO, LANG, MODEL, runForLead, isPending, status, collectFacts, attachmentBlocks, mfLookup, krsLookup, siteInfo, domainFromEmail, parseNote };
+module.exports = { AUTO, LANG, MODEL, EXTRACT_MODEL, runForLead, isPending, status, collectFacts, attachmentBlocks, extractDocs, docChecks, primaryDoc, mfLookup, krsLookup, siteInfo, domainFromEmail, parseNote, _setCreate };

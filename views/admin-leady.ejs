@@ -120,6 +120,9 @@
       <% } else { %>
         <p class="helper" style="margin:0 0 6px"><%= L.caseHint %></p>
         <% var kd = (report && report.facts && report.facts.debtor) || {}; var mfName = (kd.mf && kd.mf.found && kd.mf.name) || ''; var krsMail = (kd.krs && kd.krs.found && kd.krs.email) || '';
+           var kdoc = (report && report.facts && report.facts.document) || null; // document uit de bijlage: NIP, naam, bedrag en vervaldag van de dłużnik gaan voor op het formulier
+           var docNip = (kdoc && kdoc.debtor && kdoc.debtor.nip) || '', docName = (kdoc && kdoc.debtor && kdoc.debtor.name) || '', docAmt = (kdoc && Number(kdoc.amountGross)) || 0;
+           var docDue = (kdoc && /^\d{4}-\d{2}-\d{2}$/.test(kdoc.dueDate || '')) ? kdoc.dueDate : '', docDays = (kdoc && kdoc.daysOverdueToday != null && kdoc.daysOverdueToday >= 0) ? kdoc.daysOverdueToday : null;
            var isW = sel.source === 'skup-wyrokow'; var parts = String(sel.note || '').split(' · '); var regName = '', dl = '', sygn = '';
            parts.forEach(function (p) {
              var m1 = /^dłużnik: (.+)$/.exec(p); if (m1) dl = m1[1];
@@ -128,13 +131,13 @@
            }); %>
         <form class="calc-form flat" method="post" action="/admin/leady/<%= sel.id %>/sprawa">
           <div class="fg"><label for="c-nr"><%= R.f.nr %></label><input id="c-nr" name="nr" value="<%= isW ? sygn : '' %>"></div>
-          <div class="fg"><label for="c-debtor"><%= R.f.debtor %></label><input id="c-debtor" name="debtor" value="<%= dl || (isW ? '' : regName) || mfName %>" required></div>
+          <div class="fg"><label for="c-debtor"><%= R.f.debtor %></label><input id="c-debtor" name="debtor" value="<%= dl || (kd.nipSource === 'document' ? (mfName || docName) : '') || (isW ? '' : regName) || mfName || docName %>" required></div>
           <div class="fg"><label for="c-email"><%= R.f.email %></label><input id="c-email" name="email" type="email" value="<%= krsMail %>"></div>
           <div class="fg"><label for="c-tel"><%= R.f.tel %></label><input id="c-tel" name="tel"></div>
-          <div class="fg"><label for="c-nip"><%= R.f.nip %></label><input id="c-nip" name="nip" class="tnum" value="<%= sel.nip || '' %>"></div>
-          <div class="fg"><label for="c-amount"><%= R.f.amount %></label><input id="c-amount" name="amount" class="tnum" inputmode="decimal" value="<%= Number(sel.kwota) || '' %>" required></div>
-          <div class="fg"><label for="c-days"><%= R.f.days %></label><input id="c-days" name="days" type="number" min="0" class="tnum" value="<%= isW ? '' : (sel.dni != null ? sel.dni : '') %>"></div>
-          <div class="fg"><label for="c-due"><%= R.f.due %></label><input id="c-due" name="dueDate" type="date" class="tnum"></div>
+          <div class="fg"><label for="c-nip"><%= R.f.nip %></label><input id="c-nip" name="nip" class="tnum" value="<%= kd.nip || docNip || sel.nip || '' %>"></div>
+          <div class="fg"><label for="c-amount"><%= R.f.amount %></label><input id="c-amount" name="amount" class="tnum" inputmode="decimal" value="<%= docAmt || Number(sel.kwota) || '' %>" required></div>
+          <div class="fg"><label for="c-days"><%= R.f.days %></label><input id="c-days" name="days" type="number" min="0" class="tnum" value="<%= docDays != null ? docDays : (isW ? '' : (sel.dni != null ? sel.dni : '')) %>"></div>
+          <div class="fg"><label for="c-due"><%= R.f.due %></label><input id="c-due" name="dueDate" type="date" class="tnum" value="<%= docDue %>"></div>
           <div class="fg"><label for="c-client"><%= R.f.client %></label><input id="c-client" name="clientCompany" value="<%= sel.company %>"></div>
           <div class="fg"><label for="c-cemail"><%= R.f.clientEmail %></label><input id="c-cemail" name="clientEmail" type="email" value="<%= sel.email %>"></div>
           <div class="fg"><label for="c-note"><%= R.f.note %></label><textarea id="c-note" name="note" rows="2"><%= sel.admin_note || '' %></textarea></div>

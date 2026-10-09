@@ -17,7 +17,29 @@ var usage = report.usage || {};
 <p class="helper" style="margin:0 0 10px"><% if (filesRead.length) { %><%= RS.usedFiles %>: <%= filesRead.join(', ') %><% } %><% if (filesSkipped.length) { %><%= filesRead.length ? ' · ' : '' %><%= RS.skippedFiles %>: <%= filesSkipped.join(', ') %><% } %></p>
 <% } %>
 
+<% var DOC = F.document || null, CH = F.checks || [];
+   var fmtAmt = function (n, cur) { return (Number(n) || 0).toLocaleString(loc, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + (cur || 'PLN'); };
+   var chkText = function (c) { var s = RS.checks[c.code] || ''; Object.keys(c).forEach(function (k) { var v = c[k]; if (c.code === 'amountDiffers' && (k === 'form' || k === 'doc')) v = fmtAmt(v, c.currency); s = s.split('{' + k + '}').join(v == null ? '' : v); }); return s; }; %>
+<% if (DOC) { %>
+<div class="label"><%= RS.docLabel %><%= DOC.file ? ' · ' + DOC.file : '' %></div>
+<div class="field-row"><span class="fk"><%= RS.df.docType %></span><span><%= RS.docTypes[DOC.docType] || DOC.docType || '—' %><%= DOC.number ? ' ' + DOC.number : '' %><%= DOC.description ? ' — ' + DOC.description : '' %></span></div>
+<div class="field-row"><span class="fk"><%= RS.df.docCreditor %></span><span><%= (DOC.creditor && DOC.creditor.name) || '—' %><% if (DOC.creditor && DOC.creditor.nip) { %> · NIP <span class="tnum"><%= DOC.creditor.nip %></span><% } %><% if (CL.mf && CL.mf.found) { %> · <span class="tag <%= CL.mf.statusVat === 'Czynny' ? 'tag-accent' : 'tag-neutral' %>"><%= CL.mf.statusVat || '—' %></span><% } else if (CL.mf && CL.nipFromDocument) { %> · <%= RS.mfNotFound.replace('{nip}', CL.nipFromDocument) %><% } %></span></div>
+<div class="field-row"><span class="fk"><%= RS.df.docDebtor %></span><span><%= (DOC.debtor && DOC.debtor.name) || '—' %><% if (DOC.debtor && DOC.debtor.nip) { %> · NIP <span class="tnum"><%= DOC.debtor.nip %></span><% } %><%= DOC.debtor && DOC.debtor.address ? ' · ' + DOC.debtor.address : '' %></span></div>
+<% if (DOC.amountGross) { %><div class="field-row"><span class="fk"><%= RS.df.docAmount %></span><span class="tnum"><%= fmtAmt(DOC.amountGross, DOC.currency) %><%= DOC.amountNet && DOC.amountNet !== DOC.amountGross ? ' (netto ' + fmtAmt(DOC.amountNet, DOC.currency) + ')' : '' %></span></div><% } %>
+<% if (DOC.issueDate || DOC.dueDate) { %><div class="field-row"><span class="fk"><%= RS.df.docDates %></span><span class="tnum"><%= DOC.issueDate || '—' %> → <%= DOC.dueDate || '—' %><% if (DOC.daysOverdueToday != null) { %> · <%= DOC.daysOverdueToday < 0 ? RS.df.notDueYet.replace('{days}', -DOC.daysOverdueToday) : RS.df.overdueToday.replace('{days}', DOC.daysOverdueToday) %><% } %></span></div><% } %>
+<% if (DOC.court || DOC.caseNumber) { %><div class="field-row"><span class="fk"><%= RS.df.docCourt %></span><span><%= DOC.court || '—' %><%= DOC.caseNumber ? ' · ' + DOC.caseNumber : '' %></span></div><% } %>
+<% if (DOC.ksefNumber) { %><div class="field-row"><span class="fk">KSeF</span><span class="tnum"><%= DOC.ksefNumber %></span></div><% } %>
+<% if (DOC.bankAccount) { %><div class="field-row"><span class="fk"><%= RS.df.docAccount %></span><span class="tnum"><%= DOC.bankAccount %></span></div><% } %>
+<div class="field-row"><span class="fk"><%= RS.df.docPaid %></span><span><%= RS.payStatus[DOC.paymentStatus] || DOC.paymentStatus || '—' %><%= DOC.vatNote ? ' · ' + DOC.vatNote : '' %></span></div>
+<% if (DOC.notes) { %><div class="field-row"><span class="fk"><%= RS.df.docNotes %></span><span><%= DOC.notes %></span></div><% } %>
+<% if (F.documents && F.documents.length > 1) { %><p class="helper" style="margin:4px 0 0"><%= RS.moreDocs.replace('{n}', F.documents.length - 1) %>: <%= F.documents.filter(function (d) { return d !== DOC; }).map(function (d) { return (RS.docTypes[d.docType] || d.docType) + (d.number ? ' ' + d.number : '') + (d.file ? ' (' + d.file + ')' : ''); }).join(', ') %></p><% } %>
+<% CH.forEach(function (c) { if (RS.checks[c.code]) { %><p class="field-err" style="margin:6px 0 0">⚠ <%= chkText(c) %></p><% } }) %>
+<% if (DB.nipSource === 'document') { %><p class="helper" style="margin:6px 0 0"><%= RS.nipFromDoc.replace('{nip}', DB.nip).replace('{form}', DB.formNip ? DB.formNip + ((DB.formMf && DB.formMf.found) ? ' (' + DB.formMf.name + ')' : (CL.mf && CL.mf.found && CL.nipFromDocument === DB.formNip ? ' (' + CL.mf.name + ')' : '')) : '—') %></p><% } %>
+<div class="label" style="margin-top:14px"><%= RS.debtor %></div>
+<% } else { %>
+<% if (F.request && F.request.documentsError) { %><p class="field-err" style="margin:0 0 8px"><%= RS.docError %>: <%= F.request.documentsError %></p><% } %>
 <div class="label"><%= RS.debtor %></div>
+<% } %>
 <% if (mf && mf.found) { %>
   <div class="field-row"><span class="fk"><%= RS.f.name %></span><span><%= mf.name %></span></div>
   <div class="field-row"><span class="fk"><%= RS.f.vat %></span><span><span class="tag <%= mf.statusVat === 'Czynny' && !mf.vatRemoved ? 'tag-accent' : 'tag-neutral' %>"><%= mf.statusVat || '—' %></span><%= mf.vatRemoved ? ' · wykreślony ' + mf.removalDate : '' %></span></div>
