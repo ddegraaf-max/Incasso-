@@ -2,6 +2,8 @@
    var stTag = function(s) { return (!s || s === 'nowy' || s === 'zaakceptowany') ? 'tag-accent' : (s === 'kontakt' || s === 'oferta') ? 'tag-outline' : 'tag-neutral'; };
    var stTxt = function(s) { return L.statuses[s] || s || L.statuses.nowy; };
    var src = function(l) { return l.source === 'skup-wyrokow' ? L.srcWyrok : (l.source === 'wezwanie' ? L.srcWezwanie : L.srcInvoice); };
+   var wzTag = function(s) { return (s === 'expired' || s === 'gone' || s === 'spor') ? 'tag-danger' : (s === 'waiting' ? 'tag-neutral' : 'tag-outline'); };
+   var q = view === 'aktualne' ? '' : 'widok=' + view + '&';
    var dateFmt = function(d) { return new Date(d).toLocaleString(t.locale, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }); };
 %>
 <%- include('partials/head', { title: t.app.titles.leads + ' — sprzedamfakture.pl', autoRefresh: (typeof researchPending !== 'undefined' && researchPending) ? 12 : 0 }) %>
@@ -12,6 +14,7 @@
     <% if (flash) { %><div class="confirm" style="margin-bottom:16px"><span class="sq"></span><span><%= flash %></span></div><% } %>
     <div class="kicker"><%= L.kicker %> · <span class="tnum"><%= leads.length %></span></div>
     <p class="helper"><%= L.helper %></p>
+    <div class="lead-views"><% ['aktualne', 'archiwum', 'wszystko'].forEach(function (v) { %><a class="tag <%= view === v ? 'tag-accent' : 'tag-outline' %>" href="/admin/leady?widok=<%= v %>"><%= L.views[v] %> · <span class="tnum"><%= counts[v] %></span></a><% }) %></div>
     <table class="cases">
       <thead>
         <tr><th><%= L.th.date %></th><th><%= L.th.source %></th><th><%= L.th.company %></th><th class="num"><%= L.th.amount %></th><th><%= L.th.status %></th></tr>
@@ -19,9 +22,9 @@
       <tbody>
         <% if (!leads.length) { %><tr><td colspan="5" style="color:var(--ink-55); padding:18px 12px"><%= L.empty %></td></tr><% } %>
         <% leads.forEach(function(l) { %>
-        <tr class="row <%= sel && l.id === sel.id ? 'selected' : '' %>" onclick="location.href='/admin/leady?sel=<%= l.id %>'">
+        <tr class="row <%= sel && l.id === sel.id ? 'selected' : '' %>" onclick="location.href='/admin/leady?<%= q %>sel=<%= l.id %>'">
           <td class="tnum"><%= new Date(l.created_at).toLocaleDateString(t.locale, { day: 'numeric', month: 'short' }) %></td>
-          <td><span class="tag tag-outline"><%= src(l) %></span></td>
+          <td><span class="tag tag-outline"><%= src(l) %></span><% if (wzState && wzState[l.id]) { %> <span class="tag <%= wzTag(wzState[l.id]) %>"><%= L.wz[wzState[l.id]] || wzState[l.id] %></span><% } %></td>
           <td><%= l.company %><% if (fileCounts && fileCounts[l.id]) { %> <span title="<%= L.filesLabel %>">📎</span><% } %><% if (pendingIds && pendingIds.indexOf(l.id) !== -1) { %> <%- include('partials/hourglass', { id: 'row' + l.id }) %><% } else if (reportMap && reportMap[l.id]) { %> <span title="<%= L.research.label %>">🔎</span><% } %><% if (unread && unread['L' + l.id]) { %> <span class="nav-count tnum" title="<%= t.app.mail.st['new'] %>"><%= unread['L' + l.id] %></span><% } %></td>
           <td class="num tnum"><%= D.fmt(Number(l.kwota) || 0) %></td>
           <td><span class="tag <%= stTag(l.status) %>"><%= stTxt(l.status) %></span></td>
@@ -36,10 +39,13 @@
       <div class="kicker"><%= L.kicker %></div>
       <p class="helper"><%= L.emptyDetail %></p>
     <% } else { %>
-      <div class="kicker">#<%= sel.id %> · <%= src(sel) %> · <%= stTxt(sel.status) %></div>
+      <div class="kicker">#<%= sel.id %> · <%= src(sel) %> · <%= stTxt(sel.status) %><% if (selArchived) { %> · <%= L.inArchive %><% } %></div>
       <h2><%= sel.company %></h2>
       <div class="amount tnum"><%= D.fmt(Number(sel.kwota) || 0) %></div>
       <p class="meta tnum"><%= dateFmt(sel.created_at) %></p>
+      <% if (selState) { var S = selState; %>
+      <p class="helper" style="margin:-6px 0 0"><%= L.wzLabel %>: <strong><%= S.key === 'confirmed' ? (L.wz[S.status] || S.status) : L.wz[S.key] %></strong><% if (S.key === 'waiting') { %> · <%= fill(L.wzUntil, { date: dateFmt(S.until) }) %><% } else if (S.key === 'expired') { %> · <%= fill(L.wzExpiredOn, { date: dateFmt(S.until) }) %><% } else if (S.key === 'confirmed') { %> · <%= fill(L.wzConfirmedOn, { date: dateFmt(S.at) }) %><% if (S.opened_at) { %> · <%= fill(L.wzOpenedOn, { date: dateFmt(S.opened_at) }) %><% } %><% } %><% if (reminded) { %> · <%= fill(L.wzReminded, { date: dateFmt(reminded) }) %><% } %><% if (resent) { %> · <%= fill(L.wzResent, { n: resent }) %><% } %></p>
+      <% } %>
 
       <hr class="rule">
       <div class="field-row"><span class="fk"><%= L.f.email %></span><span><a href="mailto:<%= sel.email %>"><%= sel.email %></a></span></div>
@@ -67,6 +73,7 @@
 
       <hr class="rule">
       <form class="calc-form" method="post" action="/admin/leady/<%= sel.id %>" style="margin:0; padding:0; border:0; box-shadow:none; background:transparent">
+        <input type="hidden" name="widok" value="<%= view %>">
         <div class="fg">
           <label for="status"><%= L.statusLabel %></label>
           <select id="status" name="status">

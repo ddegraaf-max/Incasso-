@@ -420,6 +420,16 @@ async function listLeads(limit = 30) {
   return r.rows;
 }
 
+// Nieuwste wezwanie per lead — voor de stand van de e-mailbevestiging (wacht / verlopen / bevestigd) in het leadbeheer
+async function demandsByLead() {
+  const out = {};
+  const pick = (x) => ({ id: x.id, token: x.token, status: x.status, created_at: x.created_at, confirmed_at: x.confirmed_at, opened_at: x.opened_at, responded_at: x.responded_at });
+  if (!pool) { for (const x of mem.demands) if (x.lead_id && !(x.lead_id in out)) out[x.lead_id] = pick(x); return out; }
+  const r = await pool.query('SELECT DISTINCT ON (lead_id) id, lead_id, token, status, created_at, confirmed_at, opened_at, responded_at FROM demands WHERE lead_id IS NOT NULL ORDER BY lead_id, created_at DESC');
+  r.rows.forEach((x) => { out[x.lead_id] = pick(x); });
+  return out;
+}
+
 async function getLead(id) {
   const n = parseInt(id, 10);
   if (!Number.isInteger(n)) return null;
@@ -749,6 +759,18 @@ async function purgeUnconfirmedDemands(before) {
   if (r.rowCount) await pool.query('DELETE FROM demand_log WHERE demand_id = ANY($1)', [r.rows.map((x) => x.id)]);
   return r.rows;
 }
+// Onbevestigde wezwania aangemaakt tussen `from` en `to` die nog geen herinnering kregen (demand_log: confirm_reminded)
+async function listUnreminded(from, to) {
+  if (!pool) {
+    const done = new Set(mem.demandLog.filter((l) => l.type === 'confirm_reminded').map((l) => l.demand_id));
+    return mem.demands.filter((x) => !x.confirmed_at && new Date(x.created_at) >= from && new Date(x.created_at) <= to && !done.has(x.id));
+  }
+  const r = await pool.query(
+    "SELECT d.* FROM demands d WHERE d.confirmed_at IS NULL AND d.created_at BETWEEN $1 AND $2 AND NOT EXISTS (SELECT 1 FROM demand_log l WHERE l.demand_id = d.id AND l.type = 'confirm_reminded') ORDER BY d.created_at",
+    [from, to]
+  );
+  return r.rows.map(demandRow);
+}
 // Aantal bevestigde (dus verstuurde) wezwania naar hetzelfde e-mailadres van een dłużnik sinds een tijdstip (rem op misbruik)
 async function countDemandsTo(email, since) {
   if (!email) return 0;
@@ -819,6 +841,6 @@ module.exports = {
   saveLeadFile, listLeadFiles, getLeadFile, countLeadFiles,
   saveLeadReport, getLeadReport, latestReports,
   insertDemand, getDemandByToken, updateDemand, countDemands,
-  answerDemand, confirmDemand, purgeUnconfirmedDemands, countDemandsTo, logDemand, listDemandLog,
+  answerDemand, confirmDemand, purgeUnconfirmedDemands, listUnreminded, demandsByLead, countDemandsTo, logDemand, listDemandLog,
   purgeDemo,
 };

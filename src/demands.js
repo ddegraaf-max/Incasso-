@@ -10,7 +10,8 @@
 //   - de printversie draagt een QR-code naar dezelfde pagina,
 //   - de dłużnik wordt bij het aanmaken gecontroleerd in MF biała lista + KRS (gratis extra voor de wierzyciel),
 //   - e-mailverificatie: het wezwanie is pas actief (pagina zichtbaar, mail naar de dłużnik) nadat de wierzyciel
-//     via de link in zijn eigen mailbox heeft bevestigd (/w/<token>/potwierdz?k=<sleutel>, knop = POST).
+//     via de link in zijn eigen mailbox heeft bevestigd (/w/<token>/potwierdz?k=<sleutel>, knop = POST);
+//     wie na 24 uur nog niet heeft bevestigd krijgt één herinnering (remindUnconfirmed, elk uur vanuit server.js).
 // Elk aangemaakt wezwanie wordt ook een lead (bron 'wezwanie') in /admin/leady — de funnel naar skup faktur.
 const crypto = require('crypto');
 const db = require('./db');
@@ -26,6 +27,8 @@ const DAY_MS = 86400000;
 const CONFIRM_DAYS = 7; // geldigheid van de bevestigingslink
 const RESEND_MAX = 3;   // zo vaak kan de bevestigingsmail per wezwanie opnieuw worden gestuurd
 const PURGE_DAYS = 30;  // onbevestigde wezwania worden na zoveel dagen verwijderd
+const REMIND_AFTER_H = 24; // na zoveel uur zonder bevestiging krijgt de wierzyciel één herinnering
+const REMIND = process.env.DEMAND_REMIND !== '0';
 // Stand van de e-mailverificatie in de notitie van de lead
 const LEAD_WAIT = 'e-mail: czeka na potwierdzenie', LEAD_OK = 'e-mail: potwierdzony', LEAD_GONE = 'e-mail: niepotwierdzony — wezwanie usunięte';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -278,6 +281,70 @@ async function resendConfirm(d, meta = {}) {
   return r;
 }
 
+// Herinnering aan de wierzyciel: REMIND_AFTER_H uur na het aanmaken nog niet bevestigd → één keer een mail met dezelfde
+// bevestigingslink, zolang die geldig is (CONFIRM_DAYS). Geteld in de bewijslog (confirm_reminded, actor 'system'); dubbel
+// ingediende wezwania (zelfde e-mail + factuurnummer) krijgen samen één herinnering. Alleen overdag (Poolse tijd 7–21 u),
+// de uurlijkse tick haalt de rest later in. DEMAND_REMIND=0 zet het uit.
+function remindMailText(d, c) {
+  const en = d.lang === 'en';
+  const until = isoDate(new Date(new Date(d.created_at).getTime() + CONFIRM_DAYS * DAY_MS));
+  return en
+    ? `Your demand for payment is still waiting for confirmation.
+
+Invoice ${d.invoice_nr} · debtor ${d.debtor_company} · ${D.fmtN(c.amount)} zł (+ interest ${D.fmtN(c.odsetki)} zł and recovery fee ${D.fmtN(c.rekomp)} zł as of today)
+
+You filled in the form on sprzedamfakture.pl on ${fmtTs(d.created_at)} (Polish time), but the demand has not been confirmed yet — so it is not active${d.debtor_email ? ' and has not been sent to the debtor' : ''}.
+
+Confirm here: ${c.confirmUrl}
+The link is valid until ${until}. After that it expires and you would have to fill in the form again.
+
+Would you rather have us handle this invoice (purchase or collection)? Simply reply to this e-mail.
+
+Not you? Someone entered this address in the form — ignore this message and nothing will be sent.
+
+sprzedamfakture.pl — ${Company.C.name}`
+    : `Twoje wezwanie do zapłaty wciąż czeka na potwierdzenie.
+
+Faktura ${d.invoice_nr} · dłużnik ${d.debtor_company} · ${D.fmtN(c.amount)} zł (+ odsetki ${D.fmtN(c.odsetki)} zł i rekompensata ${D.fmtN(c.rekomp)} zł na dziś)
+
+Formularz na sprzedamfakture.pl wypełniono ${fmtTs(d.created_at)}, ale wezwanie nie zostało jeszcze potwierdzone — nie jest więc aktywne${d.debtor_email ? ' i nie trafiło do dłużnika' : ''}.
+
+Potwierdź tutaj: ${c.confirmUrl}
+Link jest ważny do ${until}. Potem wygaśnie i trzeba będzie wypełnić formularz ponownie.
+
+Wolisz, żebyśmy zajęli się tą fakturą (skup albo windykacja)? Po prostu odpowiedz na tę wiadomość.
+
+To nie Ty? Ktoś podał ten adres w formularzu — zignoruj tę wiadomość, a nic nie zostanie wysłane.
+
+sprzedamfakture.pl — ${Company.C.name}`;
+}
+function remindMailSubject(d) { return d.lang === 'en' ? `Reminder: confirm your demand — invoice ${d.invoice_nr}` : `Przypomnienie: potwierdź wezwanie do zapłaty — faktura ${d.invoice_nr}`; }
+async function mailRemind(d, c) {
+  return Mailer.sendPlain({ to: d.creditor_email, subject: remindMailSubject(d), text: remindMailText(d, c), lang: d.lang });
+}
+function warsawHour() { return Number(new Date().toLocaleString('en-GB', { timeZone: 'Europe/Warsaw', hour: '2-digit', hour12: false })) % 24; }
+async function remindUnconfirmed() {
+  if (!REMIND) return 0;
+  const h = warsawHour();
+  if (h < 7 || h >= 21) return 0;
+  const now = Date.now();
+  const rows = await db.listUnreminded(new Date(now - CONFIRM_DAYS * DAY_MS), new Date(now - REMIND_AFTER_H * 3600000));
+  let n = 0;
+  const sent = new Map(); // e-mail|factuur → id van het wezwanie waarvoor de herinnering is gegaan
+  for (const d of rows) {
+    if (!EMAIL_RE.test(d.creditor_email || '')) continue;
+    const dup = (d.creditor_email + '|' + d.invoice_nr).toLowerCase();
+    if (!sent.has(dup)) {
+      const r = await mailRemind(d, compute(d)).catch((e) => ({ ok: false, status: 'błąd: ' + e.message }));
+      if (!r.ok) { console.error('Wezwanie: herinnering aan ' + d.creditor_email + ' mislukt — ' + r.status); continue; }
+      if (r.simulated) console.log('[wezwanie] herinnering in simulatie — bevestigingslink: ' + compute(d).confirmUrl);
+      sent.set(dup, d.id); n++;
+    }
+    await log(d, 'confirm_reminded', {}, 'system', sent.get(dup) === d.id ? null : { via: sent.get(dup) });
+  }
+  return n;
+}
+
 // Opruimen: onbevestigde wezwania ouder dan PURGE_DAYS verdwijnen met hun log (de link was na CONFIRM_DAYS
 // al verlopen). De lead blijft; zijn notitie zegt dat het wezwanie is verwijderd.
 async function purgeUnconfirmed() {
@@ -366,6 +433,24 @@ async function leadConfirmed(d) {
   const lead = await db.getLead(d.lead_id).catch(() => null);
   if (lead && lead.note) await db.setLeadNote(lead.id, String(lead.note).replace(LEAD_WAIT, LEAD_OK)).catch(() => {});
 }
+// Stand van een wezwanie-lead voor het leadbeheer (dm = nieuwste wezwanie van de lead, uit db.demandsByLead):
+//   waiting (bevestigingslink geldig tot `until`) · expired (link verlopen) · gone (na PURGE_DAYS opgeruimd) · confirmed (+ status van de brief)
+function leadState(lead, dm) {
+  if (!lead || lead.source !== 'wezwanie') return null;
+  if (!dm) return String(lead.note || '').includes(LEAD_GONE) ? { key: 'gone' } : null;
+  if (dm.confirmed_at) return { key: 'confirmed', at: dm.confirmed_at, status: dm.status, opened_at: dm.opened_at, responded_at: dm.responded_at };
+  const until = new Date(new Date(dm.created_at).getTime() + CONFIRM_DAYS * DAY_MS);
+  return { key: until.getTime() > Date.now() ? 'waiting' : 'expired', until };
+}
+// Archief van het leadbeheer: afgehandeld (zaak aangemaakt, afgewezen, spam) of een wezwanie waarvan de bevestigingslink
+// verliep terwijl de lead nog 'nowy' was. Een verlopen lead die de beheerder al oppakte (kontakt/oferta) blijft actueel.
+const LEAD_DONE = ['zaakceptowany', 'odrzucony', 'spam'];
+function leadArchived(lead, dm) {
+  if (LEAD_DONE.includes(lead.status)) return true;
+  if (lead.status && lead.status !== 'nowy') return false;
+  const s = leadState(lead, dm);
+  return !!s && (s.key === 'expired' || s.key === 'gone');
+}
 async function toLead(d, c, lang) {
   const est = AiScore.estimateOffer(c.amount, c.days);
   const lead = await db.saveLead({
@@ -376,4 +461,4 @@ async function toLead(d, c, lang) {
   return lead;
 }
 
-module.exports = { STATUSES, validate: toRow, create, byToken, compute, isAnswered, isConfirmed, confirmExpired, confirm, isCreditor, markOpened, respond, history, fmtTs, mailDebtor, mailCreditor, mailConfirm, resendConfirm, purgeUnconfirmed, mailResponse, toLead, leadConfirmed, factsSummary, daysOverdue, debtorMailText, debtorMailSubject, creditorMailText, creditorMailSubject, confirmMailText, confirmMailSubject, CONFIRM_DAYS, RESEND_MAX, PURGE_DAYS, sample, FROM_EMAIL };
+module.exports = { STATUSES, validate: toRow, create, byToken, compute, isAnswered, isConfirmed, confirmExpired, confirm, isCreditor, markOpened, respond, history, fmtTs, mailDebtor, mailCreditor, mailConfirm, resendConfirm, remindUnconfirmed, purgeUnconfirmed, mailResponse, toLead, leadConfirmed, leadState, leadArchived, factsSummary, daysOverdue, debtorMailText, debtorMailSubject, creditorMailText, creditorMailSubject, confirmMailText, confirmMailSubject, CONFIRM_DAYS, RESEND_MAX, PURGE_DAYS, REMIND_AFTER_H, sample, FROM_EMAIL };

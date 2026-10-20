@@ -337,12 +337,28 @@ app.post('/admin/demo/usun', Auth.requireAdmin, async (req, res) => {
   res.redirect('/admin?msg=' + encodeURIComponent(msg));
 });
 
-// Leadbeheer: alle zgłoszenia uit de formulieren, met status, notitie en verwijderen
+// Leadbeheer: alle zgłoszenia uit de formulieren, met status, notitie en verwijderen.
+// Weergaven (?widok=): 'aktualne' (standaard — wat nog aandacht vraagt), 'archiwum' (afgehandeld of verlopen,
+// zie Demands.leadArchived) en 'wszystko'.
 const LEAD_STATUSES = ['nowy', 'kontakt', 'oferta', 'zaakceptowany', 'odrzucony', 'spam'];
+const LEAD_VIEWS = ['aktualne', 'archiwum', 'wszystko'];
+const leadView = (q) => (LEAD_VIEWS.includes(q) ? q : 'aktualne');
 app.get('/admin/leady', Auth.requireAdmin, async (req, res) => {
-  const leads = await db.listLeads(300).catch(() => []);
+  const all = await db.listLeads(300).catch(() => []);
+  const dmap = await db.demandsByLead().catch(() => ({}));
+  const archived = (l) => Demands.leadArchived(l, dmap[l.id]);
+  const view = leadView(req.query.widok);
+  const leads = view === 'wszystko' ? all : all.filter((l) => archived(l) === (view === 'archiwum'));
+  const counts = { aktualne: all.filter((l) => !archived(l)).length, archiwum: all.filter(archived).length, wszystko: all.length };
   const selId = parseInt(req.query.sel, 10);
-  const sel = leads.find((l) => l.id === selId) || leads[0] || null;
+  // Een lead buiten de weergave (net gearchiveerd, of aangeklikt op het dashboard) blijft rechts zichtbaar
+  const sel = all.find((l) => l.id === selId) || leads[0] || null;
+  const selState = sel ? Demands.leadState(sel, dmap[sel.id]) : null;
+  const selLog = sel && dmap[sel.id] ? await db.listDemandLog(dmap[sel.id].id, 500).catch(() => []) : [];
+  const reminded = selLog.filter((x) => x.type === 'confirm_reminded').map((x) => x.created_at).pop() || null;
+  const resent = selLog.filter((x) => x.type === 'confirm_resent').length;
+  const wzState = {};
+  for (const l of leads) { const s = Demands.leadState(l, dmap[l.id]); if (s) wzState[l.id] = s.key === 'confirmed' ? (s.status || 'wyslane') : s.key; }
   const files = sel ? await db.listLeadFiles(sel.id).catch(() => []) : [];
   const fileCounts = await db.countLeadFiles().catch(() => ({}));
   const report = sel ? await db.getLeadReport(sel.id).catch(() => null) : null;
@@ -351,7 +367,7 @@ app.get('/admin/leady', Auth.requireAdmin, async (req, res) => {
   const pendingIds = leads.filter((l) => Research.isPending(l.id)).map((l) => l.id);
   const mails = sel ? await Mailbox.refresh(await db.listComms('L' + sel.id, 20).catch(() => [])) : [];
   const unread = await db.unreadReplies().catch(() => ({}));
-  res.render('admin-leady', common({ page: 'admin', user: req.user, leads, sel, files, fileCounts, report, reportMap, researchPending, pendingIds, mails, unread, LEAD_STATUSES, flash: req.query.msg || null }));
+  res.render('admin-leady', common({ page: 'admin', user: req.user, leads, sel, view, counts, wzState, selState, selArchived: sel ? archived(sel) : false, reminded, resent, files, fileCounts, report, reportMap, researchPending, pendingIds, mails, unread, LEAD_STATUSES, flash: req.query.msg || null }));
 });
 
 // ── Postvak: alle binnengekomen antwoorden op één plek ───────────────────
@@ -667,7 +683,8 @@ app.post('/admin/leady/:id', Auth.requireAdmin, async (req, res) => {
   const status = LEAD_STATUSES.includes(req.body.status) ? req.body.status : 'nowy';
   const admin_note = String(req.body.admin_note || '').trim().slice(0, 2000) || null;
   const ok = await db.updateLead(req.params.id, { status, admin_note }).catch(() => false);
-  res.redirect('/admin/leady?sel=' + encodeURIComponent(req.params.id) + '&msg=' + encodeURIComponent(ok ? res.locals.t.fill(L.saved, { id: req.params.id }) : L.notFound));
+  const widok = leadView(req.body.widok); // in dezelfde weergave blijven (archief / alles)
+  res.redirect('/admin/leady?' + (widok === 'aktualne' ? '' : 'widok=' + widok + '&') + 'sel=' + encodeURIComponent(req.params.id) + '&msg=' + encodeURIComponent(ok ? res.locals.t.fill(L.saved, { id: req.params.id }) : L.notFound));
 });
 
 // ── Marketing ────────────────────────────────────────────────────────────
@@ -1307,6 +1324,12 @@ async function start() {
     .catch((e) => console.error('Wezwanie: opruimen mislukt —', e.message));
   await purgeDemands();
   setInterval(purgeDemands, 24 * HOUR_MS).unref();
+  // Herinnering aan wierzyciele die hun wezwanie na 24 uur nog niet hebben bevestigd: bij de start en daarna elk uur (overdag)
+  const remindDemands = () => Demands.remindUnconfirmed()
+    .then((n) => { if (n) console.log('Wezwanie: ' + n + ' herinnering(en) gestuurd aan wierzyciele die nog niet hebben bevestigd'); })
+    .catch((e) => console.error('Wezwanie: herinneren mislukt —', e.message));
+  await remindDemands();
+  setInterval(remindDemands, HOUR_MS).unref();
   app.listen(PORT, () => console.log('sprzedamfakture.pl draait op poort ' + PORT));
 }
 start();
