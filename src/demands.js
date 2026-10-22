@@ -226,7 +226,9 @@ ${c.url}
 Brak zapłaty w terminie może skutkować skierowaniem sprawy do windykacji, zgłoszeniem do biura informacji gospodarczej oraz na drogę sądową — na koszt dłużnika.
 
 sprzedamfakture.pl — wezwanie wygenerowane na zlecenie wierzyciela
-Odpowiedzi prosimy kierować bezpośrednio do wierzyciela (odpowiedz na tę wiadomość) lub przez stronę wezwania.`;
+Odpowiedzi prosimy kierować bezpośrednio do wierzyciela (odpowiedz na tę wiadomość) lub przez stronę wezwania.
+
+Informacja RODO (art. 14): administratorem danych jest ${Company.C.name}, ${[Company.C.street, Company.C.city].filter(Boolean).join(', ')} (${Company.C.email}). Dane Państwa firmy (nazwa, NIP, adres e-mail, dane faktury) przekazał wierzyciel ${d.creditor_company}; uzupełniamy je danymi z białej listy VAT i KRS. Cel: przekazanie wezwania w imieniu wierzyciela i dowód doręczenia (prawnie uzasadniony interes, art. 6 ust. 1 lit. f RODO). Przysługuje Państwu prawo dostępu, sprostowania, ograniczenia, sprzeciwu oraz skargi do Prezesa UODO. Szczegóły i okres przechowywania: ${SITE}/polityka-prywatnosci`;
 }
 function debtorMailSubject(d) { return `Wezwanie do zapłaty — faktura ${d.invoice_nr} (${d.creditor_company})`; }
 

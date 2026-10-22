@@ -162,7 +162,7 @@
   <ol>
     <% t.sources.forEach(function(s) { %><li><%= s %></li><% }) %>
   </ol>
-  <div class="cr"><%= t.copyright %> · <%= company.email %> · <a href="/"><%= t.navSell %></a> · <a href="/kalkulator"><%= t.navCalc %></a> · <span class="ver tnum" title="<%= t.common.versionTitle %>">v<%= version %><%= commit ? ' · ' + commit : '' %></span></div>
+  <div class="cr"><%= t.copyright %> · <%= company.email %> · <a href="/"><%= t.navSell %></a> · <a href="/kalkulator"><%= t.navCalc %></a> · <a href="/regulamin"><%= lang === 'en' ? 'Terms (PL)' : 'Regulamin' %></a> · <a href="/polityka-prywatnosci"><%= lang === 'en' ? 'Privacy policy (PL)' : 'Polityka prywatności' %></a> · <span class="ver tnum" title="<%= t.common.versionTitle %>">v<%= version %><%= commit ? ' · ' + commit : '' %></span></div>
   </div>
 </footer>
 <%- include('partials/company') %>

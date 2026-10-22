@@ -140,7 +140,9 @@ var ld = [
     </div>
     <button class="btn btn-gold" type="submit"><%= w.form.btn %></button>
     <p class="legal-note" style="margin-top:12px"><%= w.form.note %></p>
-  </form>
+  
+      <p class="helper legal-note" style="font-size:12.5px;margin-top:10px"><%- lang === 'en' ? 'By sending the form you accept the <a href="/regulamin">Terms</a>. How we process data, including the debtor\'s data: <a href="/polityka-prywatnosci">Privacy policy</a> (in Polish).' : 'Wysyłając formularz, akceptujesz <a href="/regulamin">Regulamin</a>. Informacje o przetwarzaniu danych, także danych dłużnika: <a href="/polityka-prywatnosci">Polityka prywatności</a>.' %></p>
+</form>
   <% } %>
 
   <p class="legal-note" style="margin-top:26px"><%= w.legal %></p>

@@ -269,7 +269,9 @@ var ld = [
         <% } %>
         <button class="btn btn-gold" type="submit"><%= h.form.btn %></button>
         <p class="legal-note" style="margin-top:12px"><%= h.form.note %></p>
-      </form>
+      
+      <p class="helper legal-note" style="font-size:12.5px;margin-top:10px"><%- lang === 'en' ? 'By sending the form you accept the <a href="/regulamin">Terms</a>. How we process data, including the debtor\'s data: <a href="/polityka-prywatnosci">Privacy policy</a> (in Polish).' : 'Wysyłając formularz, akceptujesz <a href="/regulamin">Regulamin</a>. Informacje o przetwarzaniu danych, także danych dłużnika: <a href="/polityka-prywatnosci">Polityka prywatności</a>.' %></p>
+</form>
       <% } %>
     </div>
   </div>
@@ -279,7 +281,7 @@ var ld = [
   <div class="wrap">
     <div class="sf-footer">
       <%- include('partials/logo', { size: 'sm', tagline: true }) %>
-      <span class="sf-footer-links"><% if (!windykacjaOff) { %><a href="/windykacja"><%= h.footer.collection %></a> · <% } %><a href="/kalkulator"><%= h.footer.calc %></a> · <a href="/skup-wyrokow"><%= t.common.footJudgments %></a> · <a href="/login"><%= h.footer.panel %></a></span>
+      <span class="sf-footer-links"><% if (!windykacjaOff) { %><a href="/windykacja"><%= h.footer.collection %></a> · <% } %><a href="/kalkulator"><%= h.footer.calc %></a> · <a href="/skup-wyrokow"><%= t.common.footJudgments %></a> · <a href="/login"><%= h.footer.panel %></a> · <a href="/regulamin"><%= lang === 'en' ? 'Terms (PL)' : 'Regulamin' %></a> · <a href="/polityka-prywatnosci"><%= lang === 'en' ? 'Privacy policy (PL)' : 'Polityka prywatności' %></a></span>
     </div>
     <div class="cr"><%= h.footer.legal %> · <span class="ver tnum" title="<%= c.versionTitle %>">v<%= version %><%= commit ? ' · ' + commit : '' %></span></div>
   </div>

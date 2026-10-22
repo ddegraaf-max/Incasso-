@@ -1267,6 +1267,10 @@ app.post('/app/wykup/:id/odrzuc', Auth.requireAuth, async (req, res) => {
   res.redirect('/app/wykup');
 });
 
+// ── Juridisch: regulamin (art. 8 UŚUDE) en polityka prywatności (art. 13/14 RODO) ──
+app.get('/regulamin', (req, res) => res.render('regulamin', common({ page: 'legal' })));
+app.get('/polityka-prywatnosci', (req, res) => res.render('polityka-prywatnosci', common({ page: 'legal' })));
+
 // ── Extra: publiczny kalkulator odsetek + rekompensaty ───────────────────
 app.get('/kalkulator', (req, res) => {
   const amount = parseFloat(String(req.query.kwota || '').replace(',', '.')) || null;

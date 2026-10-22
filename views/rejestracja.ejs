@@ -31,7 +31,9 @@
     </div>
     <% if (turnstile && turnstile.enabled) { %><div class="fg"><%- include('partials/turnstile') %></div><% } %>
     <button class="btn" type="submit"><%= R.btn %></button>
-  </form>
+  
+      <p class="helper legal-note" style="font-size:12.5px;margin-top:10px"><%- lang === 'en' ? 'By sending the form you accept the <a href="/regulamin">Terms</a>. How we process data, including the debtor\'s data: <a href="/polityka-prywatnosci">Privacy policy</a> (in Polish).' : 'Wysyłając formularz, akceptujesz <a href="/regulamin">Regulamin</a>. Informacje o przetwarzaniu danych, także danych dłużnika: <a href="/polityka-prywatnosci">Polityka prywatności</a>.' %></p>
+</form>
 
   <p style="font-size:13.5px"><%= R.have %> <a href="/login"><%= R.login %></a></p>
 </div>

@@ -1,0 +1,62 @@
+<%
+// Regulamin świadczenia usług drogą elektroniczną (art. 8 ustawy z 18.07.2002 r.). Usługodawca = src/company.js.
+var co = company;
+var addr = [co.street, co.city, co.country === 'NL' ? 'Holandia' : co.country].filter(Boolean).join(', ');
+%><%- include('partials/head', { title: 'Regulamin — sprzedamfakture.pl', desc: 'Regulamin świadczenia usług drogą elektroniczną w serwisie sprzedamfakture.pl: usługi, warunki, odpowiedzialność, reklamacje.', altLang: false, canonicalPath: '/regulamin' }) %>
+<%- include('partials/nav') %>
+
+<div class="calc-wrap legal" style="flex:1;max-width:820px">
+  <div class="kicker">Regulamin</div>
+  <h1 style="font-size:34px">Regulamin serwisu sprzedamfakture.pl</h1>
+  <p class="helper">Obowiązuje od 22 października 2026 r.</p>
+
+  <h2>§ 1. Usługodawca</h2>
+  <p>Serwis sprzedamfakture.pl prowadzi <strong><%= co.name %></strong>, <%= addr %>, KvK <%= co.kvk %>, VAT <%= co.vat %>, e-mail <a href="mailto:<%= co.email %>"><%= co.email %></a> („Usługodawca”). Regulamin jest wydany na podstawie art. 8 ustawy z dnia 18 lipca 2002 r. o świadczeniu usług drogą elektroniczną.</p>
+
+  <h2>§ 2. Dla kogo jest serwis</h2>
+  <p>Serwis jest przeznaczony dla <strong>przedsiębiorców</strong> i dotyczy należności z transakcji handlowych między przedsiębiorcami. Serwis nie służy do dochodzenia należności od konsumentów.</p>
+
+  <h2>§ 3. Usługi</h2>
+  <ol>
+    <li><strong>Bezpłatne:</strong> kalkulator odsetek i rekompensaty, baza wiedzy, generator wezwania do zapłaty oraz wezwanie online (strona wezwania z aktualną kwotą i możliwością odpowiedzi dłużnika).</li>
+    <li><strong>Konto i panel spraw:</strong> prowadzenie spraw o zapłatę, komunikacja z dłużnikiem, ocena należności. Opłaty, jeżeli dotyczą danej usługi, są podane w serwisie przed jej zamówieniem.</li>
+    <li><strong>Wycena i zakup należności</strong> (faktur i wyroków): formularz w serwisie służy wyłącznie do przygotowania niewiążącej wyceny. Umowa sprzedaży (cesji) wierzytelności zawierana jest odrębnie, w formie pisemnej lub dokumentowej, na warunkach uzgodnionych indywidualnie.</li>
+  </ol>
+
+  <h2>§ 4. Wymagania techniczne</h2>
+  <p>Do korzystania z serwisu potrzebne jest urządzenie z dostępem do internetu, aktualna przeglądarka internetowa z włączoną obsługą JavaScript i plików cookie oraz aktywny adres e-mail. Do logowania do panelu wymagane jest uwierzytelnianie dwuskładnikowe (aplikacja generująca kody).</p>
+
+  <h2>§ 5. Zawarcie i rozwiązanie umowy</h2>
+  <ol>
+    <li>Umowa o świadczenie usług bezpłatnych zostaje zawarta z chwilą rozpoczęcia korzystania z danej funkcji i wygasa z chwilą jej zakończenia.</li>
+    <li>Umowa o prowadzenie konta zostaje zawarta z chwilą rejestracji i potwierdzenia adresu e-mail; Użytkownik może ją rozwiązać w każdej chwili, pisząc na adres z § 1.</li>
+    <li>Usługodawca może rozwiązać umowę z zachowaniem 14 dni wypowiedzenia, a bez wypowiedzenia w razie naruszenia Regulaminu lub prawa.</li>
+  </ol>
+
+  <h2>§ 6. Obowiązki Użytkownika</h2>
+  <ol>
+    <li>Użytkownik podaje dane prawdziwe i jest uprawniony do dochodzenia należności, którą zgłasza (jest wierzycielem lub działa w jego imieniu).</li>
+    <li>Użytkownik odpowiada za istnienie i wysokość należności oraz za to, że ma podstawę prawną do przekazania danych dłużnika w celu wysłania wezwania.</li>
+    <li>Zakazane jest dostarczanie treści o charakterze bezprawnym, w szczególności wezwań do zapłaty należności nieistniejących, przedawnionych bez takiego zastrzeżenia, spornych bez ujawnienia sporu, a także treści obraźliwych lub naruszających dobra osobiste.</li>
+  </ol>
+
+  <h2>§ 7. Rola Usługodawcy</h2>
+  <p>Wezwanie do zapłaty wysyłane przez serwis jest wysyłane <strong>w imieniu i na zlecenie wierzyciela</strong>. Usługodawca nie jest stroną stosunku między wierzycielem a dłużnikiem, chyba że nabył wierzytelność na podstawie odrębnej umowy. Wyniki kalkulatora, oceny AIScore i raportów mają charakter informacyjny i nie stanowią porady prawnej.</p>
+
+  <h2>§ 8. Odpowiedzialność</h2>
+  <p>Usługodawca odpowiada za szkodę rzeczywistą wyrządzoną z jego winy, do wysokości opłat zapłaconych przez Użytkownika w ciągu ostatnich 12 miesięcy, a w przypadku usług bezpłatnych — do kwoty 500 zł. Ograniczenie nie dotyczy szkody wyrządzonej umyślnie. Usługodawca nie odpowiada za skutki podania nieprawdziwych danych przez Użytkownika ani za przerwy techniczne niezależne od niego.</p>
+
+  <h2>§ 9. Reklamacje</h2>
+  <p>Reklamacje dotyczące usług można składać na adres <a href="mailto:<%= co.email %>"><%= co.email %></a>, opisując problem i podając dane kontaktowe. Usługodawca rozpatruje reklamację w terminie 14 dni od jej otrzymania i odpowiada na adres e-mail, z którego ją wysłano.</p>
+
+  <h2>§ 10. Dane osobowe</h2>
+  <p>Zasady przetwarzania danych osobowych opisuje <a href="/polityka-prywatnosci">Polityka prywatności</a>.</p>
+
+  <h2>§ 11. Przedsiębiorca na prawach konsumenta</h2>
+  <p>Osoba fizyczna prowadząca działalność gospodarczą, która zawiera umowę niemającą dla niej charakteru zawodowego, korzysta z ochrony przewidzianej w art. 385<sup>5</sup> Kodeksu cywilnego i przepisach ustawy o prawach konsumenta w zakresie tam wskazanym.</p>
+
+  <h2>§ 12. Postanowienia końcowe</h2>
+  <p>Do umów zawieranych na podstawie Regulaminu stosuje się prawo polskie. Usługodawca może zmienić Regulamin z ważnych przyczyn (zmiana prawa, zmiana usług), informując zarejestrowanych Użytkowników e-mailem co najmniej 14 dni przed wejściem zmian w życie; Użytkownik, który nie akceptuje zmian, może rozwiązać umowę. Regulamin jest dostępny bezpłatnie pod adresem sprzedamfakture.pl/regulamin w formie umożliwiającej jego pobranie i wydruk.</p>
+</div>
+
+<%- include('partials/footer') %>
