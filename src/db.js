@@ -148,6 +148,10 @@ async function init() {
     await pool.query('UPDATE demands SET confirmed_at = created_at');
   }
   await pool.query('ALTER TABLE demands ADD COLUMN IF NOT EXISTS confirm_ip TEXT');
+  // Mail aan de dłużnik: Resend-id en afleverstatus (sent → delivered/opened; bounced/complained/failed = niet doorgekomen)
+  await pool.query('ALTER TABLE demands ADD COLUMN IF NOT EXISTS debtor_mail_id TEXT');
+  await pool.query('ALTER TABLE demands ADD COLUMN IF NOT EXISTS debtor_mail_status TEXT');
+  await pool.query('ALTER TABLE demands ADD COLUMN IF NOT EXISTS debtor_mail_at TIMESTAMPTZ');
   // Bewijslog per wezwanie: elke weergave en elke reactie, met IP en user-agent (nooit overschreven)
   await pool.query(`
     CREATE TABLE IF NOT EXISTS demand_log (
@@ -423,9 +427,9 @@ async function listLeads(limit = 30) {
 // Nieuwste wezwanie per lead — voor de stand van de e-mailbevestiging (wacht / verlopen / bevestigd) in het leadbeheer
 async function demandsByLead() {
   const out = {};
-  const pick = (x) => ({ id: x.id, token: x.token, status: x.status, created_at: x.created_at, confirmed_at: x.confirmed_at, opened_at: x.opened_at, responded_at: x.responded_at });
+  const pick = (x) => ({ id: x.id, token: x.token, status: x.status, created_at: x.created_at, confirmed_at: x.confirmed_at, opened_at: x.opened_at, responded_at: x.responded_at, debtor_mail_status: x.debtor_mail_status, debtor_mail_at: x.debtor_mail_at });
   if (!pool) { for (const x of mem.demands) if (x.lead_id && !(x.lead_id in out)) out[x.lead_id] = pick(x); return out; }
-  const r = await pool.query('SELECT DISTINCT ON (lead_id) id, lead_id, token, status, created_at, confirmed_at, opened_at, responded_at FROM demands WHERE lead_id IS NOT NULL ORDER BY lead_id, created_at DESC');
+  const r = await pool.query('SELECT DISTINCT ON (lead_id) id, lead_id, token, status, created_at, confirmed_at, opened_at, responded_at, debtor_mail_status, debtor_mail_at FROM demands WHERE lead_id IS NOT NULL ORDER BY lead_id, created_at DESC');
   r.rows.forEach((x) => { out[x.lead_id] = pick(x); });
   return out;
 }
@@ -688,7 +692,7 @@ async function deleteCase(id, caseKey) {
 }
 
 // ── Wezwania online (src/demands.js) ─────────────────────────────────────
-const DEMAND_COLS = ['token', 'lang', 'creditor_company', 'creditor_nip', 'creditor_email', 'debtor_company', 'debtor_nip', 'debtor_email', 'invoice_nr', 'amount', 'due_date', 'iban', 'status', 'response_note', 'promised_date', 'paid_date', 'opened_at', 'responded_at', 'facts', 'lead_id', 'file_id', 'creditor_key', 'creator_ip', 'confirmed_at', 'confirm_ip'];
+const DEMAND_COLS = ['token', 'lang', 'creditor_company', 'creditor_nip', 'creditor_email', 'debtor_company', 'debtor_nip', 'debtor_email', 'invoice_nr', 'amount', 'due_date', 'iban', 'status', 'response_note', 'promised_date', 'paid_date', 'opened_at', 'responded_at', 'facts', 'lead_id', 'file_id', 'creditor_key', 'creator_ip', 'confirmed_at', 'confirm_ip', 'debtor_mail_id', 'debtor_mail_status', 'debtor_mail_at'];
 const DEMAND_DATES = ['due_date', 'promised_date', 'paid_date'];
 // pg geeft DATE-kolommen terug als Date (lokale middernacht) — de brief en de mails willen JJJJ-MM-DD
 function demandRow(r) {
@@ -716,6 +720,20 @@ async function getDemandByToken(token) {
   if (!pool) return mem.demands.find((x) => x.token === token) || null;
   const r = await pool.query('SELECT * FROM demands WHERE token=$1', [token]);
   return demandRow(r.rows[0]);
+}
+// Wezwanie bij het Resend-id van de mail aan de dłużnik (webhook met afleverstatus)
+async function getDemandByMailId(mailId) {
+  if (!mailId) return null;
+  if (!pool) return mem.demands.find((x) => x.debtor_mail_id === mailId) || null;
+  const r = await pool.query('SELECT * FROM demands WHERE debtor_mail_id=$1', [mailId]);
+  return demandRow(r.rows[0]);
+}
+// Mails aan dłużnicy waarvan de afleverstatus nog kan veranderen (poll als de webhook iets mist)
+async function listDemandsMailPending(since) {
+  const open = (s) => !s || s === 'sent' || s === 'delivery_delayed';
+  if (!pool) return mem.demands.filter((x) => x.debtor_mail_id && open(x.debtor_mail_status) && new Date(x.debtor_mail_at || x.created_at) >= since).slice(0, 20);
+  const r = await pool.query("SELECT * FROM demands WHERE debtor_mail_id IS NOT NULL AND (debtor_mail_status IS NULL OR debtor_mail_status IN ('sent','delivery_delayed')) AND COALESCE(debtor_mail_at, created_at) >= $1 ORDER BY debtor_mail_at DESC LIMIT 20", [since]);
+  return r.rows.map(demandRow);
 }
 // Reactie van de dłużnik vastleggen — alleen zolang er nog niet is gereageerd (ook bij dubbel klikken telt de eerste)
 const DEMAND_OPEN = ['wyslane', 'otwarte'];
@@ -841,6 +859,6 @@ module.exports = {
   saveLeadFile, listLeadFiles, getLeadFile, countLeadFiles,
   saveLeadReport, getLeadReport, latestReports,
   insertDemand, getDemandByToken, updateDemand, countDemands,
-  answerDemand, confirmDemand, purgeUnconfirmedDemands, listUnreminded, demandsByLead, countDemandsTo, logDemand, listDemandLog,
+  answerDemand, confirmDemand, purgeUnconfirmedDemands, listUnreminded, demandsByLead, getDemandByMailId, listDemandsMailPending, countDemandsTo, logDemand, listDemandLog,
   purgeDemo,
 };

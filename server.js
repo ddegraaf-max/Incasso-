@@ -358,7 +358,7 @@ app.get('/admin/leady', Auth.requireAdmin, async (req, res) => {
   const reminded = selLog.filter((x) => x.type === 'confirm_reminded').map((x) => x.created_at).pop() || null;
   const resent = selLog.filter((x) => x.type === 'confirm_resent').length;
   const wzState = {};
-  for (const l of leads) { const s = Demands.leadState(l, dmap[l.id]); if (s) wzState[l.id] = s.key === 'confirmed' ? (s.status || 'wyslane') : s.key; }
+  for (const l of leads) { const s = Demands.leadState(l, dmap[l.id]); if (s) wzState[l.id] = s.key === 'confirmed' ? (s.mailFailed ? 'bounced' : (s.status || 'wyslane')) : s.key; }
   const files = sel ? await db.listLeadFiles(sel.id).catch(() => []) : [];
   const fileCounts = await db.countLeadFiles().catch(() => ({}));
   const report = sel ? await db.getLeadReport(sel.id).catch(() => null) : null;
@@ -966,6 +966,7 @@ app.post('/wezwanie-online', zalacznikMw, async (req, res) => {
   // Alleen de bevestigingsmail aan de wierzyciel; de dłużnik krijgt pas iets na de klik (POST /w/<token>/potwierdz)
   const mv = await Demands.mailConfirm(d, k).catch((e) => ({ ok: false, status: 'błąd: ' + e.message }));
   if (mv.simulated) console.log('[wezwanie] mail in simulatie — bevestigingslink: ' + k.confirmUrl);
+  await Demands.notifyAdmin('created', d, k).catch((e) => console.error('Wezwanie: melding aan beheerder mislukt —', e.message));
   await db.insertEvent({ nip: d.debtor_nip || null, debtor: d.debtor_company, type: 'wezwanie', title: 'Wezwanie online: ' + d.invoice_nr + ' · ' + D.fmt(k.amount) + ' · wierzyciel ' + d.creditor_company + ' · czeka na potwierdzenie e-mail · mail: ' + mv.status, source: 'wezwanie-online' }).catch(() => {});
   res.redirect('/wezwanie-online?czeka=' + encodeURIComponent(d.token) + (mv.ok ? '' : '&blad=1'));
 });
@@ -1007,10 +1008,11 @@ app.post('/w/:token/potwierdz', async (req, res, next) => {
   const k = Demands.compute(d);
   const f = d.file_id ? await db.getLeadFile(d.file_id).catch(() => null) : null;
   const [md, mc] = await Promise.all([
-    Demands.mailDebtor(d, k, f).catch((e) => ({ status: 'błąd: ' + e.message })),
+    Demands.sendDebtor(d, k, f).catch((e) => ({ status: 'błąd: ' + e.message })),
     Demands.mailCreditor(d, k, d.facts).catch((e) => ({ status: 'błąd: ' + e.message })),
   ]);
   await Demands.leadConfirmed(d);
+  await Demands.notifyAdmin('confirmed', d, k, { debtorMail: md.status, creditorMail: mc.status }).catch((e) => console.error('Wezwanie: melding aan beheerder mislukt —', e.message));
   await db.insertEvent({ nip: d.debtor_nip || null, debtor: d.debtor_company, type: 'wezwanie', title: 'Wezwanie online: ' + d.invoice_nr + ' · ' + D.fmt(k.amount) + ' · wierzyciel ' + d.creditor_company + ' · potwierdzone przez wierzyciela · mail: ' + md.status + ' / ' + mc.status, source: 'wezwanie-online' }).catch(() => {});
   res.redirect(demandOkUrl(d));
 });
@@ -1058,7 +1060,25 @@ app.get('/w/:token', async (req, res, next) => {
   const creditorView = Demands.isCreditor(d, req.query.k);
   await Demands.markOpened(d, reqMeta(req), req.query.k);
   const L = res.locals.t.wz.letter;
-  renderDemand(req, res, d, { creditorView, hist: creditorView ? await Demands.history(d) : null, thanksMsg: req.query.dzieki && L.thanks[d.status] ? L.thanks[d.status] : null });
+  renderDemand(req, res, d, { creditorView, hist: creditorView ? await Demands.history(d) : null, credKey: creditorView ? req.query.k : '', sendOk: creditorView && req.query.wyslano === '1', thanksMsg: req.query.dzieki && L.thanks[d.status] ? L.thanks[d.status] : null });
+});
+// De wierzyciel laat de brief (opnieuw) sturen naar een ander e-mailadres van de dłużnik — vanuit zijn podgląd, met sleutel.
+// Grenzen: RESEND_DEBTOR_MAX per wezwanie, WZ_LIMIT.resendHour per IP, WZ_LIMIT.debtorDay per adres van een dłużnik.
+app.post('/w/:token/wyslij', async (req, res, next) => {
+  const d = await liveDemand(req.params.token);
+  if (!d || !Demands.isCreditor(d, req.body.k)) return next();
+  const L = res.locals.t.wz.letter;
+  const fail = async (code, http) => { res.status(http || 400); return renderDemand(req, res, d, { creditorView: true, hist: await Demands.history(d), credKey: req.body.k, sendError: L.cred.sendErrors[code] || code, sendForm: { email: req.body.debtor_email } }); };
+  if (!RateLimit.check('wzs:' + req.ip, WZ_LIMIT.resendHour, HOUR_MS)) return fail('limit', 429);
+  RateLimit.hit('wzs:' + req.ip, HOUR_MS);
+  const to = String(req.body.debtor_email || '').trim().toLowerCase();
+  if (to && (await db.countDemandsTo(to, new Date(Date.now() - 24 * HOUR_MS)).catch(() => 0)) >= WZ_LIMIT.debtorDay) return fail('day', 429);
+  const f = d.file_id ? await db.getLeadFile(d.file_id).catch(() => null) : null;
+  const r = await Demands.resendDebtor(d, to, f, reqMeta(req)).catch((e) => ({ ok: false, error: 'send', status: e.message }));
+  if (!r.ok) return fail(r.error, r.error === 'limit' ? 429 : 400);
+  if (r.status === 'symulacja') console.log('[wezwanie] mail aan de dłużnik in simulatie → ' + to);
+  await db.insertEvent({ nip: d.debtor_nip || null, debtor: d.debtor_company, type: 'wezwanie', title: 'Wezwanie online ' + d.invoice_nr + ': wysłane ponownie przez wierzyciela na ' + to + ' · mail: ' + r.status, source: 'wezwanie-online' }).catch(() => {});
+  res.redirect('/w/' + d.token + '?k=' + encodeURIComponent(req.body.k) + '&wyslano=1');
 });
 app.post('/w/:token/odpowiedz', async (req, res, next) => {
   const d = await liveDemand(req.params.token);
@@ -1074,6 +1094,7 @@ app.post('/w/:token/odpowiedz', async (req, res, next) => {
   catch (e) { res.status(e.message === 'rDone' ? 409 : 400); return renderDemand(req, res, d, { respondError: L.errors[e.message] || e.message, respondForm: form }); }
   const k = Demands.compute(d);
   await Demands.mailResponse(d, k).catch((e) => console.error('Wezwanie: mail odpowiedzi mislukt —', e.message));
+  await Demands.notifyAdmin('response', d, k, { label: L.status[d.status] || d.status }).catch((e) => console.error('Wezwanie: melding aan beheerder mislukt —', e.message));
   await db.insertEvent({ nip: d.debtor_nip || null, debtor: d.debtor_company, type: 'wezwanie', title: 'Odpowiedź dłużnika na wezwanie ' + d.invoice_nr + ': ' + (L.status[d.status] || d.status) + (d.promised_date || d.paid_date ? ' (' + (d.promised_date || d.paid_date) + ')' : ''), source: 'wezwanie-online' }).catch(() => {});
   res.redirect('/w/' + d.token + '?dzieki=1#odpowiedz');
 });
@@ -1334,6 +1355,11 @@ async function start() {
     .catch((e) => console.error('Wezwanie: herinneren mislukt —', e.message));
   await remindDemands();
   setInterval(remindDemands, HOUR_MS).unref();
+  // Afleverstatus van de mails aan dłużnicy (wezwanie online): de Resend-webhook is leidend, deze poll vangt op wat die mist
+  const pollDebtorMail = () => Demands.refreshDebtorMail()
+    .then((n) => { if (n) console.log('Wezwanie: afleverstatus van ' + n + ' mail(s) aan dłużnicy bijgewerkt'); })
+    .catch((e) => console.error('Wezwanie: afleverstatus ophalen mislukt —', e.message));
+  setInterval(pollDebtorMail, 10 * 60 * 1000).unref();
   app.listen(PORT, () => console.log('sprzedamfakture.pl draait op poort ' + PORT));
 }
 start();

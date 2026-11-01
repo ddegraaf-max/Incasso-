@@ -153,7 +153,12 @@ async function handleEvent(ev) {
   const m = /^email\.(sent|delivered|delivery_delayed|bounced|complained|opened|clicked|failed)$/.exec(type);
   if (!m || !d.email_id) return { ignored: type || 'onbekend' };
   const c = await db.getCommByProvider(d.email_id);
-  if (!c) return { ignored: 'mail van een ander project' }; // het Resend-account wordt door meer sites gebruikt
+  if (!c) {
+    // Mail aan een dłużnik (wezwanie online)? Dan telt de afleverstatus daar — bij een bounce hoort de wierzyciel het
+    const w = await require('./demands').mailEventById(d.email_id, m[1]).catch(() => null);
+    if (w) return { ok: true, demand: w.demand, delivery: m[1] };
+    return { ignored: 'mail van een ander project' }; // het Resend-account wordt door meer sites gebruikt
+  }
   await applyDelivery(c, m[1]);
   return { ok: true, comm: c.id, delivery: m[1] };
 }

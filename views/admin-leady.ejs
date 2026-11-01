@@ -2,7 +2,7 @@
    var stTag = function(s) { return (!s || s === 'nowy' || s === 'zaakceptowany') ? 'tag-accent' : (s === 'kontakt' || s === 'oferta') ? 'tag-outline' : 'tag-neutral'; };
    var stTxt = function(s) { return L.statuses[s] || s || L.statuses.nowy; };
    var src = function(l) { return l.source === 'skup-wyrokow' ? L.srcWyrok : (l.source === 'wezwanie' ? L.srcWezwanie : L.srcInvoice); };
-   var wzTag = function(s) { return (s === 'expired' || s === 'gone' || s === 'spor') ? 'tag-danger' : (s === 'waiting' ? 'tag-neutral' : 'tag-outline'); };
+   var wzTag = function(s) { return (s === 'expired' || s === 'gone' || s === 'spor' || s === 'bounced') ? 'tag-danger' : (s === 'waiting' ? 'tag-neutral' : 'tag-outline'); };
    var q = view === 'aktualne' ? '' : 'widok=' + view + '&';
    var dateFmt = function(d) { return new Date(d).toLocaleString(t.locale, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }); };
 %>
@@ -44,7 +44,7 @@
       <div class="amount tnum"><%= D.fmt(Number(sel.kwota) || 0) %></div>
       <p class="meta tnum"><%= dateFmt(sel.created_at) %></p>
       <% if (selState) { var S = selState; %>
-      <p class="helper" style="margin:-6px 0 0"><%= L.wzLabel %>: <strong><%= S.key === 'confirmed' ? (L.wz[S.status] || S.status) : L.wz[S.key] %></strong><% if (S.key === 'waiting') { %> · <%= fill(L.wzUntil, { date: dateFmt(S.until) }) %><% } else if (S.key === 'expired') { %> · <%= fill(L.wzExpiredOn, { date: dateFmt(S.until) }) %><% } else if (S.key === 'confirmed') { %> · <%= fill(L.wzConfirmedOn, { date: dateFmt(S.at) }) %><% if (S.opened_at) { %> · <%= fill(L.wzOpenedOn, { date: dateFmt(S.opened_at) }) %><% } %><% } %><% if (reminded) { %> · <%= fill(L.wzReminded, { date: dateFmt(reminded) }) %><% } %><% if (resent) { %> · <%= fill(L.wzResent, { n: resent }) %><% } %></p>
+      <p class="helper" style="margin:-6px 0 0"><%= L.wzLabel %>: <strong><%= S.key === 'confirmed' ? (L.wz[S.status] || S.status) : L.wz[S.key] %></strong><% if (S.key === 'waiting') { %> · <%= fill(L.wzUntil, { date: dateFmt(S.until) }) %><% } else if (S.key === 'expired') { %> · <%= fill(L.wzExpiredOn, { date: dateFmt(S.until) }) %><% } else if (S.key === 'confirmed') { %> · <%= fill(L.wzConfirmedOn, { date: dateFmt(S.at) }) %><% if (S.opened_at) { %> · <%= fill(L.wzOpenedOn, { date: dateFmt(S.opened_at) }) %><% } %><% if (S.mail) { %> · <%= L.wzMail %>: <strong<% if (S.mailFailed) { %> style="color:var(--danger)"<% } %>><%= L.wzMailSt[S.mail] || S.mail %></strong><% if (S.mailAt) { %> (<%= dateFmt(S.mailAt) %>)<% } %><% } %><% } %><% if (reminded) { %> · <%= fill(L.wzReminded, { date: dateFmt(reminded) }) %><% } %><% if (resent) { %> · <%= fill(L.wzResent, { n: resent }) %><% } %></p>
       <% } %>
 
       <hr class="rule">

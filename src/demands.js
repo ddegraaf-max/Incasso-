@@ -11,7 +11,9 @@
 //   - de dłużnik wordt bij het aanmaken gecontroleerd in MF biała lista + KRS (gratis extra voor de wierzyciel),
 //   - e-mailverificatie: het wezwanie is pas actief (pagina zichtbaar, mail naar de dłużnik) nadat de wierzyciel
 //     via de link in zijn eigen mailbox heeft bevestigd (/w/<token>/potwierdz?k=<sleutel>, knop = POST);
-//     wie na 24 uur nog niet heeft bevestigd krijgt één herinnering (remindUnconfirmed, elk uur vanuit server.js).
+//     wie na 24 uur nog niet heeft bevestigd krijgt één herinnering (remindUnconfirmed, elk uur vanuit server.js);
+//   - de mail aan de dłużnik wordt gevolgd (Resend-id → webhook/poll): bij een bounce krijgt de wierzyciel bericht en
+//     kan hij vanuit zijn podgląd een ander adres opgeven (resendDebtor); de beheerder krijgt bij elke stap een melding.
 // Elk aangemaakt wezwanie wordt ook een lead (bron 'wezwanie') in /admin/leady — de funnel naar skup faktur.
 const crypto = require('crypto');
 const db = require('./db');
@@ -29,6 +31,10 @@ const RESEND_MAX = 3;   // zo vaak kan de bevestigingsmail per wezwanie opnieuw 
 const PURGE_DAYS = 30;  // onbevestigde wezwania worden na zoveel dagen verwijderd
 const REMIND_AFTER_H = 24; // na zoveel uur zonder bevestiging krijgt de wierzyciel één herinnering
 const REMIND = process.env.DEMAND_REMIND !== '0';
+const RESEND_DEBTOR_MAX = 3; // zo vaak kan de wierzyciel de brief (opnieuw) naar een adres van de dłużnik laten sturen
+const MAIL_RANK = { sent: 1, delivery_delayed: 2, delivered: 3, opened: 4, clicked: 5 };
+const MAIL_FAILED = ['bounced', 'complained', 'failed'];
+const mailFailed = (s) => MAIL_FAILED.includes(String(s || ''));
 // Stand van de e-mailverificatie in de notitie van de lead
 const LEAD_WAIT = 'e-mail: czeka na potwierdzenie', LEAD_OK = 'e-mail: potwierdzony', LEAD_GONE = 'e-mail: niepotwierdzony — wezwanie usunięte';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -195,6 +201,8 @@ async function history(d) {
     firstOpen: d.opened_at || (opens[0] && opens[0].created_at) || null,
     lastOpen: opens.length ? opens[opens.length - 1].created_at : null,
     responses: rows.filter((r) => r.type === 'response').map((r) => ({ at: r.created_at, ...(r.data || {}) })),
+    resent: rows.filter((r) => r.type === 'debtor_resent').map((r) => ({ at: r.created_at, to: (r.data || {}).to || '' })),
+    bounced: rows.filter((r) => r.type === 'debtor_bounced').map((r) => ({ at: r.created_at, to: (r.data || {}).to || '' })),
   };
 }
 
@@ -236,6 +244,130 @@ async function mailDebtor(d, c, file) {
   if (!d.debtor_email) return { ok: false, status: 'brak adresata' };
   const attachments = file && file.data ? [{ filename: file.filename || 'faktura.pdf', content: Buffer.from(file.data).toString('base64') }] : undefined;
   return Mailer.sendPlain({ from: 'sprzedamfakture.pl <' + FROM_EMAIL + '>', to: d.debtor_email, replyTo: d.creditor_email, subject: debtorMailSubject(d), text: debtorMailText(d, c, file), lang: 'pl', attachments });
+}
+
+// Verzenden aan de dłużnik mét registratie van het Resend-id, zodat de afleverstatus (webhook of poll) bij het wezwanie
+// terechtkomt. debtor_mail_status: sent → delivered/opened/clicked; bounced/complained/failed = niet doorgekomen;
+// 'simulated' zonder RESEND_API_KEY; 'error' als Resend de mail weigerde.
+async function sendDebtor(d, c, file) {
+  const r = await mailDebtor(d, c, file);
+  if (r.status === 'brak adresata') return r;
+  const fields = { debtor_mail_id: r.id || null, debtor_mail_status: r.ok ? (r.simulated ? 'simulated' : 'sent') : 'error', debtor_mail_at: new Date() };
+  Object.assign(d, fields);
+  await db.updateDemand(d.id, fields).catch(() => {});
+  return r;
+}
+// Afleverstatus van de mail aan de dłużnik (Resend-webhook of poll). Een lagere status overschrijft een hogere niet;
+// bij de eerste bounce: bewijslog, mail aan de wierzyciel (ander adres opgeven kan in zijn podgląd) en melding aan de beheerder.
+async function debtorMailEvent(d, ev) {
+  ev = String(ev || '');
+  if (!d || !(MAIL_RANK[ev] || MAIL_FAILED.includes(ev))) return false;
+  const cur = d.debtor_mail_status || '';
+  if (mailFailed(cur)) return false;
+  if (!mailFailed(ev) && (MAIL_RANK[cur] || 0) >= MAIL_RANK[ev]) return false;
+  const fields = { debtor_mail_status: ev, debtor_mail_at: new Date() };
+  Object.assign(d, fields);
+  await db.updateDemand(d.id, fields).catch(() => {});
+  if (!mailFailed(ev)) return true;
+  await log(d, 'debtor_bounced', {}, 'system', { to: d.debtor_email, event: ev });
+  const c = compute(d);
+  const mb = await mailBounce(d, c, ev).catch((e) => ({ ok: false, status: 'błąd: ' + e.message }));
+  await notifyAdmin('bounced', d, c, { event: ev, mail: mb.status }).catch(() => {});
+  await db.insertEvent({ nip: d.debtor_nip || null, debtor: d.debtor_company, type: 'wezwanie', title: 'Wezwanie online ' + d.invoice_nr + ': e-mail do dłużnika niedoręczony (' + ev + ') · ' + (d.debtor_email || '') + ' · wierzyciel powiadomiony: ' + mb.status, source: 'wezwanie-online' }).catch(() => {});
+  return true;
+}
+// Webhook: Resend-id → wezwanie
+async function mailEventById(emailId, ev) {
+  const d = await db.getDemandByMailId(emailId).catch(() => null);
+  if (!d) return null;
+  return { demand: d.id, applied: await debtorMailEvent(d, ev) };
+}
+// Poll (elke 10 minuten vanuit server.js): mails van de laatste 3 dagen die nog niet afgeleverd of mislukt zijn
+async function refreshDebtorMail() {
+  if (!Mailer.configured()) return 0;
+  const rows = await db.listDemandsMailPending(new Date(Date.now() - 3 * DAY_MS)).catch(() => []);
+  let n = 0;
+  for (const d of rows) {
+    const ev = await Mailer.fetchStatus(d.debtor_mail_id).catch(() => null);
+    if (ev && (await debtorMailEvent(d, ev))) n++;
+  }
+  return n;
+}
+// De wierzyciel laat de brief (opnieuw) sturen naar een — eventueel ander — adres van de dłużnik, vanuit zijn podgląd.
+// Hooguit RESEND_DEBTOR_MAX keer (bewijslog: debtor_resent); niet meer nodig als de dłużnik al heeft geantwoord.
+async function resendDebtor(d, email, file, meta = {}) {
+  const to = String(email || '').trim().toLowerCase();
+  if (!EMAIL_RE.test(to)) return { ok: false, error: 'dEmail' };
+  if (isAnswered(d)) return { ok: false, error: 'rDone' };
+  const rows = await db.listDemandLog(d.id, 500).catch(() => []);
+  if (rows.filter((r) => r.type === 'debtor_resent').length >= RESEND_DEBTOR_MAX) return { ok: false, error: 'limit' };
+  d.debtor_email = to;
+  await db.updateDemand(d.id, { debtor_email: to }).catch(() => {});
+  const r = await sendDebtor(d, compute(d), file);
+  if (!r.ok) return { ok: false, error: 'send', status: r.status };
+  await log(d, 'debtor_resent', meta, 'creditor', { to });
+  return { ok: true, status: r.status };
+}
+
+// Mail aan de wierzyciel als de brief niet is aangekomen: ander adres opgeven in de podgląd, of de link zelf doorsturen
+function bounceMailText(d, c, ev) {
+  const en = d.lang === 'en';
+  const why = en
+    ? (ev === 'bounced' ? 'the address does not exist or the mailbox refuses mail' : ev === 'complained' ? 'the recipient marked it as spam' : 'delivery failed')
+    : (ev === 'bounced' ? 'adres nie istnieje albo skrzynka odrzuca pocztę' : ev === 'complained' ? 'odbiorca oznaczył wiadomość jako spam' : 'doręczenie nie powiodło się');
+  return en
+    ? `The e-mail with your demand for payment did not reach the debtor.
+
+Invoice ${d.invoice_nr} · debtor ${d.debtor_company} · address: ${d.debtor_email} (${why}).
+
+What you can do:
+1. Enter another e-mail address of the debtor in your creditor view — we send the demand again: ${c.creditorUrl}
+2. Or pass the link to the debtor yourself, through any channel: ${c.url}
+   Printable version with QR code (e.g. registered letter): ${c.printUrl}
+
+The demand itself stays active: the amount and interest keep running, and you will see opens and the debtor's reply in your creditor view.
+
+Would you rather have us handle this invoice (purchase or collection)? Simply reply to this e-mail.
+
+sprzedamfakture.pl — ${Company.C.name}`
+    : `E-mail z wezwaniem do zapłaty nie dotarł do dłużnika.
+
+Faktura ${d.invoice_nr} · dłużnik ${d.debtor_company} · adres: ${d.debtor_email} (${why}).
+
+Co możesz zrobić:
+1. Wpisz inny adres e-mail dłużnika w swoim podglądzie wierzyciela — wyślemy wezwanie ponownie: ${c.creditorUrl}
+2. Albo prześlij dłużnikowi link do wezwania samodzielnie, dowolnym kanałem: ${c.url}
+   Wersja do druku z kodem QR (np. list polecony): ${c.printUrl}
+
+Samo wezwanie pozostaje aktywne: kwota i odsetki liczą się dalej, a otwarcia i odpowiedź dłużnika zobaczysz w podglądzie wierzyciela.
+
+Wolisz, żebyśmy zajęli się tą fakturą (skup albo windykacja)? Po prostu odpowiedz na tę wiadomość.
+
+sprzedamfakture.pl — ${Company.C.name}`;
+}
+async function mailBounce(d, c, ev) {
+  const subject = d.lang === 'en' ? `Demand not delivered to the debtor — invoice ${d.invoice_nr}` : `Wezwanie nie dotarło do dłużnika — faktura ${d.invoice_nr}`;
+  return Mailer.sendPlain({ to: d.creditor_email, subject, text: bounceMailText(d, c, ev), lang: d.lang });
+}
+
+// Melding aan de beheerder (MAIL_NOTIFY) bij elke stap van een wezwanie: aangemaakt, bevestigd, antwoord van de dłużnik,
+// bounce. Intern, dus Pools zoals de andere leadmeldingen; reply-to = de wierzyciel; link naar de lead in het panel.
+async function notifyAdmin(kind, d, c, extra = {}) {
+  if (!Mailer.MAIL_NOTIFY) return { ok: false, status: 'brak MAIL_NOTIFY' };
+  const head = { created: 'Nowe wezwanie online (czeka na potwierdzenie e-mail)', confirmed: 'Wezwanie online potwierdzone', response: 'Odpowiedź dłużnika na wezwanie online', bounced: 'E-mail do dłużnika niedoręczony' }[kind] || kind;
+  const subject = head + ': ' + d.creditor_company + ' → ' + d.debtor_company + ' · ' + D.fmt(c.amount) + (kind === 'response' ? ' · ' + (extra.label || d.status) : '');
+  const lines = [head + '.', '',
+    'Wierzyciel: ' + d.creditor_company + (d.creditor_nip ? ' · NIP ' + d.creditor_nip : '') + ' · ' + d.creditor_email,
+    'Dłużnik: ' + d.debtor_company + (d.debtor_nip ? ' · NIP ' + d.debtor_nip : '') + (d.debtor_email ? ' · ' + d.debtor_email : ' · brak e-maila'),
+    'Faktura: ' + d.invoice_nr + ' · ' + D.fmtN(c.amount) + ' zł · termin ' + (d.due_date || '—') + ' · ' + c.days + ' dni po terminie',
+    'Język formularza: ' + (d.lang || 'pl').toUpperCase() + (d.file_id ? ' · załącznik: tak' : ''),
+  ];
+  if (kind === 'created') lines.push('', 'Wezwanie stanie się aktywne dopiero po potwierdzeniu adresu e-mail przez wierzyciela (link ważny ' + CONFIRM_DAYS + ' dni, przypomnienie po ' + REMIND_AFTER_H + ' h).');
+  if (kind === 'confirmed') lines.push('', 'E-mail do dłużnika: ' + (extra.debtorMail || '—') + ' · e-mail do wierzyciela: ' + (extra.creditorMail || '—'), 'Rejestry: ' + (factsSummary(d.facts) || 'brak NIP dłużnika'));
+  if (kind === 'response') lines.push('', 'Odpowiedź: ' + (extra.label || d.status) + (d.promised_date ? ' · do ' + d.promised_date : '') + (d.paid_date ? ' · przelew ' + d.paid_date : '') + (d.response_note ? '\nTreść: ' + d.response_note : ''));
+  if (kind === 'bounced') lines.push('', 'Serwer odbiorcy odrzucił wiadomość (' + (extra.event || 'bounced') + '). Wierzyciel dostał e-mail z prośbą o inny adres (mail: ' + (extra.mail || '—') + ').');
+  lines.push('', 'Lead w panelu: ' + SITE + '/admin/leady?sel=' + (d.lead_id || ''), 'Podgląd wierzyciela: ' + c.creditorUrl, 'Strona wezwania: ' + c.url);
+  return Mailer.sendPlain({ to: Mailer.MAIL_NOTIFY, subject, text: lines.join('\n'), replyTo: d.creditor_email, lang: 'pl' });
 }
 
 // Eerste mail aan de wierzyciel: bevestig je adres — pas daarna wordt het wezwanie actief en verstuurd
@@ -440,7 +572,7 @@ async function leadConfirmed(d) {
 function leadState(lead, dm) {
   if (!lead || lead.source !== 'wezwanie') return null;
   if (!dm) return String(lead.note || '').includes(LEAD_GONE) ? { key: 'gone' } : null;
-  if (dm.confirmed_at) return { key: 'confirmed', at: dm.confirmed_at, status: dm.status, opened_at: dm.opened_at, responded_at: dm.responded_at };
+  if (dm.confirmed_at) return { key: 'confirmed', at: dm.confirmed_at, status: dm.status, opened_at: dm.opened_at, responded_at: dm.responded_at, mail: dm.debtor_mail_status || null, mailAt: dm.debtor_mail_at || null, mailFailed: mailFailed(dm.debtor_mail_status) };
   const until = new Date(new Date(dm.created_at).getTime() + CONFIRM_DAYS * DAY_MS);
   return { key: until.getTime() > Date.now() ? 'waiting' : 'expired', until };
 }
@@ -463,4 +595,4 @@ async function toLead(d, c, lang) {
   return lead;
 }
 
-module.exports = { STATUSES, validate: toRow, create, byToken, compute, isAnswered, isConfirmed, confirmExpired, confirm, isCreditor, markOpened, respond, history, fmtTs, mailDebtor, mailCreditor, mailConfirm, resendConfirm, remindUnconfirmed, purgeUnconfirmed, mailResponse, toLead, leadConfirmed, leadState, leadArchived, factsSummary, daysOverdue, debtorMailText, debtorMailSubject, creditorMailText, creditorMailSubject, confirmMailText, confirmMailSubject, CONFIRM_DAYS, RESEND_MAX, PURGE_DAYS, REMIND_AFTER_H, sample, FROM_EMAIL };
+module.exports = { STATUSES, validate: toRow, create, byToken, compute, isAnswered, isConfirmed, confirmExpired, confirm, isCreditor, markOpened, respond, history, fmtTs, mailDebtor, mailCreditor, mailConfirm, resendConfirm, remindUnconfirmed, purgeUnconfirmed, mailResponse, toLead, leadConfirmed, leadState, leadArchived, sendDebtor, debtorMailEvent, mailEventById, refreshDebtorMail, resendDebtor, mailBounce, notifyAdmin, mailFailed, factsSummary, daysOverdue, debtorMailText, debtorMailSubject, creditorMailText, creditorMailSubject, confirmMailText, confirmMailSubject, CONFIRM_DAYS, RESEND_MAX, PURGE_DAYS, REMIND_AFTER_H, RESEND_DEBTOR_MAX, sample, FROM_EMAIL };

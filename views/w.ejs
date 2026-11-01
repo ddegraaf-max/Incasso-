@@ -11,6 +11,11 @@ var X = w.example;
 var isCred = typeof creditorView !== 'undefined' && creditorView && typeof hist !== 'undefined' && hist;
 var rErr = typeof respondError !== 'undefined' && respondError;
 var rf = (typeof respondForm !== 'undefined' && respondForm) ? respondForm : {};
+// Podgląd wierzyciela: afleverstatus van de mail aan de dłużnik en het formulier om de brief (opnieuw) te laten sturen
+var sendErr = typeof sendError !== 'undefined' && sendError;
+var sf = (typeof sendForm !== 'undefined' && sendForm) ? sendForm : {};
+var sentOk = typeof sendOk !== 'undefined' && sendOk;
+var ck = (typeof credKey !== 'undefined' && credKey) ? credKey : '';
 %><%- include('partials/head', isDemo ? { title: X.metaTitle, desc: X.metaDesc, noindex: false, altLang: true } : { title: 'Wezwanie do zapłaty — ' + d.invoice_nr, desc: L.metaDesc, noindex: true, altLang: false }) %>
 <% if (isDemo) { %><%- include('partials/nav') %>
 <div class="wz-demo-bar"><span class="tag tag-accent"><%= X.badge %></span> <span><%= X.bar %></span> <a class="btn btn-gold chan-btn" href="/wezwanie-online"><%= X.cta %></a></div>
@@ -31,6 +36,20 @@ var rf = (typeof respondForm !== 'undefined' && respondForm) ? respondForm : {};
     <div class="label"><%= C.h %></div>
     <p class="helper" style="margin:0 0 10px"><%= C.note %></p>
     <div class="field-row"><span class="fk"><%= C.share %></span><span class="tnum"><%= k.url %></span></div>
+    <% var dm = d.debtor_mail_status || ''; var dmFailed = ['bounced', 'complained', 'failed'].indexOf(dm) !== -1;
+       var dmTxt = !d.debtor_email ? C.mailNone : (dmFailed ? C.mailFailed : (dm === 'delivered' || dm === 'opened' || dm === 'clicked') ? C.mailDelivered : dm === 'delivery_delayed' ? C.mailDelayed : dm === 'error' ? C.mailError : C.mailSent); %>
+    <div class="field-row"><span class="fk"><%= C.mail %></span><span><% if (d.debtor_email) { %><span class="tnum"><%= d.debtor_email %></span> · <% } %><strong<% if (dmFailed || dm === 'error') { %> style="color:var(--danger)"<% } %>><%= dmTxt %></strong><% if (hist.resent && hist.resent.length) { %> · <%= C.resentN.replace('{n}', hist.resent.length) %><% } %></span></div>
+    <% if (dmFailed) { %><p class="form-error" style="margin:10px 0 0"><%= C.bounceP %></p><% } %>
+    <% if (sentOk) { %><div class="confirm" style="margin:10px 0 0"><span class="sq"></span><span><%= C.sendDone %></span></div><% } %>
+    <% if (sendErr) { %><p class="field-err" style="margin:10px 0 0"><%= sendErr %></p><% } %>
+    <% if (!isDemo && !answered && (dmFailed || dm === 'error' || !d.debtor_email || sendErr)) { %>
+    <form method="post" action="/w/<%= d.token %>/wyslij" class="calc-form flat wz-form" style="margin:10px 0 0">
+      <input type="hidden" name="k" value="<%= ck %>">
+      <div class="fg"><label for="s-email"><%= C.sendLabel %></label><input id="s-email" name="debtor_email" type="email" required maxlength="160" value="<%= sf.email || '' %>" placeholder="ksiegowosc@firma.pl"></div>
+      <button class="btn chan-btn" type="submit"><%= C.sendBtn %></button>
+      <p class="helper" style="margin:6px 0 0"><%= C.sendHint %></p>
+    </form>
+    <% } %>
     <div class="field-row"><span class="fk"><%= C.opened %></span><span class="tnum"><%= hist.firstOpen ? fmtTs(hist.firstOpen) + (hist.opens > 1 ? ' · ' + C.times.replace('{n}', hist.opens) + ' ' + fmtTs(hist.lastOpen) : '') : C.notYet %></span></div>
     <% if (!hist.responses.length) { %><div class="field-row"><span class="fk"><%= C.responses %></span><span><%= C.none %></span></div><% } %>
     <% hist.responses.forEach(function (r) { %>
