@@ -87,6 +87,7 @@ app.use((req, res, next) => {
   // "Umów rozmowę": BOOKING_URL (bv. Calendly/Cal.com) of anders gewoon mailen
   res.locals.bookingUrl = process.env.BOOKING_URL || 'mailto:kontakt@sprzedamfakture.pl';
   res.locals.version = VER.version;
+  res.locals.adsConversion = req.query.lead === 'ok' || Boolean(req.query.czeka); // Google Ads-conversie na een lead (views/partials/gads.ejs)
   res.locals.commit = VER.commit;
   res.locals.turnstile = { enabled: Turnstile.enabled(), siteKey: Turnstile.SITE_KEY };
   res.locals.site = SITE;
