@@ -15,6 +15,7 @@ var isMail = m.channel === 'email';
 
 <div class="two-pane">
   <div class="pane-left">
+    <% if (typeof flash !== 'undefined' && flash) { %><div class="confirm" style="margin-bottom:16px"><span class="sq"></span><span><%= flash %></span></div><% } %>
     <div class="kicker"><%= isIn ? Mm.viewTitleIn : Mm.viewTitle %> · <%= ctx.label %></div>
     <h2 style="font-size:22px; margin:6px 0 14px"><%= m.subject || (isMail ? '—' : 'SMS') %></h2>
     <% if (isIn) { %>
@@ -49,6 +50,20 @@ var isMail = m.channel === 'email';
     <pre class="mail-body"><%= m.body || '' %></pre>
     <% if (showTr && !m.translation && !trBusy && typeof canTranslate !== 'undefined' && canTranslate) { %>
     <form method="post" action="<%= translateUrl %>" style="margin:10px 0 0"><button class="btn btn-ghost chan-btn" type="submit"><%= Mm.translateBtn %></button></form>
+    <% } %>
+    <% var lf = (typeof linkForms !== 'undefined' && linkForms) ? linkForms : null; %>
+    <% if (lf) { %>
+    <hr class="rule">
+    <div class="label"><%= Mm.linkKicker %></div>
+    <p class="helper"><%= Mm.linkHelp %></p>
+    <div style="display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end">
+      <form method="post" action="<%= lf.newUrl %>" style="margin:0"><button class="btn chan-btn" type="submit"><%= Mm.linkNew %></button></form>
+      <form method="post" action="<%= lf.linkUrl %>" class="calc-form flat" style="margin:0; padding:0; border:0; box-shadow:none; background:transparent; display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap">
+        <div class="fg" style="margin:0; min-width:260px"><label for="lk-lead"><%= Mm.linkExisting %></label>
+          <select id="lk-lead" name="lead_id" required><option value=""><%= Mm.linkPick %></option><% lf.leads.forEach(function (l) { %><option value="<%= l.id %>">#<%= l.id %> · <%= l.company %><%= l.email ? ' · ' + l.email : '' %></option><% }) %></select></div>
+        <button class="btn btn-secondary chan-btn" type="submit"><%= Mm.linkBtn %></button>
+      </form>
+    </div>
     <% } %>
     <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-top:18px">
       <% if (reply) { %><a class="btn chan-btn" href="<%= reply %>"><%= Mm.replyBtn %></a><% } %>

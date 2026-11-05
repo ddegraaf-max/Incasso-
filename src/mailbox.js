@@ -227,6 +227,60 @@ async function leadIdFor(caseId) {
   return hit && hit.lead_id ? hit.lead_id : null;
 }
 
+// ── Niet-gekoppelde mail → lead ──────────────────────────────────────────
+// Een mail die geen antwoord op een paneelmail is (INBOX) kan vanuit het Postvak een nieuwe lead worden (bron 'email')
+// of aan een bestaande lead worden gekoppeld. Het bericht — en andere losse mails van hetzelfde adres — verhuist naar
+// de draad van de lead; de bijlagen worden opnieuw bij Resend opgehaald en als bestanden van de lead bewaard
+// (bij ontvangst bewaren we ze alleen bij een bekende lead). Daarna werkt de gewone antwoordknop van de lead.
+function senderParts(c) {
+  const raw = String(c.sender || '');
+  const email = addressOf(raw);
+  const m = /^\s*"?([^"<]+?)"?\s*<[^>]+>/.exec(raw);
+  const name = m ? m[1].trim() : '';
+  const domain = email.split('@')[1] || '';
+  return { email, name, domain, company: name || domain || email || '—' };
+}
+async function attachToLead(c, leadId) {
+  if (!c.provider_id || !Mailer.configured()) return 0;
+  const list = await Mailer.fetchReceivedAttachments(c.provider_id).catch(() => []);
+  let n = 0;
+  for (const a of list) {
+    if (a.content_disposition === 'inline' && /^image\//.test(a.content_type || '')) continue;
+    if (!a.download_url || (a.size || 0) > MAX_FILE) continue;
+    const buf = await fetch(a.download_url, { signal: AbortSignal.timeout(20000) }).then((r) => (r.ok ? r.arrayBuffer() : null)).then((b) => (b ? Buffer.from(b) : null)).catch(() => null);
+    if (!buf) continue;
+    const saved = await db.saveLeadFile(leadId, { originalname: String(a.filename || 'zalacznik').slice(0, 200), mimetype: a.content_type || 'application/octet-stream', size: buf.length, buffer: buf }).catch(() => null);
+    if (saved) n++;
+  }
+  return n;
+}
+async function linkToLead(c, leadId) {
+  const key = 'L' + leadId;
+  const { email } = senderParts(c);
+  const loose = (await db.listInbound(300).catch(() => [])).filter((x) => x.case_id === INBOX && (x.id === c.id || (email && addressOf(x.sender) === email)));
+  if (!loose.some((x) => x.id === c.id)) loose.push(c);
+  let files = 0;
+  for (const x of loose) {
+    await db.updateComm(x.id, { case_id: key });
+    x.case_id = key;
+    files += await attachToLead(x, leadId).catch(() => 0);
+  }
+  c.case_id = key;
+  await db.insertEvent({ nip: null, debtor: null, type: 'email', title: `E-mail od ${email || '—'} przypisany do leada #${leadId}: ${c.subject || '—'}`, source: 'poczta przychodząca' }).catch(() => {});
+  return { files, moved: loose.length };
+}
+async function leadFromMail(c) {
+  const s = senderParts(c);
+  const snippet = String(c.translation || c.body || '').replace(/\s+/g, ' ').trim().slice(0, 300);
+  const lead = await db.saveLead({
+    source: 'email', company: s.company.slice(0, 200), nip: '', email: s.email, tel: '', kwota: 0, dni: 0, oferta_pct: null, forma: null,
+    note: ['wiadomość e-mail: ' + (c.subject || '—'), 'od: ' + String(c.sender || s.email).slice(0, 160), 'odebrano: ' + new Date(c.created_at).toISOString().slice(0, 16).replace('T', ' '), snippet ? 'treść: ' + snippet : '', 'lang=pl'].filter(Boolean).join(' · '),
+  });
+  if (!lead || !lead.id) throw new Error('lead niet opgeslagen');
+  const r = await linkToLead(c, lead.id);
+  return { lead, ...r };
+}
+
 // Waar het bericht in het paneel staat (voor links in de kopie en op de schermen)
 function panelPath(c) {
   const id = c.case_id || '';
@@ -303,4 +357,4 @@ function replyDraft(m) {
   return { to: addressOf(m.sender), subject: String(subject).slice(0, 200), body: `\n\n${when}, ${m.sender || ''}:\n${quoted}` };
 }
 
-module.exports = { enabled, status, checkMx, send, replyToLabel, replyAddress, keyFromAddress, recordOpen, refresh, applyDelivery, stateOf, verifyWebhook, handleEvent, receive, panelPath, replyDraft, translateInbound, isTranslating, canAuto, draftContext, TR_LANG, TR_AUTO, PIXEL, INBOX, INBOUND_DOMAIN };
+module.exports = { enabled, status, checkMx, send, replyToLabel, replyAddress, keyFromAddress, recordOpen, refresh, applyDelivery, stateOf, verifyWebhook, handleEvent, receive, leadFromMail, linkToLead, senderParts, panelPath, replyDraft, translateInbound, isTranslating, canAuto, draftContext, TR_LANG, TR_AUTO, PIXEL, INBOX, INBOUND_DOMAIN };

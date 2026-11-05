@@ -557,7 +557,7 @@ async function logComm(e) {
 }
 
 // ── Postvak: leesstatus, afleverstatus en antwoorden (src/mailbox.js) ─────
-const COMM_FIELDS = ['delivery', 'delivery_at', 'opened_at', 'open_count', 'read_at', 'provider_id', 'attachments', 'translation', 'translation_lang'];
+const COMM_FIELDS = ['case_id', 'delivery', 'delivery_at', 'opened_at', 'open_count', 'read_at', 'provider_id', 'attachments', 'translation', 'translation_lang'];
 async function updateComm(id, fields) {
   const keys = Object.keys(fields).filter((k) => COMM_FIELDS.includes(k));
   if (!keys.length) return false;

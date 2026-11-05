@@ -102,7 +102,7 @@ const pl = {
   },
   mail: {
     title: 'Nowa wiadomość', kicker: 'E-mail', hint: 'Treść możesz dowolnie edytować przed wysłaniem.',
-    inbox: 'Poczta', inboxHelp: 'Odpowiedzi na wiadomości wysłane z panelu. Pogrubione = jeszcze nieprzeczytane. Kliknij, aby otworzyć i odpowiedzieć.', inboxEmpty: 'Nie ma jeszcze żadnych odpowiedzi.', inboxLoose: 'bez przypisania', inboxHowKicker: 'Jak to działa',
+    inbox: 'Poczta', inboxHelp: 'Odpowiedzi na wiadomości wysłane z panelu. Pogrubione = jeszcze nieprzeczytane. Kliknij, aby otworzyć i odpowiedzieć.', inboxEmpty: 'Nie ma jeszcze żadnych odpowiedzi.', inboxLoose: 'bez przypisania', linkKicker: 'Przypisz wiadomość', linkHelp: 'Ta wiadomość nie jest odpowiedzią na mail z panelu. Zrób z niej nowego leada (nadawca staje się klientem, załączniki trafiają do plików leada, raport startuje automatycznie) albo dołącz ją do istniejącego leada. Potem odpowiadasz zwyczajnie z karty leada.', linkNew: 'Utwórz leada z tej wiadomości', linkExisting: 'Dołącz do istniejącego leada', linkPick: '— wybierz leada —', linkBtn: 'Dołącz', linkFailed: 'Nie udało się przypisać wiadomości', linkedNew: 'Lead #{id} utworzony z wiadomości · przeniesione załączniki: {n}', linkedExisting: 'Wiadomość dołączona do leada #{id} · przeniesione załączniki: {n}', inboxHowKicker: 'Jak to działa',
     repliesPanel: 'Odpowiedzi trafiają do panelu przez adres zwrotny w domenie {domain}; kopia każdej odpowiedzi idzie na Twoją skrzynkę. Załączniki zapisujemy przy zgłoszeniu.', repliesMailbox: 'Odbiór w panelu nie jest jeszcze włączony — odpowiedzi trafiają tylko na skrzynkę {notify}.',
     need: { h: 'Do włączenia odbioru brakuje:', mail: 'klucza RESEND_API_KEY', domain: 'zmiennej INBOUND_DOMAIN (domena odbiorcza)', secret: 'zmiennej RESEND_WEBHOOK_SECRET (webhook Resend)', mx: 'rekordu MX domeny wskazującego na Resend (obecnie: {mx})' },
     repliesPanelShort: 'Odpowiedź adresata pojawi się w panelu (Poczta); kopia trafi na Twoją skrzynkę.', repliesMailboxShort: 'Odpowiedź adresata trafi na Twoją skrzynkę — odbiór w panelu nie jest jeszcze włączony.',
@@ -151,7 +151,7 @@ const pl = {
     demoDone: 'Usunięto dane demo — zdarzenia: {events}, komunikacja: {comms}, scoringi: {scores}, akcje: {actions}',
     leads: {
       kicker: 'Leady', helper: 'Aktualne pokazuje to, co jeszcze wymaga uwagi. Zaakceptowane (założona sprawa), odrzucone, spam i nowe wezwania z wygasłym linkiem do potwierdzenia trafiają do archiwum. Kliknij wiersz, ustaw status, dopisz notatkę albo usuń zgłoszenie testowe.',
-      th: { date: 'Data', source: 'Źródło', company: 'Firma', amount: 'Kwota', status: 'Status' }, srcInvoice: 'faktura', srcWyrok: 'wyrok', srcWezwanie: 'wezwanie',
+      th: { date: 'Data', source: 'Źródło', company: 'Firma', amount: 'Kwota', status: 'Status' }, srcInvoice: 'faktura', srcWyrok: 'wyrok', srcWezwanie: 'wezwanie', srcEmail: 'e-mail',
       f: { email: 'E-mail', tel: 'Telefon', nip: 'NIP dłużnika', forma: 'Forma prawna dłużnika', dni: 'Dni po terminie', pct: 'Wstępna oferta', note: 'Szczegóły zgłoszenia', updated: 'Zaktualizowano' },
       statusLabel: 'Status', statusAuto: 'status zmieniony na: {status}', noteLabel: 'Notatka wewnętrzna', notePh: 'Ustalenia, kolejne kroki…', save: 'Zapisz', mailBtn: 'Napisz e-mail',
       del: 'Usuń zgłoszenie', delConfirm: 'Usunąć to zgłoszenie bezpowrotnie?', saved: 'Zapisano lead #{id}', deleted: 'Usunięto lead #{id}', notFound: 'Nie znaleziono leada.',
@@ -458,7 +458,7 @@ const nl = {
   },
   mail: {
     title: 'Nieuw bericht', kicker: 'E-mail', hint: 'Je kunt de tekst vrij bewerken voordat je verstuurt.',
-    inbox: 'Postvak', inboxHelp: 'Antwoorden op berichten die je vanuit het paneel hebt verstuurd. Vet = nog niet gelezen. Klik om te openen en te antwoorden.', inboxEmpty: 'Er zijn nog geen antwoorden.', inboxLoose: 'niet gekoppeld', inboxHowKicker: 'Zo werkt het',
+    inbox: 'Postvak', inboxHelp: 'Antwoorden op berichten die je vanuit het paneel hebt verstuurd. Vet = nog niet gelezen. Klik om te openen en te antwoorden.', inboxEmpty: 'Er zijn nog geen antwoorden.', inboxLoose: 'niet gekoppeld', linkKicker: 'Bericht koppelen', linkHelp: 'Dit bericht is geen antwoord op een mail uit het panel. Maak er een nieuwe lead van (de afzender wordt de klant, de bijlagen komen bij de lead, het onderzoeksverslag start vanzelf) of koppel het aan een bestaande lead. Daarna antwoord je gewoon vanuit de lead.', linkNew: 'Maak lead van dit bericht', linkExisting: 'Koppel aan bestaande lead', linkPick: '— kies een lead —', linkBtn: 'Koppelen', linkFailed: 'Koppelen is niet gelukt', linkedNew: 'Lead #{id} aangemaakt uit het bericht · bijlagen overgenomen: {n}', linkedExisting: 'Bericht gekoppeld aan lead #{id} · bijlagen overgenomen: {n}', inboxHowKicker: 'Zo werkt het',
     repliesPanel: 'Antwoorden komen in het paneel binnen via het antwoordadres op {domain}; van elk antwoord gaat een kopie naar je mailbox. Bijlagen worden bij de aanvraag bewaard.', repliesMailbox: 'Ontvangst in het paneel staat nog niet aan — antwoorden komen alleen binnen in de mailbox {notify}.',
     need: { h: 'Om ontvangst aan te zetten ontbreekt nog:', mail: 'de sleutel RESEND_API_KEY', domain: 'de instelling INBOUND_DOMAIN (het ontvangstdomein)', secret: 'de instelling RESEND_WEBHOOK_SECRET (webhook van Resend)', mx: 'het MX-record van het domein dat naar Resend wijst (nu: {mx})' },
     repliesPanelShort: 'Het antwoord van de ontvanger verschijnt in het paneel (Postvak); een kopie gaat naar je mailbox.', repliesMailboxShort: 'Het antwoord van de ontvanger komt in je mailbox — ontvangst in het paneel staat nog niet aan.',
@@ -507,7 +507,7 @@ const nl = {
     demoDone: 'Demodata verwijderd — gebeurtenissen: {events}, communicatie: {comms}, scores: {scores}, acties: {actions}',
     leads: {
       kicker: 'Leads', helper: 'Actueel toont wat nog aandacht vraagt. Geaccepteerd (zaak aangemaakt), afgewezen, spam en nieuwe aanmaningen met een verlopen bevestigingslink staan in het archief. Klik op een rij, zet een status, voeg een notitie toe of verwijder een testaanvraag.',
-      th: { date: 'Datum', source: 'Bron', company: 'Bedrijf', amount: 'Bedrag', status: 'Status' }, srcInvoice: 'factuur', srcWyrok: 'vonnis', srcWezwanie: 'aanmaning',
+      th: { date: 'Datum', source: 'Bron', company: 'Bedrijf', amount: 'Bedrag', status: 'Status' }, srcInvoice: 'factuur', srcWyrok: 'vonnis', srcWezwanie: 'aanmaning', srcEmail: 'e-mail',
       f: { email: 'E-mail', tel: 'Telefoon', nip: 'NIP debiteur', forma: 'Rechtsvorm debiteur', dni: 'Dagen na vervaldatum', pct: 'Indicatief aanbod', note: 'Details van de aanvraag', updated: 'Bijgewerkt' },
       statusLabel: 'Status', statusAuto: 'status gewijzigd naar: {status}', noteLabel: 'Interne notitie', notePh: 'Afspraken, volgende stappen…', save: 'Opslaan', mailBtn: 'E-mail schrijven',
       del: 'Aanvraag verwijderen', delConfirm: 'Deze aanvraag definitief verwijderen?', saved: 'Lead #{id} opgeslagen', deleted: 'Lead #{id} verwijderd', notFound: 'Lead niet gevonden.',
@@ -646,7 +646,7 @@ const en = {
   },
   mail: {
     title: 'New message', kicker: 'E-mail', hint: 'Edit the text freely before sending.',
-    inbox: 'Inbox', inboxHelp: 'Replies to messages sent from the panel. Bold = not read yet. Click to open and reply.', inboxEmpty: 'No replies yet.', inboxLoose: 'not linked', inboxHowKicker: 'How it works',
+    inbox: 'Inbox', inboxHelp: 'Replies to messages sent from the panel. Bold = not read yet. Click to open and reply.', inboxEmpty: 'No replies yet.', inboxLoose: 'not linked', linkKicker: 'Link this message', linkHelp: 'This message is not a reply to a panel e-mail. Turn it into a new lead (the sender becomes the client, attachments go to the lead\'s files, the research report starts automatically) or attach it to an existing lead. After that you reply from the lead as usual.', linkNew: 'Create a lead from this message', linkExisting: 'Attach to an existing lead', linkPick: '— choose a lead —', linkBtn: 'Attach', linkFailed: 'Linking failed', linkedNew: 'Lead #{id} created from the message · attachments moved: {n}', linkedExisting: 'Message attached to lead #{id} · attachments moved: {n}', inboxHowKicker: 'How it works',
     repliesPanel: 'Replies arrive in the panel through the reply address on {domain}; a copy of every reply goes to your mailbox. Attachments are stored with the request.', repliesMailbox: 'Receiving in the panel is not switched on yet — replies only arrive in the mailbox {notify}.',
     need: { h: 'Still missing to switch receiving on:', mail: 'the RESEND_API_KEY', domain: 'the INBOUND_DOMAIN setting (the receiving domain)', secret: 'the RESEND_WEBHOOK_SECRET setting (Resend webhook)', mx: 'the MX record of the domain pointing to Resend (now: {mx})' },
     repliesPanelShort: 'The recipient\'s reply appears in the panel (Inbox); a copy goes to your mailbox.', repliesMailboxShort: 'The recipient\'s reply goes to your mailbox — receiving in the panel is not switched on yet.',
@@ -696,7 +696,7 @@ const en = {
     demoDone: 'Demo data removed — events: {events}, communication: {comms}, scores: {scores}, actions: {actions}',
     leads: {
       kicker: 'Leads', helper: 'Current shows what still needs attention. Accepted (case opened), declined, spam and new demands whose confirmation link expired go to the archive. Click a row, set a status, add a note or delete a test submission.',
-      th: { date: 'Date', source: 'Source', company: 'Company', amount: 'Amount', status: 'Status' }, srcInvoice: 'invoice', srcWyrok: 'judgment', srcWezwanie: 'demand',
+      th: { date: 'Date', source: 'Source', company: 'Company', amount: 'Amount', status: 'Status' }, srcInvoice: 'invoice', srcWyrok: 'judgment', srcWezwanie: 'demand', srcEmail: 'e-mail',
       f: { email: 'E-mail', tel: 'Phone', nip: 'Debtor NIP', forma: 'Debtor legal form', dni: 'Days overdue', pct: 'Preliminary offer', note: 'Submission details', updated: 'Updated' },
       statusLabel: 'Status', statusAuto: 'status changed to: {status}', noteLabel: 'Internal note', notePh: 'Agreements, next steps…', save: 'Save', mailBtn: 'Write an e-mail',
       del: 'Delete submission', delConfirm: 'Delete this submission permanently?', saved: 'Lead #{id} saved', deleted: 'Lead #{id} deleted', notFound: 'Lead not found.',

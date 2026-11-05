@@ -381,8 +381,31 @@ app.get('/admin/poczta/:cid', Auth.requireAdmin, async (req, res, next) => {
   const m = await db.getComm(req.params.cid, Mailbox.INBOX).catch(() => null);
   if (!m) return next();
   await markRead(m);
+  const leads = await db.listLeads(100).catch(() => []);
   res.render('mail-view', common({ page: 'admin', user: req.user, ctx: { label: res.locals.t.app.mail.inbox }, m, history: [], historyBase: '/admin/poczta',
-    backUrl: '/admin/poczta', reuseUrl: null, replyUrl: null, fromAddr: Mailer.MAIL_FROM, ...translationView(req, res, m) }));
+    backUrl: '/admin/poczta', reuseUrl: null, replyUrl: null, fromAddr: Mailer.MAIL_FROM, flash: req.query.msg || null,
+    linkForms: { newUrl: '/admin/poczta/' + m.id + '/lead', linkUrl: '/admin/poczta/' + m.id + '/koppel', leads }, ...translationView(req, res, m) }));
+});
+// Niet-gekoppelde mail → nieuwe lead (bron 'email'): afzender wordt de klant, bericht en bijlagen gaan mee, het
+// onderzoeksverslag start zoals bij elke nieuwe lead; daarna antwoord je vanuit de lead met de hele draad erbij
+app.post('/admin/poczta/:cid/lead', Auth.requireAdmin, async (req, res, next) => {
+  const m = await db.getComm(req.params.cid, Mailbox.INBOX).catch(() => null);
+  if (!m) return next();
+  const Mm = res.locals.t.app.mail;
+  const r = await Mailbox.leadFromMail(m).catch((e) => ({ error: e.message }));
+  if (r.error || !r.lead) return res.redirect('/admin/poczta/' + m.id + '?msg=' + encodeURIComponent(Mm.linkFailed + (r.error ? ': ' + r.error : '')));
+  if (Research.AUTO) Research.runForLead(r.lead).catch((e) => console.error('Research:', e.message));
+  res.redirect('/admin/leady?sel=' + r.lead.id + '&msg=' + encodeURIComponent(res.locals.t.fill(Mm.linkedNew, { id: r.lead.id, n: r.files })));
+});
+// Niet-gekoppelde mail → bestaande lead (bv. een klant die vanaf een ander adres schrijft)
+app.post('/admin/poczta/:cid/koppel', Auth.requireAdmin, async (req, res, next) => {
+  const m = await db.getComm(req.params.cid, Mailbox.INBOX).catch(() => null);
+  if (!m) return next();
+  const Mm = res.locals.t.app.mail;
+  const lead = await db.getLead(req.body.lead_id).catch(() => null);
+  if (!lead) return res.redirect('/admin/poczta/' + m.id + '?msg=' + encodeURIComponent(Mm.linkFailed));
+  const r = await Mailbox.linkToLead(m, lead.id).catch((e) => ({ error: e.message }));
+  res.redirect('/admin/leady?sel=' + lead.id + '&msg=' + encodeURIComponent(r.error ? Mm.linkFailed + ': ' + r.error : res.locals.t.fill(Mm.linkedExisting, { id: lead.id, n: r.files || 0 })));
 });
 // Binnengekomen bericht (opnieuw) vertalen naar de paneltaal — op de achtergrond; het scherm vernieuwt zichzelf
 app.post('/admin/mail/:cid/vertaal', Auth.requireAdmin, async (req, res, next) => {
