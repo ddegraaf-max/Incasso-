@@ -10,6 +10,7 @@
   var dniEl = document.getElementById('w-dni');
   var main = box.querySelector('.swr-main .tnum');
   var sub = box.querySelector('.swr-sub');
+  var pct = document.getElementById('swr-pct'), example = document.getElementById('swr-example');
   var tpl = sub ? sub.getAttribute('data-tpl') || '' : '';
   var timer = null, ctrl = null, last = '';
 
@@ -34,6 +35,8 @@
       .then(function (j) {
         if (!j || !j.ok) return;
         if (main) main.textContent = j.amountLowFmt + ' – ' + j.amountFmt;
+        if (pct) pct.textContent = j.pctLow + '–' + j.pct + '%';
+        if (example) example.hidden = true; // eigen cijfers: het voorbeeld verdwijnt
         if (sub) sub.textContent = tpl.replace('{low}', j.pctLow).replace('{high}', j.pct);
         box.hidden = false;
         box.classList.remove('live');

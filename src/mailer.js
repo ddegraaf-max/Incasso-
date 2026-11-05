@@ -103,37 +103,37 @@ async function fetchReceivedAttachments(id) { const j = await api('/emails/recei
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 function layout(bodyHtml, lang, preheader, pixel) {
   const en = lang === 'en';
-  const mailto = '<a href="mailto:kontakt@sprzedamfakture.pl" style="color:#8a6415;text-decoration:none">kontakt@sprzedamfakture.pl</a>';
+  const mailto = '<a href="mailto:kontakt@sprzedamfakture.pl" style="color:#0e8a76;text-decoration:none">kontakt@sprzedamfakture.pl</a>';
   const foot = en
     ? `sprzedamfakture.pl · ${mailto} · Legal basis: arts. 509–512 of the Polish Civil Code.`
     : `sprzedamfakture.pl · ${mailto} · Podstawa: art. 509–512 KC.`;
   const tagline = en ? 'Cash for your invoice in 24 h' : 'Gotówka za fakturę w 24 h';
   // preheader: onzichtbare previewtekst die mailclients naast het onderwerp tonen
   const pre = preheader ? `<div style="display:none;max-height:0;overflow:hidden;mso-hide:all">${esc(preheader)}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>` : '';
-  return `<!doctype html><html lang="${lang}"><body style="margin:0;padding:0;background:#f6f4ef">
-${pre}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#f6f4ef" style="background:#f6f4ef"><tr><td align="center" style="padding:32px 12px 10px">
-<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border:1px solid #e5e0d3;border-radius:14px;overflow:hidden">
-<tr><td bgcolor="#17233a" style="background:#17233a;padding:24px 32px 20px;border-radius:14px 14px 0 0">
-<div style="font-family:Georgia,'Times New Roman',serif;font-size:24px;color:#fdfcf8;letter-spacing:-.2px">sprzedam<b>fakture</b><span style="color:#d9b45e">.pl</span></div>
-<div style="font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:bold;letter-spacing:2px;text-transform:uppercase;color:#d9b45e;margin-top:6px">${tagline}</div>
+  return `<!doctype html><html lang="${lang}"><body style="margin:0;padding:0;background:#f4f9f8">
+${pre}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#f4f9f8" style="background:#f4f9f8"><tr><td align="center" style="padding:32px 12px 10px">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border:1px solid #dbe7e4;border-radius:14px;overflow:hidden">
+<tr><td bgcolor="#12243d" style="background:#12243d;padding:24px 32px 20px;border-radius:14px 14px 0 0">
+<div style="font-family:Arial,Helvetica,sans-serif;font-size:24px;font-weight:800;color:#ffffff;letter-spacing:-.4px">sprzedam<span style="color:#5fe0c3">fakture</span>.pl</div>
+<div style="font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:bold;letter-spacing:2px;text-transform:uppercase;color:#9cf0dc;margin-top:6px">${tagline}</div>
 </td></tr>
-<tr><td height="4" bgcolor="#b8892d" style="height:4px;background:linear-gradient(90deg,#b8892d,#e6c56f);font-size:0;line-height:0"> </td></tr>
-<tr><td style="padding:30px 32px 26px;font-family:'Segoe UI',Arial,Helvetica,sans-serif;font-size:15px;line-height:1.65;color:#17233a">${bodyHtml}</td></tr>
-<tr><td style="padding:16px 32px 20px;border-top:1px solid #eee9db;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#8a8577;line-height:1.6">${foot}</td></tr>
+<tr><td height="4" bgcolor="#12a38b" style="height:4px;background:linear-gradient(90deg,#12a38b,#4fd6b8);font-size:0;line-height:0"> </td></tr>
+<tr><td style="padding:30px 32px 26px;font-family:'Segoe UI',Arial,Helvetica,sans-serif;font-size:15px;line-height:1.65;color:#12243d">${bodyHtml}</td></tr>
+<tr><td style="padding:16px 32px 20px;border-top:1px solid #e3ecea;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#6b7b8a;line-height:1.6">${foot}</td></tr>
 </table>
-<div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#b5ae9d;padding:14px 0 6px">© 2026 sprzedamfakture.pl</div>
+<div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#9aa9b6;padding:14px 0 6px">© 2026 sprzedamfakture.pl</div>
 </td></tr></table>${pixelTag(pixel)}</body></html>`;
 }
 function rows(pairs) {
   // [label, waarde] of [label, waarde, true] voor een goud gemarkeerde rij (bv. de oferta)
   const cells = pairs.map(([k, v, hl]) => hl
-    ? `<tr bgcolor="#f7efdd"><td style="padding:11px 14px;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#8a6415;font-weight:bold;white-space:nowrap">${esc(k)}</td><td align="right" style="padding:11px 14px;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#17233a;font-weight:bold">${esc(v)}</td></tr>`
-    : `<tr><td style="padding:9px 14px 9px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#6b7280;white-space:nowrap;border-bottom:1px solid #f0ece0">${esc(k)}</td><td align="right" style="padding:9px 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#17233a;font-weight:600;border-bottom:1px solid #f0ece0">${esc(v)}</td></tr>`
+    ? `<tr bgcolor="#e4f6f1"><td style="padding:11px 14px;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#0b6f5f;font-weight:bold;white-space:nowrap">${esc(k)}</td><td align="right" style="padding:11px 14px;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#17233a;font-weight:bold">${esc(v)}</td></tr>`
+    : `<tr><td style="padding:9px 14px 9px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#6b7280;white-space:nowrap;border-bottom:1px solid #e8f0ee">${esc(k)}</td><td align="right" style="padding:9px 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#17233a;font-weight:600;border-bottom:1px solid #e8f0ee">${esc(v)}</td></tr>`
   ).join('');
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0 20px">${cells}</table>`;
 }
 function button(href, label) {
-  return `<a href="${esc(href)}" style="display:inline-block;background:#17233a;color:#fff;text-decoration:none;font-weight:700;padding:11px 20px;border-radius:999px;font-size:14px">${esc(label)}</a>`;
+  return `<a href="${esc(href)}" style="display:inline-block;background:#12a38b;color:#fff;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:12px;font-size:14px">${esc(label)}</a>`;
 }
 
 // ── Teksten (PL/EN) ──────────────────────────────────────────────────────

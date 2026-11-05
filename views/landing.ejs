@@ -14,7 +14,6 @@
 <meta property="og:description" content="<%= t.metaDesc %>">
 <meta property="og:url" content="https://sprzedamfakture.pl/windykacja">
 <%- include('partials/meta') %>
-<link rel="preload" as="font" type="font/woff2" href="/fonts/fraunces-latin.woff2" crossorigin>
 <link rel="preload" as="font" type="font/woff2" href="/fonts/manrope-latin.woff2" crossorigin>
 <link rel="stylesheet" href="/css/app.css?v=<%= version %>">
 </head>
@@ -22,22 +21,7 @@
 <a class="skip-link" href="#main"><%= t.common.skip %></a>
 <div style="min-height:100vh; display:flex; flex-direction:column">
 
-<nav class="nav">
-  <%- include('partials/logo', { tagline: true, href: '/windykacja?lang=' + lang }) %>
-  <span class="nav-right nav-links">
-    <a href="#uslugi"><%= t.navServices %></a>
-    <a href="#dlaczego"><%= t.navWhy %></a>
-    <a href="#kontakt"><%= t.navContact %></a>
-    <a href="/kalkulator"><%= t.navCalc %></a>
-    <a href="/baza-wiedzy"><%= t.common.navKb %></a>
-    <a href="/wezwanie-online" class="btn btn-live nav-live"><%= t.common.navDemand %> <span class="live-badge"><%= t.common.navDemandBadge %></span></a>
-    <a href="/"><%= t.navSell %></a>
-    <a href="/app/sprawy"><%= t.navApp %></a>
-    <span class="lang-switch">
-      <a href="<%= langUrl('pl') %>" class="<%= lang === 'pl' ? 'active' : '' %>" hreflang="pl">PL</a><span class="sep">·</span><a href="<%= langUrl('en') %>" class="<%= lang === 'en' ? 'active' : '' %>" hreflang="en">EN</a>
-    </span>
-  </span>
-</nav>
+<%- include('partials/nav') %>
 
 <section class="hero" id="main">
   <canvas id="hero-net" aria-hidden="true"></canvas>

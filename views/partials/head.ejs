@@ -35,7 +35,6 @@ var _htmlLang = (['app', 'admin', 'auth'].indexOf(_page) !== -1 && typeof panelL
 <meta name="twitter:card" content="summary_large_image">
 <% } %>
 <%- include('meta') %>
-<link rel="preload" as="font" type="font/woff2" href="/fonts/fraunces-latin.woff2" crossorigin>
 <link rel="preload" as="font" type="font/woff2" href="/fonts/manrope-latin.woff2" crossorigin>
 <link rel="stylesheet" href="/css/app.css?v=<%= version %>">
 <% _ld.forEach(function (o) { %><script type="application/ld+json"><%- JSON.stringify(o).replace(/</g, '\\u003c') %></script>

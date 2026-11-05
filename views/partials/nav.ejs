@@ -1,29 +1,55 @@
-<% var A = t.app; %>
-<nav class="nav">
-  <%- include('logo', { tagline: page !== 'app' && page !== 'admin' }) %>
-  <span class="nav-right<%= (page === 'app' || page === 'admin' || page === 'auth') ? '' : ' nav-links' %>">
+<%
+/* Navigatie — nieuwe huisstijl (v0.25): logo met tagline, hoofdlinks, uitklapmenu "Narzędzia" (<details>, werkt zonder JS
+   en op touch), knop "Panel klienta" en een taalknop. In het panel (app/admin) en op auth-pagina's blijven de eigen links. */
+var A = t.app, C = t.common;
+var pnl = (page === 'app' || page === 'admin' || page === 'auth');
+var pLang = typeof panelLang !== 'undefined' ? panelLang : lang;
+var actL = pnl ? pLang : lang;
+var langNames = { pl: 'Polski', en: 'English', nl: 'Nederlands' };
+var langs = ['pl', 'en'];
+if (pnl && ((user && user.role === 'admin') || pLang === 'nl')) langs.push('nl');
+%>
+<nav class="nav<%= pnl ? '' : ' nav-public' %>">
+  <%- include('logo', { tagline: !pnl }) %>
+  <% if (!pnl) { %>
+  <div class="nav-main">
+    <a href="/#formularz"><%= C.navSell %></a>
+    <a href="/#jak"><%= C.navHow %></a>
+    <details class="nav-dd">
+      <summary><%= C.navTools %></summary>
+      <div class="dd">
+        <a href="/#wycena"><%= C.toolQuote %></a>
+        <a href="/wezwanie-online"><%= C.navDemand %> <span class="live-badge"><%= C.navDemandBadge %></span></a>
+        <a href="/#przedawnienie"><%= C.toolLimit %></a>
+        <a href="/kalkulator"><%= C.navCalc %></a>
+        <a href="/skup-wyrokow"><%= C.navJudgments %></a>
+        <% if (!windykacjaOff) { %><a href="/windykacja"><%= C.navCollection %></a><% } %>
+      </div>
+    </details>
+    <a href="/baza-wiedzy"><%= C.navKb %></a>
+    <a href="/#faq">FAQ</a>
+    <a href="/#kontakt"><%= C.navContact %></a>
+  </div>
+  <% } %>
+  <div class="nav-end<%= pnl ? ' nav-links' : '' %>">
     <% if (page === 'app' || page === 'admin') { %>
-      <%= user ? user.company : '' %><% if (user && user.totpConfirmed) { %> · 2FA<% } %>
+      <span class="nav-user"><%= user ? user.company : '' %><% if (user && user.totpConfirmed) { %> · 2FA<% } %></span>
       <% if (user && user.role === 'admin') { %><a href="/admin"><%= A.nav.admin %></a><a href="/admin/leady"><%= A.nav.leads %></a><a href="/admin/poczta"><%= A.nav.inbox %><% if (typeof unreadMail !== 'undefined' && unreadMail) { %><span class="nav-count tnum"><%= unreadMail %></span><% } %></a><% } %>
       <a href="/app/sprawy"><%= A.nav.panel %></a>
       <a href="/logout"><%= A.nav.logout %></a>
     <% } else if (page === 'auth') { %>
-      <a href="/"><%= t.common.navHome %></a>
-      <a href="/kalkulator"><%= t.common.navCalc %></a>
+      <a href="/"><%= C.navHome %></a>
+      <a href="/kalkulator"><%= C.navCalc %></a>
     <% } else { %>
-      <a href="/#wycena"><%= t.common.navSell %></a>
-      <% if (!windykacjaOff) { %><a href="/windykacja"><%= t.common.navCollection %></a><% } %>
-      <a href="/kalkulator"><%= t.common.navCalc %></a>
-      <a href="/skup-wyrokow"><%= t.common.navJudgments %></a>
-      <a href="/wezwanie-online" class="btn btn-live nav-live"><%= t.common.navDemand %> <span class="live-badge"><%= t.common.navDemandBadge %></span></a>
-      <a href="/baza-wiedzy"><%= t.common.navKb %></a>
-      <a href="/login"><%= t.common.navPanel %></a>
+      <a class="nav-panel" href="/login"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><%= C.navPanel %></a>
     <% } %>
-    <% var pnl = (page === 'app' || page === 'admin' || page === 'auth'); var pLang = typeof panelLang !== 'undefined' ? panelLang : lang; var actL = pnl ? pLang : lang; %>
-    <span class="lang-switch">
-      <a href="<%= langUrl('pl') %>" class="<%= actL === 'pl' ? 'active' : '' %>" hreflang="pl">PL</a><span class="sep">·</span><a href="<%= langUrl('en') %>" class="<%= actL === 'en' ? 'active' : '' %>" hreflang="en">EN</a><% if (pnl && ((user && user.role === 'admin') || pLang === 'nl')) { %><span class="sep">·</span><a href="<%= langUrl('nl') %>" class="<%= actL === 'nl' ? 'active' : '' %>" hreflang="nl">NL</a><% } %>
-    </span>
-  </span>
+    <details class="nav-dd lang-dd">
+      <summary aria-label="<%= langNames[actL] || actL %>"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg><%= String(actL).toUpperCase() %></summary>
+      <div class="dd">
+        <% langs.forEach(function (l) { %><a href="<%= langUrl(l) %>" hreflang="<%= l %>" class="<%= actL === l ? 'active' : '' %>"><%= langNames[l] || l.toUpperCase() %></a><% }) %>
+      </div>
+    </details>
+  </div>
 </nav>
 <% if (page === 'app') { %>
 <div class="tabbar">

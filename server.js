@@ -721,7 +721,7 @@ function renderHome(req, res, extra = {}) {
   const dni = parseInt(req.query.dni, 10) || null;
   const est = kwota && dni && kwota > 0 && dni > 0 ? AiScore.estimateOffer(kwota, dni) : null;
   res.render('sprzedam', common({
-    page: 'sprzedam', est,
+    page: 'sprzedam', est, exampleEst: AiScore.estimateOffer(12400, 30), // de kaart toont dit voorbeeld tot er iets is ingevuld
     q: { kwota: req.query.kwota || '', dni: req.query.dni || '' },
     leadOk: req.query.lead === 'ok',
     form: {}, errors: {},

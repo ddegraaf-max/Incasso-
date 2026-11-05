@@ -38,7 +38,7 @@
         if (p.y < 0 || p.y > H) p.vy *= -1;
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(184,137,45,0.4)';
+        ctx.fillStyle = 'rgba(18,163,139,0.45)';
         ctx.fill();
         for (var j = i + 1; j < N; j++) {
           var q = pts[j];
@@ -47,7 +47,7 @@
           if (d < MAXD) {
             ctx.beginPath();
             ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y);
-            ctx.strokeStyle = 'rgba(184,137,45,' + (0.14 * (1 - d / MAXD)).toFixed(3) + ')';
+            ctx.strokeStyle = 'rgba(18,163,139,' + (0.16 * (1 - d / MAXD)).toFixed(3) + ')';
             ctx.lineWidth = 1;
             ctx.stroke();
           }
@@ -111,7 +111,7 @@
   // ── 3. Scroll-reveal ──────────────────────────────────────────────────
   var revealables = document.querySelectorAll(
     '.stats-strip .cell, .svc .cell, .law-grid .cell, .path-grid .cell, ' +
-    '.model-grid .cell, .why-grid .cell, .now-row, .closing h2, .hero h1, .hero .sub, .hero .cta'
+    '.model-grid .cell, .why-grid .cell, .now-row, .closing h2, .hero h1, .hero .sub, .hero .cta, .step, .tool'
   );
   revealables.forEach(function (el, i) { el.classList.add('rv'); el.style.transitionDelay = (i % 4) * 70 + 'ms'; });
   if (reduced) {
