@@ -120,11 +120,15 @@ function finishJob(id) { jobs.delete(String(id)); }
 function trim(s, n) { const t = String(s == null ? '' : s); return t.length > n ? t.slice(0, n) + '\n[…]' : t; }
 
 // kind: 'lead' | 'case'; audience: 'klient' | 'dluznik'; lang: 'pl'|'en' (taal van de mail); trLang: 'nl'|'en'|null
-// thread: correspondentie tot nu toe [{direction,date,from|to,subject,body}]; replyTo: het bericht dat beantwoord wordt;
-// docs: document-/afbeeldingsblokken van de bijlagen (Research.attachmentBlocks), docNames: hun bestandsnamen
-async function draft({ kind, data, report, instruction, lang, trLang, audience, signature, to, thread, replyTo, docs, docNames }) {
+// thread: correspondentie tot nu toe [{direction,date,from|to,subject,body}]; replies: de berichten die beantwoord worden
+// (oudste eerst, één antwoord op alle; replyTo = één bericht, oudere aanroep); docs: document-/afbeeldingsblokken van de
+// bijlagen (Research.attachmentBlocks), docNames: hun bestandsnamen, docSkipped: bijlagen die niet meegelezen zijn
+const DOCS_REJECTED = { nl: 'De bijlagen zijn niet meegelezen (door de API geweigerd, bv. te veel pagina\'s of een beschadigd bestand).', pl: 'Załączniki nie zostały odczytane (odrzucone przez API, np. za dużo stron lub uszkodzony plik).', en: 'The attachments were not read (rejected by the API, e.g. too many pages or a damaged file).' };
+async function draft({ kind, data, report, instruction, lang, trLang, audience, signature, to, thread, replies, replyTo, docs, docNames, docSkipped }) {
   const L = LANG_NAME[lang] || 'Polish';
   const TR = trLang && trLang !== lang ? LANG_NAME[trLang] : null;
+  const toAnswer = Array.isArray(replies) ? replies.filter(Boolean) : (replyTo ? [replyTo] : []);
+  const skipped = Array.isArray(docSkipped) ? docSkipped.filter(Boolean) : [];
   const system = [
     'You draft e-mails for sprzedamfakture.pl (Creditline BV, a Dutch company that buys and collects overdue Polish B2B receivables and old judgments).',
     'All communication is in writing, by e-mail only: never propose, request or promise a phone call, never ask for a phone number and never mention a phone number — ask for answers and documents by reply e-mail instead. Polish recipients are addressed in Polish.',
@@ -134,12 +138,12 @@ async function draft({ kind, data, report, instruction, lang, trLang, audience, 
       : 'The recipient is the CLIENT (the creditor who submitted the request). Tone: helpful, professional, commercial; explain clearly what we offer or need and what happens next.',
     'Use only facts from the provided data (request/case data, official register data, due-diligence report). Never invent amounts, dates, percentages or promises. If the instruction asks for something the data does not support, phrase it neutrally and flag it in notes.',
     'Do not reveal internal risk scores, internal notes or the fact that a due-diligence report exists; use its facts naturally.',
-    'When an "Incoming e-mail to answer" is provided, write a reply to it: address every question and point it raises, in order, and do not repeat the quoted text. Use the earlier correspondence for context and consistency.',
-    'Documents attached after the data (invoice, judgment, enforcement decision, correspondence) must be read and used precisely: invoice number, dates, amounts, debtor name and NIP; say which document a fact comes from. If a document contradicts the request data, point it out neutrally to the recipient and in the notes.',
+    'When "Incoming e-mails to answer" are provided, write ONE reply that answers all of them: address every question and point each of them raises, in order, and do not repeat the quoted text. If a later e-mail changes or completes an earlier one (for example the documents asked for arrive, or an amount is corrected), reply to the latest state and acknowledge what came in later. Use the earlier correspondence for context and consistency.',
+    'Documents attached after the data (invoice, judgment, enforcement decision, correspondence) must be read and used precisely: invoice number, dates, amounts, debtor name and NIP; say which document a fact comes from. If a document contradicts the request data, point it out neutrally to the recipient and in the notes. Attachments listed as "not read" were not provided to you: never claim to have seen them, and name them in the notes so the sender can check them.',
     'End the body with exactly this signature (verbatim, on its own lines):\n' + signature,
     'Return JSON with: "subject" (in ' + L + '), "body" (in ' + L + ', including the signature), "translation" (' + (TR ? 'a faithful, complete translation of subject and body into ' + TR + ', subject on the first line' : 'an empty string') + '), "notes" (2–3 sentences in ' + (TR || L) + ': which facts from the report or registers you used and what the sender should double-check before sending).',
   ].join('\n');
-  const user = [
+  const userFor = (notRead, why) => [
     'Recipient: ' + (audience === 'dluznik' ? 'debtor' : 'client') + (to ? ' <' + to + '>' : ''),
     'Instruction from the sender (may be written in Dutch): ' + (instruction && instruction.trim() ? instruction.trim() : '(none — write the message that fits the data best)'),
     '',
@@ -153,17 +157,31 @@ async function draft({ kind, data, report, instruction, lang, trLang, audience, 
       ? thread.map((m) => '--- ' + (m.direction === 'in' ? 'FROM ' + (m.from || 'recipient') : 'TO ' + (m.to || 'recipient')) + ' · ' + m.date + ' · ' + (m.subject || '—') + '\n' + trim(m.body, 2500)).join('\n\n')
       : '(none)',
     '',
-    'Incoming e-mail to answer:', replyTo
-      ? 'From: ' + (replyTo.from || '—') + '\nDate: ' + replyTo.date + '\nSubject: ' + (replyTo.subject || '—') + (replyTo.attachments && replyTo.attachments.length ? '\nAttachments: ' + replyTo.attachments.join(', ') : '') + '\n\n' + trim(replyTo.body, 8000)
+    'Incoming e-mails to answer' + (toAnswer.length ? ' (' + toAnswer.length + ', oldest first — answer all of them in one reply):' : ':'), toAnswer.length
+      ? toAnswer.map((r, i) => '=== E-mail ' + (i + 1) + ' of ' + toAnswer.length + '\nFrom: ' + (r.from || '—') + '\nDate: ' + r.date + '\nSubject: ' + (r.subject || '—') + (r.attachments && r.attachments.length ? '\nAttachments: ' + r.attachments.join(', ') : '') + '\n\n' + trim(r.body, 8000)).join('\n\n')
       : '(none — this is a new message, not a reply)',
+    '',
+    'Attachments not read (' + why + '; do not claim to have seen them): ' + (notRead.length ? notRead.join(', ') : '(none)'),
   ].join('\n');
   const blocks = Array.isArray(docs) ? docs : [];
+  const user = userFor(skipped, 'too many or too large');
   if (!blocks.length) return call(system, user);
-  return call(system, [
-    { type: 'text', text: user + '\n\nAttached documents (' + (docNames && docNames.length ? docNames.join(', ') : blocks.length) + ') follow.' },
-    ...blocks,
-    { type: 'text', text: 'Now write the e-mail as instructed and return the JSON.' },
-  ]);
+  try {
+    return await call(system, [
+      { type: 'text', text: user + '\n\nAttached documents (' + (docNames && docNames.length ? docNames.join(', ') : blocks.length) + ') follow.' },
+      ...blocks,
+      { type: 'text', text: 'Now write the e-mail as instructed and return the JSON.' },
+    ]);
+  } catch (e) {
+    // bijlage door de API geweigerd (bv. meer dan 100 pagina's of een beschadigd bestand): nog één keer zonder documenten,
+    // met de namen als "not read" zodat het concept er niet over doet alsof, en een waarschuwing vooraan in de notities
+    if (!e || e.code || e.status !== 400) throw e;
+    console.warn('[aimail] bijlagen geweigerd (400), concept zonder documenten —', String((e && e.message) || e).slice(0, 200));
+    const r = await call(system, userFor([...(docNames || []), ...skipped], 'rejected by the API'));
+    const noteLang = TR ? trLang : lang;
+    r.notes = (DOCS_REJECTED[noteLang] || DOCS_REJECTED.en) + (r.notes ? ' ' + r.notes : '');
+    return r;
+  }
 }
 
 // Binnengekomen mail vertalen naar de paneltaal — alleen de vertaling telt; subject/body in het JSON blijven leeg

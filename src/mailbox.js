@@ -332,29 +332,55 @@ async function translateInbound(c, lang) {
   } finally { translating.delete(id); }
 }
 
-// Context voor een AI-concept: de correspondentie tot nu toe, het bericht dat beantwoord wordt (replyId, anders de
-// nieuwste mail van de ander als die het laatste bericht is) en de bijlagen van de lead als blokken, nieuwste eerst
+// ── Beantwoorden: welke berichten wachten op antwoord ────────────────────
+// Alle binnengekomen mails van dezelfde afzender sinds onze laatste mail aan dat adres — stuurt iemand twee mails
+// achter elkaar, dan horen ze bij één antwoord (v0.26.0). Anker: het aangeklikte bericht (replyId), anders de nieuwste
+// binnengekomen mail van de draad. Een aangeklikt bericht dat al beantwoord was gaat ook mee. Oudste eerst.
+const THREAD_MAX = 20; // correspondentie die de assistent meekrijgt
+const DRAFT_FILES = 12, DRAFT_BYTES = 16 * 1024 * 1024; // bijlagen voor de mailassistent (het verslag leest er 4)
+async function threadComms(caseKey) { return (await db.listComms(caseKey, THREAD_MAX).catch(() => [])).filter((k) => k.channel === 'email'); }
+async function pendingReplies(caseKey, replyId, comms) {
+  comms = comms || await threadComms(caseKey); // nieuwste eerst
+  let m = replyId ? comms.find((k) => String(k.id) === String(replyId) && k.direction === 'in') : null;
+  if (!m && replyId) { const g = await db.getComm(replyId, caseKey).catch(() => null); if (g && g.direction === 'in') m = g; }
+  const anchor = m || comms.find((k) => k.direction === 'in');
+  if (!anchor) return [];
+  const addr = addressOf(anchor.sender);
+  const list = [];
+  for (const k of comms) {
+    if (k.direction === 'in') { if (addressOf(k.sender) === addr) list.push(k); }
+    else if (addressOf(k.recipient) === addr) break; // onze laatste mail aan dit adres: wat daarvoor kwam is beantwoord
+  }
+  if (m && !list.some((k) => String(k.id) === String(m.id))) list.push(m);
+  return list.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+}
+
+// Context voor een AI-concept: de correspondentie tot nu toe (THREAD_MAX), de berichten die beantwoord worden
+// (pendingReplies) en de bijlagen van de lead als blokken, nieuwste eerst; docSkipped = bestanden die niet meegelezen zijn
 async function draftContext(caseKey, replyId, files) {
   const Research = require('./research');
-  const comms = (await db.listComms(caseKey, 8).catch(() => [])).filter((k) => k.channel === 'email');
+  const comms = await threadComms(caseKey);
   const stamp = (d) => new Date(d).toISOString().slice(0, 16).replace('T', ' ');
   const thread = comms.slice().reverse().map((k) => (k.direction === 'in'
     ? { direction: 'in', date: stamp(k.created_at), from: k.sender || '', subject: k.subject, body: k.body }
     : { direction: 'out', date: stamp(k.created_at), to: k.recipient || '', subject: k.subject, body: k.body }));
-  let m = replyId ? comms.find((k) => String(k.id) === String(replyId) && k.direction === 'in') : null;
-  if (!m && replyId) { const g = await db.getComm(replyId, caseKey).catch(() => null); if (g && g.direction === 'in') m = g; }
-  if (!m && !replyId && comms.length && comms[0].direction === 'in') m = comms[0];
-  const replyTo = m ? { from: m.sender || '', date: stamp(m.created_at), subject: m.subject, body: m.body, attachments: (m.attachments || []).map((a) => a.filename) } : null;
-  const att = await Research.attachmentBlocks((files || []).slice().sort((a, b) => b.id - a.id)).catch(() => ({ blocks: [], used: [] }));
-  return { thread, replyTo, docs: att.blocks, docNames: att.used };
+  const replies = (await pendingReplies(caseKey, replyId, comms)).map((m) => ({ from: m.sender || '', date: stamp(m.created_at), subject: m.subject, body: m.body, attachments: (m.attachments || []).map((a) => a.filename) }));
+  const att = await Research.attachmentBlocks((files || []).slice().sort((a, b) => b.id - a.id), { max: DRAFT_FILES, budget: DRAFT_BYTES }).catch(() => ({ blocks: [], used: [], skipped: [] }));
+  return { thread, replies, docs: att.blocks, docNames: att.used, docSkipped: att.skipped || [] };
 }
 
-// Antwoord vanuit het paneel op een binnengekomen bericht: onderwerp en geciteerde tekst
-function replyDraft(m) {
-  const subject = /^\s*(re|odp)\s*:/i.test(m.subject || '') ? m.subject : 'Re: ' + (m.subject || '');
-  const when = new Date(m.created_at).toLocaleString('pl-PL', { timeZone: 'Europe/Warsaw', dateStyle: 'medium', timeStyle: 'short' });
-  const quoted = String(m.body || '').split('\n').slice(0, 60).map((l) => '> ' + l).join('\n');
-  return { to: addressOf(m.sender), subject: String(subject).slice(0, 200), body: `\n\n${when}, ${m.sender || ''}:\n${quoted}` };
+// Antwoord vanuit het paneel: onderwerp en geciteerde tekst van de berichten die beantwoord worden (één of meer, oudste eerst)
+function replyDraft(list) {
+  const msgs = (Array.isArray(list) ? list : [list]).filter(Boolean);
+  const last = msgs[msgs.length - 1];
+  const subject = /^\s*(re|odp)\s*:/i.test(last.subject || '') ? last.subject : 'Re: ' + (last.subject || '');
+  const lines = msgs.length > 1 ? 40 : 60;
+  const body = msgs.map((m) => {
+    const when = new Date(m.created_at).toLocaleString('pl-PL', { timeZone: 'Europe/Warsaw', dateStyle: 'medium', timeStyle: 'short' });
+    const quoted = String(m.body || '').split('\n').slice(0, lines).map((l) => '> ' + l).join('\n');
+    return `${when}, ${m.sender || ''}:\n${quoted}`;
+  }).join('\n\n');
+  return { to: addressOf(last.sender), subject: String(subject).slice(0, 200), body: `\n\n${body}` };
 }
 
-module.exports = { enabled, status, checkMx, send, replyToLabel, replyAddress, keyFromAddress, recordOpen, refresh, applyDelivery, stateOf, verifyWebhook, handleEvent, receive, leadFromMail, linkToLead, senderParts, panelPath, replyDraft, translateInbound, isTranslating, canAuto, draftContext, TR_LANG, TR_AUTO, PIXEL, INBOX, INBOUND_DOMAIN };
+module.exports = { enabled, status, checkMx, send, replyToLabel, replyAddress, keyFromAddress, recordOpen, refresh, applyDelivery, stateOf, verifyWebhook, handleEvent, receive, leadFromMail, linkToLead, senderParts, panelPath, replyDraft, pendingReplies, translateInbound, isTranslating, canAuto, draftContext, THREAD_MAX, TR_LANG, TR_AUTO, PIXEL, INBOX, INBOUND_DOMAIN };

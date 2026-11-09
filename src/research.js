@@ -370,11 +370,19 @@ async function aiReport(facts, lang, blocks = []) {
 
 // ── Bijlagen voor het AI-verslag ─────────────────────────────────────────
 // PDF als document, JPG/PNG als afbeelding (API-limiet 5 MB), XML als tekst; hooguit MAX_FILES bestanden per verslag.
-const MAX_FILES = 4, MAX_IMAGE = 5 * 1024 * 1024, MAX_XML = 1024 * 1024;
-async function attachmentBlocks(files) {
-  const blocks = [], used = [], skipped = [];
-  const list = files || [];
-  for (const f of list.slice(0, MAX_FILES)) {
+// opts.max (aantal bestanden) en opts.budget (totale omvang in bytes) laten een aanroeper meer meegeven, bv. de mailassistent
+// (v0.26.0). De API neemt ca. 32 MB per verzoek en base64 maakt bestanden een derde groter: standaard hooguit MAX_TOTAL.
+// Hetzelfde bestand dat nog eens is meegestuurd (zelfde naam en omvang) wordt één keer gelezen; wat niet meegaat staat in skipped.
+const MAX_FILES = 4, MAX_IMAGE = 5 * 1024 * 1024, MAX_XML = 1024 * 1024, MAX_TOTAL = 16 * 1024 * 1024;
+async function attachmentBlocks(files, opts = {}) {
+  const max = opts.max || MAX_FILES, budget = opts.budget || MAX_TOTAL;
+  const blocks = [], used = [], skipped = [], seen = new Set();
+  let total = 0;
+  for (const f of files || []) {
+    const sig = String(f.filename || '').toLowerCase() + '|' + (f.size || 0);
+    if (seen.has(sig)) continue;
+    seen.add(sig);
+    if (used.length >= max || total + (f.size || 0) > budget) { skipped.push(f.filename); continue; }
     const full = await db.getLeadFile(f.id).catch(() => null);
     const buf = full && full.data ? Buffer.from(full.data) : null;
     const mime = String(f.mimetype || '');
@@ -387,8 +395,8 @@ async function attachmentBlocks(files) {
       blocks.push({ type: 'document', source: { type: 'text', media_type: 'text/plain', data: buf.toString('utf8') }, title: f.filename });
     } else { skipped.push(f.filename); continue; }
     used.push(f.filename);
+    total += buf.length;
   }
-  for (const f of list.slice(MAX_FILES)) skipped.push(f.filename);
   return { blocks, used, skipped };
 }
 

@@ -428,11 +428,19 @@ async function markRead(m) {
   m.read_at = new Date();
   await db.updateComm(m.id, { read_at: m.read_at }).catch(() => {});
 }
-// Composer vullen bij "beantwoorden" (?reply=<id>) — alleen met een binnengekomen bericht uit dezelfde draad
+// Composer vullen bij "beantwoorden" (?reply=<id>) — alleen met een binnengekomen bericht uit dezelfde draad; latere mails
+// van dezelfde afzender die nog geen antwoord kregen worden mee geciteerd en mee beantwoord (Mailbox.pendingReplies, v0.26.0)
 async function replyOver(req, caseKey, over) {
   if (!req.query.reply || over.subject !== undefined) return over;
   const m = await db.getComm(req.query.reply, caseKey).catch(() => null);
-  return m && m.direction === 'in' ? { ...over, ...Mailbox.replyDraft(m), reply: m.id } : over;
+  if (!m || m.direction !== 'in') return over;
+  const list = await Mailbox.pendingReplies(caseKey, m.id).catch(() => []);
+  return { ...over, ...Mailbox.replyDraft(list.length ? list : [m]), reply: m.id };
+}
+// De berichten die de assistent gaat beantwoorden — voor de melding in de composer
+async function replySet(caseKey, replyId) {
+  const list = await Mailbox.pendingReplies(caseKey, replyId || null).catch(() => []);
+  return list.map((m) => ({ id: m.id, from: m.sender || '', subject: m.subject || '', at: m.created_at }));
 }
 
 // ── E-mailcomposer ───────────────────────────────────────────────────────
@@ -465,7 +473,7 @@ function applyJob(req, res, over) {
 async function renderLeadComposer(req, res, lead, over = {}) {
   const Mm = res.locals.t.app.mail;
   over = await replyOver(req, 'L' + lead.id, applyJob(req, res, over));
-  const replyMsg = over.reply ? await db.getComm(over.reply, 'L' + lead.id).catch(() => null) : null;
+  const replies = await replySet('L' + lead.id, over.reply);
   const tl = over.tl || tplLang(req, Research.parseNote(lead).lang === 'en' ? 'en' : 'pl');
   const tpl = over.tpl !== undefined ? over.tpl : String(req.query.tpl || '');
   let draft = tpl ? MailTpl.forLead(lead, tpl, tl) : { subject: '', body: '' };
@@ -478,7 +486,7 @@ async function renderLeadComposer(req, res, lead, over = {}) {
     tpl, tl, aud: 'klient', audiences: [], templates: MailTpl.list('lead', tl, lead.source === 'skup-wyrokow'), history,
     instruction: over.instruction || '', translation: over.translation || '', notes: over.notes || '', aiOk: AiMail.available(), aiPending: !!over.aiPending, aiMode: over.aiMode || 'draft',
     error: over.error || null, fromAddr: Mailer.MAIL_FROM, replyTo: Mailbox.replyToLabel(), mailOk: Mailer.configured(), live: true,
-    reply: replyMsg ? replyMsg.id : '', replyFrom: replyMsg ? replyMsg.sender : '', replySubject: replyMsg ? replyMsg.subject : '',
+    reply: replies.some((r) => String(r.id) === String(over.reply)) ? over.reply : '', replies,
   }));
 }
 
@@ -555,7 +563,7 @@ app.post('/admin/leady/:id/mail', Auth.requireAdmin, async (req, res) => {
 async function renderCaseComposer(req, res, c, over = {}) {
   const Mm = res.locals.t.app.mail;
   over = await replyOver(req, c.id, applyJob(req, res, over));
-  const replyMsg = over.reply ? await db.getComm(over.reply, c.id).catch(() => null) : null;
+  const replies = await replySet(c.id, over.reply);
   const isAdmin = req.user.role === 'admin';
   const audiences = isAdmin ? [{ key: 'dluznik', label: Mm.audDebtor }, { key: 'klient', label: Mm.audClient }] : [{ key: 'dluznik', label: Mm.audDebtor }];
   const aud = over.aud || (req.query.aud === 'klient' && isAdmin ? 'klient' : 'dluznik');
@@ -574,7 +582,7 @@ async function renderCaseComposer(req, res, c, over = {}) {
     tpl, tl, aud, audiences, templates, history,
     instruction: over.instruction || '', translation: over.translation || '', notes: over.notes || '', aiOk: AiMail.available(), aiPending: !!over.aiPending, aiMode: over.aiMode || 'draft',
     error: over.error || null, fromAddr: aud === 'klient' ? Mailer.MAIL_FROM : Comms.FROM_EMAIL, replyTo: Mailbox.replyToLabel(), mailOk: Mailer.configured(), live: aud === 'klient' || c.real || Comms.LIVE_COMMS,
-    reply: replyMsg ? replyMsg.id : '', replyFrom: replyMsg ? replyMsg.sender : '', replySubject: replyMsg ? replyMsg.subject : '',
+    reply: replies.some((r) => String(r.id) === String(over.reply)) ? over.reply : '', replies,
   }));
 }
 
@@ -593,7 +601,7 @@ app.post('/app/sprawy/:id/mail/ai', Auth.requireAuth, async (req, res) => {
   const trLang = trLangFor(res, tl);
   {
     const report = c.real && c.leadId ? await db.getLeadReport(c.leadId).catch(() => null) : null;
-    const comms = await db.listComms(c.id, 8).catch(() => []);
+    const comms = await db.listComms(c.id, Mailbox.THREAD_MAX).catch(() => []);
     const data = {
       nr: c.nr, debtor: c.debtor, nip: c.nip, amount: c.amount, daysOverdue: c.days, dueDate: c.dueDate || null, phase: c.phase,
       interest: D.interest(c.amount, c.days), recoveryFeePln: D.rekompZl(c.amount), aiScore: c.ai ? { score: c.ai.score, grade: c.ai.grade, reco: c.ai.reco } : null,
