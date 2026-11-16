@@ -201,6 +201,12 @@ async function offerMailed(leadId) {
   await db.updateDeal(deal.id, fields);
   return { ...deal, ...fields };
 }
+// Afwijzing van de koop gemaild (sjabloon odmowa_wykupu): een lopende transactie vóór uitbetaling wordt geannuleerd
+async function declined(leadId) {
+  const deal = await db.getDealByLead(leadId).catch(() => null);
+  if (!deal || !(NEXT[deal.status] || []).includes('anulowana')) return null;
+  return setStatus(deal, 'anulowana');
+}
 function stepIndex(status) { return ORDER.indexOf(status); }
 
 // ── Documenten ───────────────────────────────────────────────────────────
@@ -476,6 +482,6 @@ async function runProposal(lead, deal, files, lang) {
   return true;
 }
 
-module.exports = { STATUSES, ORDER, VARIANTS, FIELDS, DOC_REQUIRED, PAY_DAYS, OFFER_DAYS, PCC_DAYS, RECOURSE_DAYS, byLead, prefill, toInput, start, update, setStatus, offerMailed, stepIndex, missingForDocs,
+module.exports = { STATUSES, ORDER, VARIANTS, FIELDS, DOC_REQUIRED, PAY_DAYS, OFFER_DAYS, PCC_DAYS, RECOURSE_DAYS, byLead, prefill, toInput, start, update, setStatus, offerMailed, declined, stepIndex, missingForDocs,
   agreementBlocks, noticeBlocks, agreementPdf, noticePdf, agreementFilename, noticeFilename, summaryNl, agreementMailText, noticeMailText,
   sendAgreement, markSigned, markPaid, notifyDebtor, remindPcc, notifyAdmin, runProposal, isProposalPending, proposalOf, slownie, plDate, money, priceOf, fmtIban, emails, ref };

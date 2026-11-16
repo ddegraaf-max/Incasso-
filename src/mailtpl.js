@@ -51,6 +51,30 @@ Po analizie niestety nie możemy złożyć oferty wykupu tej wierzytelności. Ni
 Jeżeli sytuacja dłużnika się zmieni albo pojawią się nowe dokumenty, prosimy o kontakt.
 
 {podpis}` },
+    odmowa_wykupu: { name: 'Odmowa wykupu + propozycja windykacji', subject: 'Decyzja w sprawie wykupu wierzytelności — {dluznik} ({kwota})', body:
+`Szanowni Państwo,
+
+dziękujemy za cierpliwość i za przesłane dokumenty. Zakończyliśmy pełną analizę sprawy: dokumentów, historii płatności oraz aktualnych danych rejestrowych dłużnika {dluznik}.
+
+Po tej analizie nie możemy, niestety, złożyć oferty wykupu wierzytelności w kwocie {kwota}. Zdecydowały o tym łącznie następujące okoliczności:
+- aktualne dane rejestrowe dłużnika oraz jego zachowanie płatnicze w ostatnich tygodniach wskazują na istotne ryzyko braku zapłaty,
+- brak tytułu wykonawczego oznacza, że odzyskanie należności wymaga drogi sądowej, której czas i wynik nie są pewne,
+- zapisy umowy z dłużnikiem dają mu argumenty do opóźniania zapłaty, które trzeba będzie odeprzeć w postępowaniu.
+
+Wykup oznaczałby przeniesienie całego tego ryzyka na nas za cenę, która nie byłaby dla Państwa uczciwa. Dlatego proponujemy rozwiązanie, w którym koszty opóźnienia ponosi dłużnik, a nie Państwo: windykację na Państwa zlecenie, na następujących zasadach.
+
+1. Bez opłat wstępnych. Naszym wynagrodzeniem jest prowizja wyłącznie od kwot faktycznie odzyskanych.
+2. Dochodzimy pełnej kwoty {kwota} wraz z odsetkami ustawowymi za opóźnienie w transakcjach handlowych oraz rekompensatą za koszty odzyskiwania należności (równowartość 40 EUR). Te kwoty obciążają dłużnika.
+3. Etap polubowny: wezwanie do zapłaty na aktualny adres siedziby dłużnika ujawniony w KRS oraz na adresy e-mail wskazane w umowie, z terminem 7 dni, a w razie potrzeby wpis dłużnika do rejestru BIG.
+4. Etap sądowy: jeżeli dłużnik nie zapłaci, przygotowujemy pozew o nakaz zapłaty do sądu właściwego dla siedziby dłużnika, a po uzyskaniu tytułu wykonawczego — egzekucję komorniczą, w pierwszej kolejności z rachunków bankowych dłużnika ujawnionych w wykazie podatników VAT. Jeżeli egzekucja wobec spółki okaże się bezskuteczna, za jej długi odpowiadają osobiście członkowie zarządu (art. 299 Kodeksu spółek handlowych). Koszty etapu sądowego uzgadniamy z Państwem przed jego rozpoczęciem; sąd zasądza je od dłużnika.
+
+Wezwaniem możemy objąć również inne niezapłacone kwoty od tego samego dłużnika, na przykład niedopłatę z wcześniejszej faktury. Prosimy o informację, czy takie kwoty istnieją.
+
+Aby rozpocząć, wystarczy odpowiedzieć na tę wiadomość słowem „Zlecam”. Prześlemy wówczas do podpisu umowę zlecenia windykacji oraz pełnomocnictwo. Prosimy także o przesłanie korespondencji e-mail, w której dłużnik zlecał prace objęte fakturą, oraz numeru telefonu, z którego dłużnik kontaktował się z Państwem.
+
+Przesłane dokumenty pozostają w aktach sprawy. Jeżeli zdecydują się Państwo nie korzystać z naszej pomocy, usuniemy je na Państwa życzenie.
+
+{podpis}` },
     kontakt: { name: 'Prośba o wyjaśnienia', subject: 'W sprawie Państwa zgłoszenia — {company}', body:
 `Dzień dobry,
 
@@ -130,6 +154,30 @@ After review we are unfortunately unable to make an offer to buy this receivable
 Should the debtor's situation change or new documents become available, please contact us.
 
 {podpis}` },
+    odmowa_wykupu: { name: 'Purchase declined + collection offer', subject: 'Decision on the purchase of your receivable — {dluznik} ({kwota})', body:
+`Dear Sir or Madam,
+
+thank you for your patience and for the documents you sent. We have completed a full review of the case: the documents, the payment history and the current register data of the debtor {dluznik}.
+
+After this review we are unfortunately unable to make an offer to buy the receivable of {kwota}. Taken together, the following circumstances were decisive:
+- the debtor's current register data and its payment behaviour in recent weeks indicate a significant risk of non-payment,
+- without an enforceable title, recovery requires court proceedings whose duration and outcome are uncertain,
+- the contract with the debtor contains provisions the debtor could use to delay payment, which would have to be rebutted in proceedings.
+
+A purchase would transfer all of this risk to us at a price that would not be fair to you. We therefore propose a solution in which the debtor, not you, bears the cost of the delay: collection on your behalf, on the following terms.
+
+1. No upfront fees. Our remuneration is a commission solely on the amounts actually recovered.
+2. We claim the full amount of {kwota} together with statutory interest for late payment in commercial transactions and the recovery-cost compensation (equivalent of EUR 40). These amounts are charged to the debtor.
+3. Amicable stage: a demand for payment sent to the debtor's current registered address shown in the KRS and to the e-mail addresses named in the contract, with a 7-day deadline, and if needed an entry of the debtor in the BIG debtor register.
+4. Court stage: if the debtor does not pay, we prepare an application for an order for payment at the court competent for the debtor's seat and, once an enforceable title is obtained, enforcement by a bailiff, first of all against the debtor's bank accounts listed in the VAT taxpayer register. If enforcement against the company proves ineffective, the members of its management board are personally liable for its debts (Article 299 of the Commercial Companies Code). The costs of the court stage are agreed with you before it starts; the court awards them against the debtor.
+
+The demand can also cover other unpaid amounts from the same debtor, for example a shortfall on an earlier invoice. Please let us know whether such amounts exist.
+
+To start, simply reply to this message with the word "Proceed". We will then send you the collection mandate and the power of attorney for signature. Please also send the e-mail correspondence in which the debtor ordered the work covered by the invoice, and the phone number the debtor used to contact you.
+
+The documents you sent remain on file. Should you decide not to use our help, we will delete them at your request.
+
+{podpis}` },
     kontakt: { name: 'Request for clarification', subject: 'Regarding your request — {company}', body:
 `Dear Sir or Madam,
 
@@ -171,7 +219,7 @@ Next steps:
   },
 };
 
-const LEAD_KEYS = ['oferta', 'info', 'kontakt', 'odmowa', 'pusty'];
+const LEAD_KEYS = ['oferta', 'info', 'kontakt', 'odmowa', 'odmowa_wykupu', 'pusty'];
 const WYROK_KEYS = ['wyrok', 'info', 'kontakt', 'odmowa', 'pusty'];
 const CASE_CLIENT_KEYS = ['status', 'pusty'];
 

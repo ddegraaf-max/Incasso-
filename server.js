@@ -442,6 +442,7 @@ async function replyOver(req, caseKey, over) {
   if (!req.query.reply || over.subject !== undefined) return over;
   const m = await db.getComm(req.query.reply, caseKey).catch(() => null);
   if (!m || m.direction !== 'in') return over;
+  if (req.query.tpl) return { ...over, reply: m.id }; // sjabloon gekozen in antwoordmodus: sjabloontekst, de te beantwoorden mails blijven gemarkeerd
   const list = await Mailbox.pendingReplies(caseKey, m.id).catch(() => []);
   return { ...over, ...Mailbox.replyDraft(list.length ? list : [m]), reply: m.id };
 }
@@ -563,6 +564,7 @@ app.post('/admin/leady/:id/mail', Auth.requireAdmin, async (req, res) => {
   if (r.ok || r.simulated) {
     const L = res.locals.t.app.admin.leads;
     if (tpl === 'oferta') await Deals.offerMailed(lead.id).catch(() => null); // wykup: offertemail = etap „oferta wysłana”
+    if (tpl === 'odmowa_wykupu') await Deals.declined(lead.id).catch(() => null); // wykup: afwijzing gemaild = lopende transactie geannuleerd
     const moved = await db.moveLeadStatus(lead.id, ['nowy'], 'kontakt').catch(() => false);
     if (moved) msg += ' · ' + res.locals.t.fill(L.statusAuto, { status: L.statuses.kontakt });
   }
