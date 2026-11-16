@@ -73,12 +73,12 @@ function addressOf(s) { const m = /<([^>]+)>/.exec(String(s || '')); return (m ?
 // ── Versturen met sleutel ────────────────────────────────────────────────
 // branded: huisstijl-layout (mails aan klanten); anders een sobere HTML-versie (mails aan dłużnicy).
 // Geeft het resultaat van Mailer.send terug, aangevuld met de velden voor comm_log.
-async function send({ from, to, subject, text, lang, branded }) {
+async function send({ from, to, subject, text, lang, branded, attachments }) {
   const key = newKey();
   const pixel = pixelUrl(key);
   const r = branded
-    ? await Mailer.sendPlain({ from, to, subject, text, lang, replyTo: replyTo(key), pixel })
-    : await Mailer.send({ from, to, subject, text, html: Mailer.plainHtml(text, pixel), replyTo: replyTo(key) });
+    ? await Mailer.sendPlain({ from, to, subject, text, lang, replyTo: replyTo(key), pixel, attachments })
+    : await Mailer.send({ from, to, subject, text, html: Mailer.plainHtml(text, pixel), replyTo: replyTo(key), attachments });
   return { ...r, log: { reply_key: key, provider_id: r.id || null, delivery: r.ok && !r.simulated ? 'sent' : null } };
 }
 

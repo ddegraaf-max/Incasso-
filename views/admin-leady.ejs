@@ -6,7 +6,7 @@
    var q = view === 'aktualne' ? '' : 'widok=' + view + '&';
    var dateFmt = function(d) { return new Date(d).toLocaleString(t.locale, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }); };
 %>
-<%- include('partials/head', { title: t.app.titles.leads + ' — sprzedamfakture.pl', autoRefresh: (typeof researchPending !== 'undefined' && researchPending) ? 12 : 0 }) %>
+<%- include('partials/head', { title: t.app.titles.leads + ' — sprzedamfakture.pl', autoRefresh: ((typeof researchPending !== 'undefined' && researchPending) || (typeof dealPending !== 'undefined' && dealPending)) ? 12 : 0 }) %>
 <%- include('partials/nav') %>
 
 <div class="two-pane">
@@ -123,6 +123,8 @@
       <% } else if (!researchPending) { %>
         <p class="helper" style="margin:0"><%= L.research.none %></p>
       <% } %>
+
+      <%- include('partials/deal', { L: L, fill: fill, dateFmt: dateFmt }) %>
 
       <hr class="rule">
       <div class="label"><%= L.caseKicker %></div>

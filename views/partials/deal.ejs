@@ -1,0 +1,129 @@
+<%
+// Wykup wierzytelności: transactie op een lead (admin). Verwacht: sel, deal (of null), dealPre (prefill zonder deal),
+// dealPending, dealProposal (JSON of null), dealMail (comm-rij van het zawiadomienie), dealMissing [velden], files, L, t, fill, dateFmt, mailState.
+var W = L.deal, DL = deal || null, P = DL || dealPre || {};
+var money = function (n) { var v = Math.round((Number(n) || 0) * 100), a = Math.abs(v); return (v < 0 ? '-' : '') + String(Math.floor(a / 100)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0') + ',' + String(a % 100).padStart(2, '0') + ' zł'; };
+var dIso = function (v) { if (!v) return ''; if (typeof v === 'string') return v.slice(0, 10); var d = new Date(v); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+var dShort = function (v) { var s = dIso(v); return s ? new Date(s + 'T12:00:00Z').toLocaleDateString(t.locale, { day: 'numeric', month: 'short', year: 'numeric' }) : '—'; };
+var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+var inp = function (k, type, cls, extra) { var v = type === 'date' ? dIso(P[k]) : (P[k] == null ? '' : P[k]); return '<div class="fg"><label for="d-' + k + '">' + esc(W.f[k]) + '</label><input id="d-' + k + '" name="' + k + '" type="' + (type || 'text') + '" class="' + (cls || '') + '" value="' + esc(v) + '"' + (extra || '') + '></div>'; };
+var area = function (k) { return '<div class="fg"><label for="d-' + k + '">' + esc(W.f[k]) + '</label><textarea id="d-' + k + '" name="' + k + '" rows="2">' + esc(P[k] == null ? '' : P[k]) + '</textarea></div>'; };
+var base = '/admin/leady/' + sel.id + '/wykup';
+var steps = ['cena', 'oferta', 'zaakceptowana', 'umowa', 'podpisana', 'wyplacona', 'zawiadomiony'];
+var idx = DL ? steps.indexOf(DL.status) : -1;
+var today = dIso(new Date());
+var missing = (typeof dealMissing !== 'undefined' && dealMissing) || [];
+var docFiles = (files || []).filter(function (f) { return /pdf|image/.test(f.mimetype || ''); });
+%>
+<hr class="rule">
+<div class="label" id="wykup"><%= W.kicker %></div>
+<% if (DL) { %>
+  <div class="lead-views" style="margin:4px 0 10px">
+    <% steps.forEach(function (s, i) { %><span class="tag <%= i < idx ? 'tag-neutral' : (i === idx ? 'tag-accent' : 'tag-outline') %>"><%= (i + 1) + '. ' + W.st[s] %></span><% }) %>
+    <% if (DL.status === 'anulowana') { %><span class="tag tag-danger"><%= W.st.anulowana %></span><% } %>
+  </div>
+  <div class="field-row"><span class="fk"><%= W.f.price %></span><span class="tnum"><strong><%= money(DL.price) %></strong> · <%= Number(DL.pct) %>% × <%= money(DL.nominal) %> · <%= W.variants[DL.variant] || DL.variant %></span></div>
+  <div class="field-row"><span class="fk"><%= W.f.invoice_nr %></span><span><%= DL.invoice_nr || '—' %> · <%= W.f.due_date %>: <span class="tnum"><%= dShort(DL.due_date) %></span></span></div>
+  <div class="field-row"><span class="fk"><%= W.f.debtor_name %></span><span><%= DL.debtor_name || '—' %><%= DL.debtor_nip ? ' · NIP ' + DL.debtor_nip : '' %></span></div>
+  <div class="field-row"><span class="fk"><%= W.f.cedent_name %></span><span><%= DL.cedent_name || '—' %><%= DL.cedent_nip ? ' · NIP ' + DL.cedent_nip : '' %></span></div>
+  <% if (DL.signed_at) { %><div class="field-row"><span class="fk"><%= W.act.signed %></span><span class="tnum"><%= dShort(DL.signed_at) %><% if (DL.signed_file_id) { %> · <a href="/admin/leady/<%= sel.id %>/zalacznik/<%= DL.signed_file_id %>"><%= W.act.signedFile %></a><% } %></span></div><% } %>
+  <% if (DL.paid_at) { %><div class="field-row"><span class="fk"><%= W.act.paid %></span><span class="tnum"><%= dShort(DL.paid_at) %> · <%= money(DL.paid_amount || DL.price) %><%= DL.paid_ref ? ' · ' + DL.paid_ref : '' %> · <%= fill(W.pcc, { amount: money(Number(DL.price) * 0.01), date: dShort(DL.pcc_due) }) %><%= DL.pcc_reminded_at ? ' (' + W.pccDone + ')' : '' %></span></div><% } %>
+  <% if (typeof dealMail !== 'undefined' && dealMail) { %><div class="field-row"><span class="fk"><%= W.act.mailState %></span><span><%- include('mail-state', { k: dealMail }) %> · <%= dealMail.recipient %></span></div><% } %>
+  <% if (DL.case_id) { %><p style="margin:6px 0 10px"><a class="btn btn-secondary chan-btn" href="/app/sprawy?sel=<%= DL.case_id %>"><%= W.act.caseLink %></a></p><% } %>
+
+  <div class="label" style="margin-top:12px"><%= W.ai.btn %></div>
+  <% if (dealPending) { %><p class="research-busy" role="status"><%- include('hourglass', { id: 'deal' }) %><span><%= W.ai.pending %></span></p>
+  <% } else if (dealProposal && dealProposal.error) { %><p class="field-err"><%= fill(W.ai.error, { error: dealProposal.error }) %></p>
+  <% } else if (dealProposal) { var PR = dealProposal; %>
+    <p class="helper" style="margin:0 0 6px"><%= fill(W.ai.meta, { date: DL.proposal_at ? dateFmt(DL.proposal_at) : '—', model: DL.proposal_model || '—' }) %></p>
+    <div class="field-row"><span class="fk"><%= W.ai.pct %></span><span class="tnum"><strong><%= PR.pct %>%</strong> = <%= money(Number(DL.nominal) * Number(PR.pct) / 100) %> · <%= fill(W.ai.band, { low: PR.pctLow, high: PR.pctHigh }) %> · <%= W.variants[PR.variant] || PR.variant %></span></div>
+    <p style="font-size:13.5px; margin:6px 0"><strong><%= W.ai.verdict %>:</strong> <%= PR.verdict %></p>
+    <p style="font-size:13.5px; margin:6px 0; white-space:pre-wrap"><%= PR.summary %></p>
+    <% [['strengths', W.ai.strengths], ['risks', W.ai.risks], ['conditions', W.ai.conditions], ['verify', W.ai.verify], ['steps', W.ai.steps]].forEach(function (pair) { var arr = PR[pair[0]]; if (arr && arr.length) { %>
+      <div class="label" style="margin-top:8px"><%= pair[1] %></div>
+      <ul style="font-size:13.5px; margin:0 0 6px; padding-left:18px"><% arr.forEach(function (x) { %><li><%= x %></li><% }) %></ul>
+    <% } }) %>
+    <% if (PR.chosenPct) { %><p style="font-size:13.5px; margin:6px 0"><strong><%= fill(W.ai.chosen, { pct: Number(DL.pct) }) %>:</strong> <%= PR.chosenPct %></p><% } %>
+    <% if (PR.docsNote) { %><p class="helper" style="margin:4px 0"><%= PR.docsNote %></p><% } %>
+  <% } else { %><p class="helper" style="margin:0 0 6px"><%= W.ai.none %></p><% } %>
+  <form method="post" action="<%= base %>/propozycja" style="margin:0 0 10px"><button class="btn btn-secondary chan-btn" type="submit" <% if (dealPending) { %>disabled aria-busy="true"<% } %>><%= dealProposal ? W.ai.redo : W.ai.btn %></button></form>
+<% } else { %>
+  <p class="helper" style="margin:0 0 6px"><%= W.intro %></p>
+<% } %>
+
+<details <% if (!DL) { %>open<% } %> style="margin:8px 0">
+  <summary class="label" style="cursor:pointer; display:list-item"><%= DL ? W.edit : W.start %></summary>
+  <form class="calc-form flat" method="post" action="<%= base %>">
+    <div class="fg"><label for="d-variant"><%= W.f.variant %></label><select id="d-variant" name="variant"><% ['bez_regresu', 'z_regresem'].forEach(function (v) { %><option value="<%= v %>" <% if ((P.variant || 'bez_regresu') === v) { %>selected<% } %>><%= W.variants[v] %></option><% }) %></select></div>
+    <%- inp('nominal', 'text', 'tnum', ' inputmode="decimal" required') %>
+    <%- inp('pct', 'number', 'tnum', ' step="0.5" min="1" max="100" required') %>
+    <%- inp('invoice_nr') %>
+    <%- inp('invoice_date', 'date', 'tnum') %>
+    <%- inp('due_date', 'date', 'tnum') %>
+    <%- area('contract_desc') %>
+    <%- inp('last_payment_date', 'date', 'tnum') %>
+    <%- inp('cedent_name') %>
+    <%- inp('cedent_nip', 'text', 'tnum') %>
+    <%- inp('cedent_regon', 'text', 'tnum') %>
+    <%- inp('cedent_address') %>
+    <%- inp('cedent_corr_address') %>
+    <%- inp('cedent_rep') %>
+    <%- inp('cedent_email', 'email') %>
+    <%- inp('cedent_account', 'text', 'tnum') %>
+    <%- inp('debtor_name') %>
+    <%- inp('debtor_nip', 'text', 'tnum') %>
+    <%- inp('debtor_krs', 'text', 'tnum') %>
+    <%- inp('debtor_address') %>
+    <%- inp('debtor_email') %>
+    <%- inp('buyer_rep') %>
+    <%- inp('buyer_account', 'text', 'tnum') %>
+    <%- area('note') %>
+    <button class="btn chan-btn" type="submit"><%= DL ? W.save : W.start %></button>
+  </form>
+</details>
+
+<% if (DL && DL.status !== 'anulowana') { %>
+  <div class="label" style="margin-top:10px"><%= W.docs.label %></div>
+  <% if (missing.length) { %><p class="field-err" style="margin:0 0 8px"><%= fill(W.docs.missing, { fields: missing.map(function (k) { return W.f[k]; }).join(', ') }) %></p>
+  <% } else { %><p style="margin:0 0 8px; font-size:13.5px"><%= W.docs.agreement %>: <a href="<%= base %>/umowa" target="_blank"><%= W.docs.html %></a> · <a href="<%= base %>/umowa.pdf"><%= W.docs.pdf %></a><br><%= W.docs.notice %>: <a href="<%= base %>/zawiadomienie" target="_blank"><%= W.docs.html %></a> · <a href="<%= base %>/zawiadomienie.pdf"><%= W.docs.pdf %></a></p><% } %>
+
+  <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-start">
+  <% if (DL.status === 'cena') { %>
+    <a class="btn chan-btn" href="/admin/leady/<%= sel.id %>/mail?tpl=oferta&tl=pl"><%= W.act.sendOffer %></a>
+    <form method="post" action="<%= base %>/status" style="margin:0"><input type="hidden" name="to" value="oferta"><button class="btn btn-secondary chan-btn" type="submit"><%= W.act.markOffered %></button></form>
+  <% } else if (DL.status === 'oferta') { %>
+    <form method="post" action="<%= base %>/status" style="margin:0"><input type="hidden" name="to" value="zaakceptowana"><button class="btn chan-btn" type="submit"><%= W.act.accepted %></button></form>
+    <form method="post" action="<%= base %>/status" style="margin:0"><input type="hidden" name="to" value="cena"><button class="btn btn-ghost chan-btn" type="submit"><%= W.act.backToPrice %></button></form>
+  <% } else if (DL.status === 'zaakceptowana') { %>
+    <form method="post" action="<%= base %>/umowa" style="margin:0"><button class="btn chan-btn" type="submit" <% if (missing.length) { %>disabled<% } %>><%= W.act.sendAgreement %></button><p class="helper" style="margin:4px 0 0; max-width:420px"><%= W.act.sendAgreementHint %></p></form>
+    <form method="post" action="<%= base %>/status" style="margin:0"><input type="hidden" name="to" value="oferta"><button class="btn btn-ghost chan-btn" type="submit"><%= W.act.backToOffer %></button></form>
+  <% } else if (DL.status === 'umowa') { %>
+    <form class="calc-form flat" method="post" action="<%= base %>/podpisana" style="margin:0; min-width:280px">
+      <div class="fg"><label for="d-sfile"><%= W.act.signedFile %></label><select id="d-sfile" name="file_id"><option value=""><%= W.act.noFile %></option><% docFiles.forEach(function (f) { %><option value="<%= f.id %>"><%= f.filename %> (<%= Math.max(1, Math.round((f.size || 0) / 1024)) %> kB)</option><% }) %></select></div>
+      <div class="fg"><label for="d-sdate"><%= W.act.signedDate %></label><input id="d-sdate" name="date" type="date" class="tnum" value="<%= today %>" required></div>
+      <button class="btn chan-btn" type="submit"><%= W.act.signed %></button>
+      <a class="btn btn-ghost chan-btn" href="<%= base %>/umowa.pdf"><%= W.docs.pdf %></a>
+    </form>
+    <form method="post" action="<%= base %>/status" style="margin:0"><input type="hidden" name="to" value="zaakceptowana"><button class="btn btn-ghost chan-btn" type="submit"><%= W.act.backToOffer %></button></form>
+  <% } else if (DL.status === 'podpisana') { %>
+    <form class="calc-form flat" method="post" action="<%= base %>/wyplacona" style="margin:0; min-width:280px">
+      <div class="fg"><label for="d-pdate"><%= W.act.paidDate %></label><input id="d-pdate" name="date" type="date" class="tnum" value="<%= today %>" required></div>
+      <div class="fg"><label for="d-pamt"><%= W.act.paidAmount %></label><input id="d-pamt" name="amount" class="tnum" inputmode="decimal" value="<%= Number(DL.price) %>" required></div>
+      <div class="fg"><label for="d-pref"><%= W.act.paidRef %></label><input id="d-pref" name="ref" maxlength="120"></div>
+      <button class="btn chan-btn" type="submit"><%= W.act.paid %></button>
+      <p class="helper" style="margin:4px 0 0; max-width:420px"><%= W.act.paidHint %></p>
+    </form>
+  <% } else if (DL.status === 'wyplacona' || DL.status === 'zawiadomiony') { %>
+    <form class="calc-form flat" method="post" action="<%= base %>/zawiadom" style="margin:0; min-width:280px">
+      <div class="fg"><label for="d-nto"><%= W.act.notifyTo %></label><input id="d-nto" name="to" value="<%= DL.debtor_email || '' %>" required></div>
+      <button class="btn <%= DL.status === 'zawiadomiony' ? 'btn-secondary' : '' %> chan-btn" type="submit"><%= DL.status === 'zawiadomiony' ? W.act.notifyAgain : W.act.notify %></button>
+      <p class="helper" style="margin:4px 0 0; max-width:420px"><%= DL.status === 'zawiadomiony' ? W.act.done : W.act.notifyHint %></p>
+    </form>
+  <% } %>
+  <% if (['cena', 'oferta', 'zaakceptowana', 'umowa', 'podpisana'].indexOf(DL.status) >= 0) { %>
+    <form method="post" action="<%= base %>/status" style="margin:0" onsubmit="return confirm('<%= W.act.cancelConfirm %>')"><input type="hidden" name="to" value="anulowana"><button class="btn btn-ghost chan-btn" type="submit" style="color:var(--danger)"><%= W.act.cancel %></button></form>
+  <% } %>
+  </div>
+<% } else if (DL && DL.status === 'anulowana') { %>
+  <form method="post" action="<%= base %>/status" style="margin:6px 0 0"><input type="hidden" name="to" value="cena"><button class="btn btn-secondary chan-btn" type="submit"><%= W.act.reopen %></button></form>
+<% } %>

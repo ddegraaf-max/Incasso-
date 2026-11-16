@@ -199,4 +199,82 @@ async function translate({ subject, body, from, to }) {
   return call(system, user);
 }
 
-module.exports = { available, draft, translate, translateInbound, startJob, getJob, finishJob, mapApiError, MODEL, MAX_OUT, _setCreate };
+// ── Gestructureerde aanroep met een eigen schema (geen e-mail): voorstel voor een wykup ──
+async function callJson(system, user, schema) {
+  if (FAKE) {
+    await new Promise((r) => setTimeout(r, 300));
+    return { pct: 45, pctLow: 40, pctHigh: 50, variant: 'bez_regresu', verdict: 'FAKE: kupić z warunkami', summary: 'FAKE: samenvatting van het dossier.', strengths: ['FAKE: podpisana umowa'], risks: ['FAKE: brak tytułu'], conditions: ['FAKE: oświadczenie o braku zakazu cesji'], verify: ['FAKE: KRZ'], steps: ['FAKE: umowa', 'FAKE: wypłata'], chosenPct: 'FAKE: 45% is voorzichtig.', model: 'fake' };
+  }
+  if (!client) throw new Error('AI niet beschikbaar (geen ANTHROPIC_API_KEY)');
+  const t0 = Date.now();
+  const params = { model: MODEL, max_tokens: MAX_OUT, system, messages: [{ role: 'user', content: user }] };
+  let resp;
+  try { resp = await createMessage({ ...params, output_config: { format: { type: 'json_schema', schema } } }); }
+  catch (e) {
+    const mapped = mapApiError(e);
+    if (mapped.code) throw mapped;
+    if (!(e instanceof Anthropic.BadRequestError)) throw e;
+    console.warn('[aimail] structured output geweigerd (400), gewone aanroep —', String((e && e.message) || e).slice(0, 200));
+    try { resp = await createMessage({ ...params, system: system + '\nOutput only the JSON object — no prose before or after it.' }); } catch (e2) { throw mapApiError(e2); }
+  }
+  if (resp.stop_reason === 'refusal') throw new Error('geweigerd door het model');
+  if (resp.stop_reason === 'max_tokens') throw new Error('antwoord afgebroken: langer dan ' + MAX_OUT + ' tokens');
+  const j = parseJson(textOf(resp));
+  console.log('[aimail] ok (json) model=' + resp.model + ' in=' + (resp.usage ? resp.usage.input_tokens : '?') + ' out=' + (resp.usage ? resp.usage.output_tokens : '?') + ' ' + (Date.now() - t0) + 'ms');
+  j.model = resp.model;
+  return j;
+}
+
+const STR_ARR = { type: 'array', items: { type: 'string' } };
+const PROPOSAL_SCHEMA = {
+  type: 'object',
+  properties: { pct: { type: 'number' }, pctLow: { type: 'number' }, pctHigh: { type: 'number' }, variant: { type: 'string', enum: ['bez_regresu', 'z_regresem'] }, verdict: { type: 'string' }, summary: { type: 'string' },
+    strengths: STR_ARR, risks: STR_ARR, conditions: STR_ARR, verify: STR_ARR, steps: STR_ARR, chosenPct: { type: 'string' } },
+  required: ['pct', 'pctLow', 'pctHigh', 'variant', 'verdict', 'summary', 'strengths', 'risks', 'conditions', 'verify', 'steps', 'chosenPct'],
+  additionalProperties: false,
+};
+const DEAL_KEYS = ['status', 'variant', 'nominal', 'pct', 'price', 'cedent_name', 'cedent_nip', 'cedent_regon', 'cedent_address', 'cedent_rep', 'cedent_account', 'debtor_name', 'debtor_nip', 'debtor_krs', 'debtor_address', 'debtor_email', 'invoice_nr', 'invoice_date', 'due_date', 'contract_desc', 'last_payment_date', 'note'];
+const LEAD_KEYS = ['id', 'source', 'company', 'nip', 'client_nip', 'email', 'kwota', 'dni', 'forma', 'oferta_pct', 'status', 'note', 'admin_note', 'research_note', 'created_at'];
+const pick = (o, keys) => { const out = {}; for (const k of keys) if (o && o[k] != null && o[k] !== '') out[k] = o[k]; return out; };
+// Voorstel aan de beheerder voor de koop van één vordering: prijsband, oordeel, sterke punten, risico's, voorwaarden, checks, stappen
+// — op basis van de lead, de registers, het verslag, de correspondentie en de bijlagen (docs). Uitvoer in de paneltaal (lang).
+async function dealProposal({ lead, report, deal, thread, docs, docNames, docSkipped, lang }) {
+  const OUT = LANG_NAME[lang] || 'Dutch';
+  const skipped = Array.isArray(docSkipped) ? docSkipped.filter(Boolean) : [];
+  const system = [
+    'You are the senior risk and pricing analyst of sprzedamfakture.pl (Creditline BV, a Dutch company that buys overdue Polish B2B receivables by assignment — cesja wierzytelności, art. 509–518 KC — and then collects them at its own risk and cost).',
+    'The owner is about to buy ONE receivable and asks you for a complete purchase proposal. Use ONLY the material provided: request data, official register facts, the due-diligence report, the correspondence with the client and the attached documents. Never invent facts; where something is unknown, say so and put it under "verify".',
+    'Pricing: the price is a percentage of the nominal invoice amount. Start from the strength of the file (signed contract, invoice confirmed in KSeF, payment history from the debtor\'s own account, written acknowledgement of the debt, no dispute) and reduce for risk: no enforceable title, recent changes of the debtor in KRS (address, board, capital), debtor age and size, signs of insolvency or restructuring (KRZ), amount and days overdue, limitation period (przedawnienie), set-off or quality disputes, a non-assignment clause (zakaz cesji) in the contract, the creditor being a sole trader (JDG: possible 14-day withdrawal right for distance contracts), and the cost and duration of collection and court (wezwanie, KRD, EPU, komornik). Non-recourse (bez_regresu) is the default product; recommend z_regresem only when the risk is otherwise unacceptable. Be conservative: this is the company\'s first purchase and it wants limited exposure.',
+    'Write in ' + OUT + ', concise and concrete, for the owner (not for the client). Keep Polish legal terms in Polish. Amounts in zł.',
+    'Return JSON with: "pct" (recommended price as % of nominal), "pctLow" and "pctHigh" (defensible band), "variant" ("bez_regresu" or "z_regresem"), "verdict" (one sentence: buy / buy with conditions / do not buy, and why), "summary" (4–8 sentences: what the receivable is, how strong the file is, the main risk, the expected recovery path and timing), "strengths" (short points), "risks" (short points), "conditions" (clauses or conditions for the umowa przelewu or to settle before paying), "verify" (checks and documents still needed before paying out, in order), "steps" (the next steps from today until the debtor pays, in order), "chosenPct" (2–4 sentences on the price the owner has chosen: safe, generous or too low, and the client\'s likely reaction).',
+  ].join('\n');
+  const userFor = (notRead, why) => [
+    'Owner\'s chosen price: ' + (deal && deal.pct != null ? Number(deal.pct) + '% of ' + (Number(deal.nominal) || 0) + ' zł = ' + (Number(deal.price) || 0) + ' zł, variant ' + (deal.variant || 'bez_regresu') : '(not set yet)'),
+    'Transaction data entered so far:', trim(JSON.stringify(pick(deal, DEAL_KEYS), null, 1), 3000),
+    '', 'Request (lead):', trim(JSON.stringify(pick(lead, LEAD_KEYS), null, 1), 3000),
+    '', 'Official register facts (MF VAT white list / KRS / CEIDG / websites / documents read):', report && report.facts ? trim(JSON.stringify(report.facts, null, 1), 9000) : '(none)',
+    '', 'Due-diligence report:', report && report.report ? trim(report.report, 9000) : '(none)',
+    '', 'Correspondence so far (oldest first):', thread && thread.length
+      ? thread.map((m) => '--- ' + (m.direction === 'in' ? 'FROM ' + (m.from || 'client') : 'TO ' + (m.to || 'client')) + ' · ' + m.date + ' · ' + (m.subject || '—') + '\n' + trim(m.body, 2500)).join('\n\n')
+      : '(none)',
+    '', 'Attachments not read (' + why + '; do not claim to have seen them): ' + (notRead.length ? notRead.join(', ') : '(none)'),
+  ].join('\n');
+  const blocks = Array.isArray(docs) ? docs : [];
+  const user = userFor(skipped, 'too many or too large');
+  if (!blocks.length) return callJson(system, user, PROPOSAL_SCHEMA);
+  try {
+    return await callJson(system, [
+      { type: 'text', text: user + '\n\nAttached documents (' + (docNames && docNames.length ? docNames.join(', ') : blocks.length) + ') follow.' },
+      ...blocks,
+      { type: 'text', text: 'Now write the purchase proposal and return the JSON.' },
+    ], PROPOSAL_SCHEMA);
+  } catch (e) {
+    if (!e || e.code || e.status !== 400) throw e;
+    console.warn('[aimail] bijlagen geweigerd (400), voorstel zonder documenten —', String((e && e.message) || e).slice(0, 200));
+    const r = await callJson(system, userFor([...(docNames || []), ...skipped], 'rejected by the API'), PROPOSAL_SCHEMA);
+    r.docsNote = (DOCS_REJECTED[lang] || DOCS_REJECTED.en);
+    return r;
+  }
+}
+
+module.exports = { available, draft, translate, translateInbound, dealProposal, startJob, getJob, finishJob, mapApiError, MODEL, MAX_OUT, _setCreate };

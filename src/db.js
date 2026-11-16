@@ -18,6 +18,7 @@ const mem = {
   demands: [],   // wezwania online (bezpłatne sommaties)
   demandLog: [], // bewijslog van wezwania (weergaven + reacties, oudste eerst)
   cases: [],     // echte zaken (nieuwste eerst)
+  deals: [],     // wykup-transacties (één per lead, src/deals.js)
 };
 
 async function init() {
@@ -140,6 +141,25 @@ async function init() {
   await pool.query('ALTER TABLE demands ADD COLUMN IF NOT EXISTS paid_date DATE');
   await pool.query('ALTER TABLE demands ADD COLUMN IF NOT EXISTS creditor_key TEXT');
   await pool.query('ALTER TABLE demands ADD COLUMN IF NOT EXISTS creator_ip TEXT');
+  // Wykup wierzytelności: één transactie per lead (src/deals.js, v0.27.0)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS deals (
+      id SERIAL PRIMARY KEY,
+      lead_id INT UNIQUE,
+      case_id TEXT,
+      status TEXT DEFAULT 'cena',
+      variant TEXT DEFAULT 'bez_regresu',
+      nominal NUMERIC, pct NUMERIC, price NUMERIC,
+      cedent_name TEXT, cedent_nip TEXT, cedent_regon TEXT, cedent_address TEXT, cedent_corr_address TEXT, cedent_rep TEXT, cedent_email TEXT, cedent_account TEXT,
+      debtor_name TEXT, debtor_nip TEXT, debtor_krs TEXT, debtor_address TEXT, debtor_email TEXT,
+      invoice_nr TEXT, invoice_date DATE, due_date DATE, contract_desc TEXT, last_payment_date DATE,
+      buyer_rep TEXT, buyer_account TEXT, note TEXT,
+      proposal TEXT, proposal_pct NUMERIC, proposal_at TIMESTAMPTZ, proposal_model TEXT,
+      offered_at TIMESTAMPTZ, accepted_at TIMESTAMPTZ, agreement_sent_at TIMESTAMPTZ, signed_at DATE, signed_file_id INT,
+      paid_at DATE, paid_amount NUMERIC, paid_ref TEXT, notified_at TIMESTAMPTZ, notify_comm_id INT, pcc_due DATE, pcc_reminded_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ DEFAULT now(), updated_at TIMESTAMPTZ
+    );
+  `);
   // E-mailverificatie van de wierzyciel: een wezwanie is pas actief na bevestiging (confirmed_at).
   // Eenmalig bij het toevoegen van de kolom: wat er al stond is al verstuurd en geldt als bevestigd.
   const hasConfirmed = await pool.query("SELECT 1 FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'demands' AND column_name = 'confirmed_at'");
@@ -846,6 +866,55 @@ async function loadScores() {
   return out;
 }
 
+// ── Wykup-transacties (src/deals.js) ─────────────────────────────────────
+const DEAL_COLS = ['lead_id', 'case_id', 'status', 'variant', 'nominal', 'pct', 'price',
+  'cedent_name', 'cedent_nip', 'cedent_regon', 'cedent_address', 'cedent_corr_address', 'cedent_rep', 'cedent_email', 'cedent_account',
+  'debtor_name', 'debtor_nip', 'debtor_krs', 'debtor_address', 'debtor_email', 'invoice_nr', 'invoice_date', 'due_date', 'contract_desc', 'last_payment_date',
+  'buyer_rep', 'buyer_account', 'note', 'proposal', 'proposal_pct', 'proposal_at', 'proposal_model',
+  'offered_at', 'accepted_at', 'agreement_sent_at', 'signed_at', 'signed_file_id', 'paid_at', 'paid_amount', 'paid_ref', 'notified_at', 'notify_comm_id', 'pcc_due', 'pcc_reminded_at', 'updated_at'];
+let memDealId = 1;
+const dealVal = (v) => (v === undefined || v === '' ? null : v);
+async function createDeal(d) {
+  const row = {}; for (const k of DEAL_COLS) row[k] = dealVal(d[k]);
+  if (!pool) { const r = { id: memDealId++, created_at: new Date(), ...row }; mem.deals.unshift(r); return r; }
+  const r = await pool.query(`INSERT INTO deals (${DEAL_COLS.join(', ')}) VALUES (${DEAL_COLS.map((_, i) => '$' + (i + 1)).join(', ')}) RETURNING *`, DEAL_COLS.map((k) => row[k]));
+  return r.rows[0];
+}
+async function getDealByLead(leadId) {
+  const n = parseInt(leadId, 10);
+  if (!Number.isInteger(n)) return null;
+  if (!pool) return mem.deals.find((x) => x.lead_id === n) || null;
+  const r = await pool.query('SELECT * FROM deals WHERE lead_id=$1 ORDER BY id DESC LIMIT 1', [n]);
+  return r.rows[0] || null;
+}
+async function getDeal(id) {
+  const n = parseInt(id, 10);
+  if (!Number.isInteger(n)) return null;
+  if (!pool) return mem.deals.find((x) => x.id === n) || null;
+  const r = await pool.query('SELECT * FROM deals WHERE id=$1', [n]);
+  return r.rows[0] || null;
+}
+async function updateDeal(id, fields) {
+  const keys = Object.keys(fields).filter((k) => DEAL_COLS.includes(k));
+  if (!keys.length) return false;
+  if (!pool) { const d = mem.deals.find((x) => x.id === id); if (!d) return false; for (const k of keys) d[k] = dealVal(fields[k]); return true; }
+  const r = await pool.query(`UPDATE deals SET ${keys.map((k, i) => k + '=$' + (i + 2)).join(', ')} WHERE id=$1`, [id, ...keys.map((k) => dealVal(fields[k]))]);
+  return r.rowCount > 0;
+}
+// Uitbetaalde wykupy waarvan de PCC-3-termijn vóór `beforeIso` afloopt en die nog geen herinnering kregen
+async function listDealsPccDue(beforeIso) {
+  if (!pool) return mem.deals.filter((x) => ['wyplacona', 'zawiadomiony'].includes(x.status) && x.pcc_due && !x.pcc_reminded_at && String(x.pcc_due).slice(0, 10) <= beforeIso);
+  const r = await pool.query("SELECT * FROM deals WHERE status IN ('wyplacona','zawiadomiony') AND pcc_due IS NOT NULL AND pcc_reminded_at IS NULL AND pcc_due <= $1", [beforeIso]);
+  return r.rows;
+}
+async function setLeadOfferPct(id, pct) {
+  const n = parseInt(id, 10);
+  if (!Number.isInteger(n)) return false;
+  if (!pool) { const l = mem.leads.find((x) => x.id === n); if (!l) return false; l.oferta_pct = pct; return true; }
+  const r = await pool.query('UPDATE leads SET oferta_pct=$2, updated_at=now() WHERE id=$1', [n, pct]);
+  return r.rowCount > 0;
+}
+
 module.exports = {
   init, hasDb, getPool, stats,
   loadUsers, saveUser, updateUserTotp, updateUserPassword, deleteUser,
@@ -858,6 +927,7 @@ module.exports = {
   saveLead, listLeads, getLead, updateLead, deleteLead, setLeadCase, setLeadNote, setLeadResearchInput, moveLeadStatus,
   saveLeadFile, listLeadFiles, getLeadFile, countLeadFiles,
   saveLeadReport, getLeadReport, latestReports,
+  createDeal, getDealByLead, getDeal, updateDeal, listDealsPccDue, setLeadOfferPct,
   insertDemand, getDemandByToken, updateDemand, countDemands,
   answerDemand, confirmDemand, purgeUnconfirmedDemands, listUnreminded, demandsByLead, getDemandByMailId, listDemandsMailPending, countDemandsTo, logDemand, listDemandLog,
   purgeDemo,

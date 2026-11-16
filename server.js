@@ -17,6 +17,7 @@ const MD = require('./src/md');
 const MailTpl = require('./src/mailtpl');
 const AiMail = require('./src/aimail');
 const Demands = require('./src/demands');
+const Deals = require('./src/deals');
 const RateLimit = require('./src/ratelimit');
 const Mailbox = require('./src/mailbox');
 const pgSession = require('connect-pg-simple')(session);
@@ -365,10 +366,17 @@ app.get('/admin/leady', Auth.requireAdmin, async (req, res) => {
   const report = sel ? await db.getLeadReport(sel.id).catch(() => null) : null;
   const reportMap = await db.latestReports().catch(() => ({}));
   const researchPending = sel ? Research.isPending(sel.id) : false;
+  // wykup-transactie op de geselecteerde lead (src/deals.js)
+  const deal = sel ? await Deals.byLead(sel.id).catch(() => null) : null;
+  const dealPre = sel && !deal ? Deals.prefill(sel, report) : null;
+  const dealPending = sel ? Deals.isProposalPending(sel.id) : false;
+  const dealProposal = Deals.proposalOf(deal);
+  const dealMissing = deal ? Deals.missingForDocs(deal) : [];
+  const dealMail = deal && deal.notify_comm_id ? (await Mailbox.refresh([await db.getCommById(deal.notify_comm_id).catch(() => null)].filter(Boolean)).catch(() => []))[0] || null : null;
   const pendingIds = leads.filter((l) => Research.isPending(l.id)).map((l) => l.id);
   const mails = sel ? await Mailbox.refresh(await db.listComms('L' + sel.id, 20).catch(() => [])) : [];
   const unread = await db.unreadReplies().catch(() => ({}));
-  res.render('admin-leady', common({ page: 'admin', user: req.user, leads, sel, view, counts, wzState, selState, selArchived: sel ? archived(sel) : false, reminded, resent, files, fileCounts, report, reportMap, researchPending, pendingIds, mails, unread, LEAD_STATUSES, flash: req.query.msg || null }));
+  res.render('admin-leady', common({ page: 'admin', user: req.user, leads, sel, view, counts, wzState, selState, selArchived: sel ? archived(sel) : false, reminded, resent, files, fileCounts, report, reportMap, researchPending, pendingIds, mails, unread, LEAD_STATUSES, deal, dealPre, dealPending, dealProposal, dealMissing, dealMail, flash: req.query.msg || null }));
 });
 
 // ── Postvak: alle binnengekomen antwoorden op één plek ───────────────────
@@ -554,6 +562,7 @@ app.post('/admin/leady/:id/mail', Auth.requireAdmin, async (req, res) => {
   // Eerste e-mail aan de aanvrager: de lead is niet meer "nowy" maar in contact
   if (r.ok || r.simulated) {
     const L = res.locals.t.app.admin.leads;
+    if (tpl === 'oferta') await Deals.offerMailed(lead.id).catch(() => null); // wykup: offertemail = etap „oferta wysłana”
     const moved = await db.moveLeadStatus(lead.id, ['nowy'], 'kontakt').catch(() => false);
     if (moved) msg += ' · ' + res.locals.t.fill(L.statusAuto, { status: L.statuses.kontakt });
   }
@@ -690,6 +699,80 @@ app.post('/admin/leady/:id/usun', Auth.requireAdmin, async (req, res) => {
   const L = res.locals.t.app.admin.leads;
   const ok = await db.deleteLead(req.params.id).catch(() => false);
   res.redirect('/admin/leady?msg=' + encodeURIComponent(ok ? res.locals.t.fill(L.deleted, { id: req.params.id }) : L.notFound));
+});
+
+// ── Wykup wierzytelności: transactie op een lead (admin, src/deals.js, v0.27.0) ──────────────────
+const dealBack = (lead, msg) => '/admin/leady?sel=' + lead.id + (msg ? '&msg=' + encodeURIComponent(msg) : '') + '#wykup';
+async function dealCtx(req, res) {
+  const lead = await db.getLead(req.params.id).catch(() => null);
+  if (!lead) return null;
+  const deal = await Deals.byLead(lead.id).catch(() => null);
+  return { lead, deal, W: res.locals.t.app.admin.leads.deal };
+}
+function dealErr(W, e) { return (e && e.missing) ? res_fill(W.err.missing, { fields: e.missing.map((k) => W.f[k]).join(', ') }) : (W.err[e && e.message] || (e && e.message) || 'błąd'); }
+function res_fill(tpl, vars) { return String(tpl).replace(/\{(\w+)\}/g, (m, k) => (vars && vars[k] !== undefined ? vars[k] : m)); }
+// transactie starten (velden vooraf uit verslag + lead) of bijwerken
+app.post('/admin/leady/:id/wykup', Auth.requireAdmin, async (req, res) => {
+  const x = await dealCtx(req, res); if (!x) return res.redirect('/admin/leady');
+  try {
+    if (x.deal) { await Deals.update(x.deal, req.body); return res.redirect(dealBack(x.lead, x.W.msg.updated)); }
+    const report = await db.getLeadReport(x.lead.id).catch(() => null);
+    await Deals.start(x.lead, req.body, report);
+    res.redirect(dealBack(x.lead, x.W.msg.started));
+  } catch (e) { res.redirect(dealBack(x.lead, dealErr(x.W, e))); }
+});
+// AI-voorstel aan de beheerder (achtergrond; de pagina ververst zichzelf)
+app.post('/admin/leady/:id/wykup/propozycja', Auth.requireAdmin, async (req, res) => {
+  const x = await dealCtx(req, res); if (!x || !x.deal) return res.redirect('/admin/leady');
+  const files = await db.listLeadFiles(x.lead.id).catch(() => []);
+  const started = await Deals.runProposal(x.lead, x.deal, files, panelTrLang(res)).catch(() => false);
+  res.redirect(dealBack(x.lead, started ? x.W.msg.proposalStarted : x.W.msg.aiUnavailable));
+});
+app.post('/admin/leady/:id/wykup/status', Auth.requireAdmin, async (req, res) => {
+  const x = await dealCtx(req, res); if (!x || !x.deal) return res.redirect('/admin/leady');
+  try { await Deals.setStatus(x.deal, String(req.body.to || '')); res.redirect(dealBack(x.lead, res_fill(x.W.msg.status, { status: x.W.st[x.deal.status] || x.deal.status }))); }
+  catch (e) { res.redirect(dealBack(x.lead, dealErr(x.W, e))); }
+});
+app.post('/admin/leady/:id/wykup/umowa', Auth.requireAdmin, async (req, res) => {
+  const x = await dealCtx(req, res); if (!x || !x.deal) return res.redirect('/admin/leady');
+  try { const r = await Deals.sendAgreement(x.deal, x.lead); res.redirect(dealBack(x.lead, res_fill(x.W.msg.agreementSent, { to: x.deal.cedent_email || x.lead.email, status: res.locals.t.tr(r.status) }))); }
+  catch (e) { console.error('[wykup] umowa versturen mislukt —', e.message); res.redirect(dealBack(x.lead, dealErr(x.W, e))); }
+});
+app.post('/admin/leady/:id/wykup/podpisana', Auth.requireAdmin, async (req, res) => {
+  const x = await dealCtx(req, res); if (!x || !x.deal) return res.redirect('/admin/leady');
+  try { await Deals.markSigned(x.deal, { fileId: req.body.file_id, date: req.body.date }); res.redirect(dealBack(x.lead, x.W.msg.signed)); }
+  catch (e) { res.redirect(dealBack(x.lead, dealErr(x.W, e))); }
+});
+app.post('/admin/leady/:id/wykup/wyplacona', Auth.requireAdmin, async (req, res) => {
+  const x = await dealCtx(req, res); if (!x || !x.deal) return res.redirect('/admin/leady');
+  try {
+    const r = await Deals.markPaid(x.deal, x.lead, { date: req.body.date, amount: req.body.amount, ref: req.body.ref }, { user: req.user });
+    res.redirect(dealBack(x.lead, res_fill(x.W.msg.paid, { nr: r.caseObj ? r.caseObj.nr : x.deal.case_id, date: Deals.plDate(x.deal.pcc_due) })));
+  } catch (e) { console.error('[wykup] wypłata registreren mislukt —', e.message); res.redirect(dealBack(x.lead, dealErr(x.W, e))); }
+});
+app.post('/admin/leady/:id/wykup/zawiadom', Auth.requireAdmin, async (req, res) => {
+  const x = await dealCtx(req, res); if (!x || !x.deal) return res.redirect('/admin/leady');
+  try { const r = await Deals.notifyDebtor(x.deal, x.lead, { to: req.body.to }); res.redirect(dealBack(x.lead, res_fill(x.W.msg.notified, { status: res.locals.t.tr(r.status) }))); }
+  catch (e) { console.error('[wykup] zawiadomienie versturen mislukt —', e.message); res.redirect(dealBack(x.lead, dealErr(x.W, e))); }
+});
+// documenten: umowa / zawiadomienie als pagina of PDF
+app.get('/admin/leady/:id/wykup/:doc', Auth.requireAdmin, async (req, res, next) => {
+  const m = /^(umowa|zawiadomienie)(\.pdf)?$/.exec(req.params.doc);
+  if (!m) return next();
+  const x = await dealCtx(req, res); if (!x || !x.deal) return res.redirect('/admin/leady');
+  const kind = m[1], W = x.W;
+  try {
+    if (m[2]) {
+      const buf = kind === 'umowa' ? await Deals.agreementPdf(x.deal) : await Deals.noticePdf(x.deal);
+      const name = kind === 'umowa' ? Deals.agreementFilename(x.deal) : Deals.noticeFilename(x.deal);
+      res.set('Content-Type', 'application/pdf');
+      res.set('Content-Disposition', 'inline; filename="' + name + '"');
+      return res.send(buf);
+    }
+    const blocks = kind === 'umowa' ? Deals.agreementBlocks(x.deal) : Deals.noticeBlocks(x.deal);
+    res.render('deal-doc', common({ page: 'admin', user: req.user, title: (kind === 'umowa' ? W.docs.agreement : W.docs.notice) + ' · ' + (x.deal.invoice_nr || ''), blocks,
+      summary: kind === 'umowa' ? Deals.summaryNl(x.deal) : '', summaryLabel: W.docs.summary, pdfUrl: '/admin/leady/' + x.lead.id + '/wykup/' + kind + '.pdf', backUrl: dealBack(x.lead), W }));
+  } catch (e) { console.error('[wykup] document mislukt —', e.message); res.redirect(dealBack(x.lead, W.err.pdf + ' ' + e.message)); }
 });
 
 // Lead → echte zaak (admin): velden uit het formulier, klant = e-mail van de lead (gekoppeld aan account als dat bestaat)
@@ -1392,6 +1475,11 @@ async function start() {
     .then((n) => { if (n) console.log('Wezwanie: afleverstatus van ' + n + ' mail(s) aan dłużnicy bijgewerkt'); })
     .catch((e) => console.error('Wezwanie: afleverstatus ophalen mislukt —', e.message));
   setInterval(pollDebtorMail, 10 * 60 * 1000).unref();
+  // Wykup: herinnering aan de beheerder als de PCC-3-termijn van een uitbetaalde koop binnen een week afloopt
+  const remindPcc = () => Deals.remindPcc()
+    .then((n) => { if (n) console.log('Wykup: ' + n + ' PCC-3-herinnering(en) gestuurd'); })
+    .catch((e) => console.error('Wykup: PCC-herinnering mislukt —', e.message));
+  setInterval(remindPcc, HOUR_MS).unref();
   app.listen(PORT, () => console.log('sprzedamfakture.pl draait op poort ' + PORT));
 }
 start();
