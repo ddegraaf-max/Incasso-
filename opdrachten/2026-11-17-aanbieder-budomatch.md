@@ -1,4 +1,4 @@
-> **ON HOLD (17-11-2026, besluit Daniël): NIET UITVOEREN.** De Google-verificatie is gepauzeerd. Pak deze opdracht pas op als Daniël dat expliciet zegt.
+> **VERVALLEN (17-11-2026, besluit Daniël): NIET UITVOEREN.** De Google Ads-campagne van sprzedamfakture.pl is verwijderd; de site blijft op SEO draaien en Creditline B.V. blijft de aanbieder. Alleen weer oppakken als Daniël dat expliciet zegt.
 
 # Opdracht: Budomatch DANIËL DE GRAAF als aanbieder van sprzedamfakture.pl op de site
 

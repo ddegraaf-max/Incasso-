@@ -6,6 +6,6 @@ Is een opdracht af, zet dan bovenaan **Afgerond op <datum> (commit <hash>)** en 
 
 ## Open
 
-- `2026-11-17-aanbieder-budomatch.md`: Aanbieder op de site van Creditline B.V. naar Budomatch DANIËL DE GRAAF (Google-verificatie) – **ON HOLD, niet uitvoeren tot Daniël het zegt** (17-11)
+- `2026-11-17-aanbieder-budomatch.md`: Aanbieder op de site van Creditline B.V. naar Budomatch DANIËL DE GRAAF (Google-verificatie) – **VERVALLEN, niet uitvoeren** (17-11)
 
 ## Afgerond
