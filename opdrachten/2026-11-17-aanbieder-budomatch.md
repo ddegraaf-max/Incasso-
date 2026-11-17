@@ -1,3 +1,5 @@
+> **ON HOLD (17-11-2026, besluit Daniël): NIET UITVOEREN.** De Google-verificatie is gepauzeerd. Pak deze opdracht pas op als Daniël dat expliciet zegt.
+
 # Opdracht: Budomatch DANIËL DE GRAAF als aanbieder van sprzedamfakture.pl op de site
 
 **Gemaakt:** 17 november 2026, bij de Google Ads-verificatie voor financiële diensten (Polen).
